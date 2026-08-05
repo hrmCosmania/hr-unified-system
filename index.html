@@ -3138,7 +3138,7 @@ function renderEmployeesTable(){
     +'<td class="gs-muted">'+escapeHtml(getEmployeeName(e.parentId)||'-')+'</td>'
     +'<td><span class="gs-status-pill '+statusKey+'"><span class="dot"></span>'+statusLabel+'</span></td>'
     +'<td class="gs-muted">'+escapeHtml(e.email||'-')+'</td>'
-    +'<td><div class="row-actions"><button class="btn-ghost btn-sm" onclick="editEmployee(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไขประวัติ</button>'+(e.status!=='Inactive'?'<button class="btn-danger btn-sm" onclick="openOffboardingModal(\''+v4EscapeAttr(e.empCode)+'\')">สิ้นสุดสถานะ</button>':'<button class="btn-ghost btn-sm" onclick="openOffboardingModal(\''+v4EscapeAttr(e.empCode)+'\')">ดู Offboarding</button>')+'</div></td></tr>';
+    +'<td><div class="row-actions"><button class="btn-ghost btn-sm" onclick="editEmployee(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไขประวัติ</button>'+'<button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+v4EscapeAttr(e.empCode)+'\')">JD/KPI/Competency</button>'+(e.status!=='Inactive'?'<button class="btn-danger btn-sm" onclick="openOffboardingModal(\''+v4EscapeAttr(e.empCode)+'\')">สิ้นสุดสถานะ</button>':'<button class="btn-ghost btn-sm" onclick="openOffboardingModal(\''+v4EscapeAttr(e.empCode)+'\')">ดู Offboarding</button>')+'</div></td></tr>';
   }).join('');
   document.getElementById('employeesEmpty').classList.toggle('hidden',rows.length>0);
   document.getElementById('empCount').textContent='แสดง '+rows.length+' จาก '+DB.employees.length+' คน';
