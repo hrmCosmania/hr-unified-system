@@ -152,13 +152,6 @@
   .stat-list-item{display:flex; justify-content:space-between; align-items:center; padding:8px; background:#fff; border-radius:7px; margin-bottom:6px; font-size:12.5px; border:1px solid var(--slate-200); cursor:pointer;}
   .stat-list-item:hover{background:#f0f5ff;}
   .stat-count{background:var(--cmn-bg); color:var(--cmn-color); padding:2px 8px; border-radius:20px; font-weight:700; font-size:11.5px;}
-  @media print{
-    .topbar,.tabbar,.card:not(#orgChartPrintCard) *{ }
-    body *{visibility:hidden;}
-    #orgChartArea, #orgChartArea *{visibility:visible;}
-    #orgChartArea{position:absolute; left:0; top:0; width:100%;}
-  }
-
   @media(max-width:900px){
     .form-grid{grid-template-columns:repeat(2,1fr);}
     .field.span2,.field.span4{grid-column:span 2;}
@@ -313,6 +306,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <button class="tab-btn" data-tab="training" onclick="showTab('training')">🎓 ประวัติการฝึกอบรม</button>
 <button class="tab-btn" data-tab="reports" onclick="showTab('reports')">📊 รายงาน</button>
 <button class="tab-btn" data-tab="settings" onclick="showTab('settings')">⚙️ Setting</button>
+<a class="tab-btn" href="/probation" target="_blank" rel="noopener" style="text-decoration:none;">📋 ประเมินทดลองงาน</a>
 </div>
 <div class="wrap">
 <!-- ============ EMPLOYEE DATABASE ============ -->
@@ -393,7 +387,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <section class="summary-grid" id="bdaySummaryGrid"></section>
 <section class="card"><div class="toolbar"><div class="toolbar-left"><input class="search-input" id="bdaySearch" oninput="renderBirthdayTable()" placeholder="ค้นหา ชื่อ / รหัส / แผนก / ตำแหน่ง"/><select id="bdayMonthFilter" onchange="renderBirthdayTable()"><option value="">ทุกเดือน</option><option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option><option value="4">เมษายน</option><option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option><option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option><option value="9">กันยายน</option><option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option></select></div><div class="toolbar-right"><button class="btn-ghost" onclick="downloadAllBirthdayICS()">📅 ดาวน์โหลด .ics ทั้งหมด</button></div></div><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>แผนก</th><th>ตำแหน่ง</th><th>วันเกิด</th><th>วันเกิดรอบถัดไป</th><th>อายุที่จะครบ</th><th>เหลืออีก</th><th>Email</th><th>การดำเนินการ</th></tr></thead><tbody id="bdayTbody"></tbody></table></div><div class="empty hidden" id="bdayEmpty">ไม่พบพนักงานที่มีข้อมูลวันเกิด</div></section>
 </div>
-<div class="subview" id="onboarding-sub-probation"><section class="summary-grid" id="probSummaryGrid"></section><section class="card"><div class="toolbar"><div class="toolbar-left"><input class="search-input" id="probSearch" oninput="renderProbationTable()" placeholder="ค้นหา ชื่อ / รหัส / แผนก / ตำแหน่ง"/><select id="probStatusFilter" onchange="renderProbationTable()"><option value="">ทุกสถานะ</option><option value="overdue">เลยกำหนดแล้ว</option><option value="soon">ใกล้ครบกำหนด</option><option value="ok">ยังไม่ถึงกำหนด</option><option value="completed">ดำเนินการแล้ว</option></select><label class="btn-ghost" style="padding:9px 12px"><input id="probShowCompleted" onchange="renderProbationTable()" type="checkbox"/> แสดงรายการดำเนินการแล้ว</label></div><div class="toolbar-right"><button class="btn-ghost" onclick="downloadAllProbationICS()">ดาวน์โหลด .ics</button></div></div><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>แผนก</th><th>ตำแหน่ง</th><th>วันเริ่มงาน</th><th>ครบทดลองงาน</th><th>สถานะ</th><th>ครบรอบอายุงาน</th><th>หัวหน้างาน</th><th>การดำเนินการ</th></tr></thead><tbody id="probTbody"></tbody></table></div><div class="empty hidden" id="probEmpty">ไม่พบพนักงานที่มีวันเริ่มงาน</div></section></div>
+<div class="subview" id="onboarding-sub-probation"><section class="summary-grid" id="probSummaryGrid"></section><section class="card"><div class="toolbar"><div class="toolbar-left"><input class="search-input" id="probSearch" oninput="renderProbationTable()" placeholder="ค้นหา ชื่อ / รหัส / แผนก / ตำแหน่ง"/><select id="probStatusFilter" onchange="renderProbationTable()"><option value="">ทุกสถานะ</option><option value="overdue">เลยกำหนดแล้ว</option><option value="soon">ใกล้ครบกำหนด</option><option value="ok">ยังไม่ถึงกำหนด</option><option value="completed">ดำเนินการแล้ว</option></select><label class="btn-ghost" style="padding:9px 12px"><input id="probShowCompleted" onchange="renderProbationTable()" type="checkbox"/> แสดงรายการดำเนินการแล้ว</label></div><div class="toolbar-right"><button class="btn-green" onclick="addAllProbationToGoogleCalendar()">📅 เพิ่มเข้า Google Calendar</button><button class="btn-ghost" onclick="downloadAllProbationICS()">ดาวน์โหลด .ics</button></div></div><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>แผนก</th><th>ตำแหน่ง</th><th>วันเริ่มงาน</th><th>ครบทดลองงาน</th><th>สถานะ</th><th>ครบรอบอายุงาน</th><th>หัวหน้างาน</th><th>การดำเนินการ</th></tr></thead><tbody id="probTbody"></tbody></table></div><div class="empty hidden" id="probEmpty">ไม่พบพนักงานที่มีวันเริ่มงาน</div></section></div>
 </div>
 <!-- ============ JOB POSITION MANAGEMENT ============ -->
 <div class="view" id="view-jobpositions"><section class="summary-grid" id="jobPositionSummaryGrid"></section><section class="card"><div class="module-intro"><div><h2>จัดการตำแหน่งงาน</h2><div class="sub">เลือกตำแหน่งด้านซ้ายเพื่อดู JD, KPI, Competency และพนักงานที่ใช้งานด้านขวา</div></div></div></section><div class="job-master-detail"><section class="card job-master"><div class="field"><label>ค้นหาตำแหน่ง</label><input id="jobPositionSearch" oninput="renderJobPositionModule()" placeholder="ตำแหน่ง Job Code หรือแผนก"/></div><div class="form-grid two" style="margin-top:10px"><div class="field"><label>ฝ่าย</label><select id="jobDivisionFilter" onchange="renderJobPositionModule()"><option value="">ทุกฝ่าย</option></select></div><div class="field"><label>แผนก</label><select id="jobDepartmentFilter" onchange="renderJobPositionModule()"><option value="">ทุกแผนก</option></select></div></div><div class="position-list" id="jobPositionListV4" style="margin-top:14px"></div></section><section class="card job-detail" id="jobPositionDetailV4"><div class="position-detail-empty">เลือกตำแหน่งงานจากรายการด้านซ้าย</div></section></div></div>
@@ -713,6 +707,8 @@ function defaultDB(){
     orgChartSnapshots: [],
     // ===== Job Position / JD-KPI editor revision history =====
     positionRevisions: [],
+    // ===== Per-employee JD overrides (responsibility text only; KPI/Competency stay shared by position) =====
+    employeeJdOverrides: [],
     // ===== Probation actions (completion/reopen log) =====
     probationActions: [],
     // ===== Training (single source of truth: courses + enrollments) =====
@@ -720,7 +716,7 @@ function defaultDB(){
     trainingEnrollments: [],
     settings: {
       birthdayEmail: { subject: DEFAULT_BDAY_SUBJECT, body: DEFAULT_BDAY_BODY, reminderDays: '7,1,0' },
-      probation: { assessmentWebappUrl: '' },
+      probation: { assessmentWebappUrl: 'https://hr-unified-system.vercel.app/probation' },
       gsheetUrl: ''
     }
   };
@@ -737,7 +733,7 @@ function migrateDB(raw){
 
   // Arrays: ต้องมีอยู่และเป็น array เสมอ ห้าม undefined ไม่งั้นทุก DB.xxx.push() จะพัง
   ['employees','performanceReviews','goals','jd','kpiDefinitions','competencies','competencyDictionary','kpiDictionary',
-   'orgChartSnapshots','positionRevisions','probationActions','trainingCourses','trainingEnrollments','attendanceRecords','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','leaveEntitlementDefaults','leaveEntitlementOverrides','importedRequestIds'
+   'orgChartSnapshots','positionRevisions','probationActions','trainingCourses','trainingEnrollments','attendanceRecords','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','leaveEntitlementDefaults','leaveEntitlementOverrides','importedRequestIds','employeeJdOverrides'
   ].forEach(k => {
     if(!Array.isArray(merged[k])) merged[k] = base[k];
   });
@@ -1195,6 +1191,7 @@ function refreshAllViews(){
   renderEmployeesTable(); renderEmployeeSummary(); refreshParentSelect(null);
   Object.values(TAB_RENDERERS).forEach(fn => { try{ fn(); }catch(e){ console.warn(e); } });
 }
+var pendingEmployeeImport = null;
 function importEmployeesExcel(event){
   const file = event.target.files[0];
   if(!file) return;
@@ -1208,16 +1205,73 @@ function importEmployeesExcel(event){
       const hint = /cil|คอสซูติค/i.test(file.name) ? 'CIL' : /cmn|คอสเมเนีย/i.test(file.name) ? 'CMN' : '';
       const records = parseEmployeeAoa(aoa, hint);
       if(!records.length) throw new Error('ไม่พบรายการพนักงานที่นำเข้าได้');
-      const summary = mergeEmployeeRecords(DB, records);
-      DB.meta.lastEmployeeImport = {file:file.name, importedAt:new Date().toISOString(), summary};
-      saveDB(); refreshAllViews(); event.target.value='';
-      showImportSummary('ผลการนำเข้าทะเบียนพนักงาน', [
-        {label:'รายการในไฟล์',value:summary.total}, {label:'เพิ่มใหม่',value:summary.added},
-        {label:'อัปเดต',value:summary.updated}, {label:'ข้าม',value:summary.skipped}
-      ]);
+      const existingMap = new Map(DB.employees.map(e => [String(e.empCode||'').trim().toUpperCase(), e]));
+      const newHires = [], resignations = [];
+      records.forEach(rec => {
+        const key = String(rec.empCode||'').trim().toUpperCase();
+        const existing = existingMap.get(key);
+        if(!existing){ newHires.push(rec); return; }
+        if(rec.status === 'Inactive' && existing.status !== 'Inactive') resignations.push(rec);
+      });
+      event.target.value='';
+      if(!newHires.length && !resignations.length){
+        applyEmployeeImport(records, file.name);
+        return;
+      }
+      pendingEmployeeImport = {records, newHires, resignations, fileName:file.name};
+      showEmployeeImportReview(newHires, resignations);
     }catch(err){ console.error(err); toast('นำเข้าทะเบียนพนักงานไม่สำเร็จ: ' + err.message); }
   };
   reader.readAsArrayBuffer(file);
+}
+function applyEmployeeImport(records, fileName){
+  const summary = mergeEmployeeRecords(DB, records);
+  DB.meta.lastEmployeeImport = {file:fileName, importedAt:new Date().toISOString(), summary};
+  saveDB(); refreshAllViews();
+  showImportSummary('ผลการนำเข้าทะเบียนพนักงาน', [
+    {label:'รายการในไฟล์',value:summary.total}, {label:'เพิ่มใหม่',value:summary.added},
+    {label:'อัปเดต',value:summary.updated}, {label:'ข้าม',value:summary.skipped}
+  ]);
+}
+function employeeImportReviewRowHtml(rec, kind, index){
+  return '<label class="clean-note" style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--slate-200)">'
+    + '<input type="checkbox" checked data-kind="' + kind + '" data-index="' + index + '">'
+    + '<span><strong>' + escapeHtml(rec.fullName) + '</strong> (' + escapeHtml(rec.empCode) + ') — ' + escapeHtml(rec.company) + ' · ' + escapeHtml(rec.position||'-') + '</span>'
+    + '</label>';
+}
+function showEmployeeImportReview(newHires, resignations){
+  const html = '<div class="clean-note" style="margin-bottom:10px">พบรายการที่ต้องยืนยันก่อนนำเข้า — ยกเลิกติ๊กรายการที่ไม่ต้องการดำเนินการ แล้วกด "ยืนยันนำเข้า" (รายการอื่นที่เป็นแค่อัปเดตข้อมูลปกติจะนำเข้าให้อัตโนมัติ)</div>'
+    + (newHires.length ? '<div class="detail-section"><h3>พนักงานเข้าใหม่ (' + newHires.length + ')</h3>' + newHires.map((r,i)=>employeeImportReviewRowHtml(r,'new',i)).join('') + '</div>' : '')
+    + (resignations.length ? '<div class="detail-section"><h3>พนักงานลาออก / พ้นสภาพ (' + resignations.length + ')</h3>' + resignations.map((r,i)=>employeeImportReviewRowHtml(r,'resign',i)).join('') + '</div>' : '')
+    + '<div class="actions" style="justify-content:flex-end;margin-top:14px">'
+    + '<button class="btn-ghost" onclick="cancelEmployeeImportReview()">ยกเลิก</button>'
+    + '<button class="btn-primary" onclick="confirmEmployeeImportReview()">ยืนยันนำเข้า</button>'
+    + '</div>';
+  openSharedModal('ยืนยันการนำเข้าทะเบียนพนักงาน', html, true);
+}
+function cancelEmployeeImportReview(){ pendingEmployeeImport = null; closeSharedModal(); toast('ยกเลิกการนำเข้าแล้ว'); }
+function confirmEmployeeImportReview(){
+  if(!pendingEmployeeImport) return;
+  const {records, newHires, resignations, fileName} = pendingEmployeeImport;
+  const excludedNewCodes = new Set(), excludedResignCodes = new Set();
+  document.querySelectorAll('#sharedModalBody input[type=checkbox]').forEach(cb => {
+    if(cb.checked) return;
+    const idx = Number(cb.dataset.index);
+    const rec = cb.dataset.kind==='new' ? newHires[idx] : resignations[idx];
+    if(!rec) return;
+    const key = String(rec.empCode||'').trim().toUpperCase();
+    (cb.dataset.kind==='new' ? excludedNewCodes : excludedResignCodes).add(key);
+  });
+  const finalRecords = records
+    .filter(rec => !excludedNewCodes.has(String(rec.empCode||'').trim().toUpperCase()))
+    .map(rec => {
+      const key = String(rec.empCode||'').trim().toUpperCase();
+      if(excludedResignCodes.has(key)){ const clone = Object.assign({}, rec); clone.status = 'Active'; return clone; }
+      return rec;
+    });
+  pendingEmployeeImport = null;
+  closeSharedModal();
+  applyEmployeeImport(finalRecords, fileName);
 }
 function importFrameworkExcel(event){
   const file = event.target.files[0];
@@ -1680,12 +1734,15 @@ function saveProbationSettings(){
   toast('บันทึกการตั้งค่าแล้ว');
 }
 
+function probationAssessmentUrl(){
+  return DB.settings.probation.assessmentWebappUrl || 'https://hr-unified-system.vercel.app/probation';
+}
 function buildProbationGoogleCalendarUrl(emp){
   const due = probationDueDate(emp);
   if(!due) return '#';
   const end = addDays(due, 1);
   const title = `📋 ครบกำหนดทดลองงาน: ${emp.fullName||''}${emp.nickname?' ('+emp.nickname+')':''}`;
-  const details = `รหัสพนักงาน: ${emp.empCode||''}\nวันเริ่มงาน: ${formatThaiDate(emp.startDate)}\nจำนวนวันทดลองงาน: ${emp.probationDays||120}\nหัวหน้างาน: ${getEmployeeName(emp.parentId)||''}`;
+  const details = `รหัสพนักงาน: ${emp.empCode||''}\nวันเริ่มงาน: ${formatThaiDate(emp.startDate)}\nจำนวนวันทดลองงาน: ${emp.probationDays||120}\nหัวหน้างาน: ${getEmployeeName(emp.parentId)||''}\nลิงก์แบบประเมิน: ${probationAssessmentUrl()}`;
   const params = new URLSearchParams({action:'TEMPLATE', text:title, dates:`${calendarDateUTC(due)}/${calendarDateUTC(end)}`, details, ctz:'Asia/Bangkok'});
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
@@ -1694,8 +1751,7 @@ function buildProbationMailto(emp){
   if(!to) return '#';
   const due = probationDueDate(emp);
   const subject = `[${emp.company||'HR'}] แจ้งกำหนดประเมินทดลองงาน: ${emp.fullName||''} (${emp.empCode||''})`;
-  const body = `เรียน หัวหน้างาน\n\nแจ้งกำหนดประเมินทดลองงานของพนักงาน\nชื่อ: ${emp.fullName||''}\nรหัสพนักงาน: ${emp.empCode||''}\nแผนก: ${emp.department||''}\nวันเริ่มงาน: ${formatThaiDate(emp.startDate)}\nครบกำหนดทดลองงาน: ${due?formatThaiDate(due):'-'}\n` +
-    (DB.settings.probation.assessmentWebappUrl ? `\nลิงก์แบบประเมิน: ${DB.settings.probation.assessmentWebappUrl}\n` : '') +
+  const body = `เรียน หัวหน้างาน\n\nแจ้งกำหนดประเมินทดลองงานของพนักงาน\nชื่อ: ${emp.fullName||''}\nรหัสพนักงาน: ${emp.empCode||''}\nแผนก: ${emp.department||''}\nวันเริ่มงาน: ${formatThaiDate(emp.startDate)}\nครบกำหนดทดลองงาน: ${due?formatThaiDate(due):'-'}\n\nลิงก์แบบประเมิน: ${probationAssessmentUrl()}\n` +
     `\nขอบคุณครับ/ค่ะ\nฝ่ายทรัพยากรบุคคล`;
   return `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
@@ -1705,7 +1761,7 @@ function makeProbationVEVENTs(emp){
   if(due){
     const stamp = new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
     const title = `📋 ครบกำหนดทดลองงาน: ${emp.fullName||''}`;
-    const desc = `รหัสพนักงาน: ${emp.empCode||''}\nวันเริ่มงาน: ${formatThaiDate(emp.startDate)}\nหัวหน้างาน: ${getEmployeeName(emp.parentId)||''}`;
+    const desc = `รหัสพนักงาน: ${emp.empCode||''}\nวันเริ่มงาน: ${formatThaiDate(emp.startDate)}\nหัวหน้างาน: ${getEmployeeName(emp.parentId)||''}\nลิงก์แบบประเมิน: ${probationAssessmentUrl()}`;
     const lines = ['BEGIN:VEVENT', `UID:probation-${emp.empCode}@hr-unified`, `DTSTAMP:${stamp}`,
       `DTSTART;VALUE=DATE:${calendarDateUTC(due)}`, `DTEND;VALUE=DATE:${calendarDateUTC(addDays(due,1))}`,
       `SUMMARY:${icsEscape(title)}`, `DESCRIPTION:${icsEscape(desc)}`];
@@ -1742,6 +1798,26 @@ function downloadAllProbationICS(){
   if(!events.length){ toast('ยังไม่มีข้อมูลให้สร้างไฟล์ .ics'); return; }
   downloadFile('probation_all.ics', wrapCalendar(events.join('\r\n')), 'text/calendar;charset=utf-8');
 }
+function addAllProbationToGoogleCalendar(){
+  const rows = probationVisibleEmployees().filter(e => probationDueDate(e));
+  if(!rows.length){ toast('ยังไม่มีข้อมูลให้เพิ่มลงปฏิทิน'); return; }
+  rows.forEach(emp => window.open(buildProbationGoogleCalendarUrl(emp), '_blank', 'noopener'));
+  toast(`เปิดนัดหมายรายบุคคลใน Google Calendar แล้ว ${rows.length} คน — ถ้าเบราว์เซอร์บล็อก popup ให้กดอนุญาตแล้วลองใหม่ · กด "บันทึก" ในแต่ละแท็บเพื่อยืนยัน`);
+}
+
+function buildProbationMilestoneCalendarUrl(emp, milestone){
+  if(!milestone || !milestone.date) return '#';
+  const end = addDays(milestone.date, 1);
+  const due = probationDueDate(emp);
+  const title = `📋 ติดตามทดลองงาน${milestone.label}: ${emp.fullName||''}`;
+  const details = `รหัสพนักงาน: ${emp.empCode||''}\nวันเริ่มงาน: ${formatThaiDate(emp.startDate)}\nรอบติดตาม: ${milestone.label}\nครบทดลองงาน: ${due?formatThaiDate(due):'-'}\nหัวหน้างาน: ${getEmployeeName(emp.parentId)||''}\nลิงก์แบบประเมิน: ${probationAssessmentUrl()}`;
+  const params = new URLSearchParams({action:'TEMPLATE', text:title, dates:`${calendarDateUTC(milestone.date)}/${calendarDateUTC(end)}`, details, ctz:'Asia/Bangkok'});
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+function probationMilestoneChips(emp){
+  const list = probationMilestones(emp).filter(m => !m.final);
+  return list.map(m => `<a class="chip cal" href="${escapeHtml(buildProbationMilestoneCalendarUrl(emp, m))}" target="_blank" rel="noopener">${m.day} วัน</a>`).join('');
+}
 
 function renderProbationTable(){
   const search = (document.getElementById('probSearch').value||'').trim().toLowerCase();
@@ -1756,7 +1832,7 @@ function renderProbationTable(){
 
   document.getElementById('probTbody').innerHTML = rows.map(e => {
     const due = probationDueDate(e), anniv = nextWorkAnniversary(e), gcal = buildProbationGoogleCalendarUrl(e), mailto = buildProbationMailto(e);
-    const assessUrl = DB.settings.probation.assessmentWebappUrl;
+    const assessUrl = probationAssessmentUrl();
     return `<tr>
       <td>${escapeHtml(e.empCode)}</td><td>${escapeHtml(e.fullName)}</td><td>${escapeHtml(e.department||'-')}</td>
       <td>${escapeHtml(e.position||'-')}</td><td>${formatThaiDate(e.startDate)}</td>
@@ -2519,6 +2595,57 @@ function originalFrameworkData(selected){
     comps: frameworkRowsFor(HR_SEED_DATA.competencies,selected).map(x=>Object.assign({},x))
   };
 }
+/* ---------- Per-employee JD override (responsibility text only) ---------- */
+function getEmployeeJdOverride(empCode){
+  return (DB.employeeJdOverrides||[]).find(o => o.employeeCode===empCode) || null;
+}
+function currentFrameworkDataForEmployee(emp){
+  const selected = {company:emp.company, position:emp.position, jobCode:emp.jobCode, department:emp.department, level:emp.level};
+  const data = currentFrameworkData(selected);
+  const override = getEmployeeJdOverride(emp.empCode);
+  if(override) data.jd = Object.assign({}, data.jd, {responsibility: override.responsibility});
+  return data;
+}
+function openEmployeeJdEditor(empCode){
+  const emp = getEmployeeByCode(empCode);
+  if(!emp){ toast('ไม่พบข้อมูลพนักงาน'); return; }
+  const selected = {company:emp.company, position:emp.position, jobCode:emp.jobCode, department:emp.department, level:emp.level};
+  const templateResp = currentFrameworkData(selected).jd.responsibility || '';
+  const override = getEmployeeJdOverride(empCode);
+  const html = '<div class="clean-note" style="margin-bottom:10px">'
+    + '<strong>' + escapeHtml(emp.fullName) + '</strong> · ' + escapeHtml(emp.position||'-') + ' · ' + escapeHtml(emp.department||'-')
+    + '<br><span class="small">แก้ไขเฉพาะข้อความ JD (หน้าที่และความรับผิดชอบ) ของพนักงานคนนี้ — KPI และ Competency ยังคงใช้ร่วมกับตำแหน่งเหมือนเดิม</span>'
+    + (override ? '<br><span class="badge" style="margin-top:6px;display:inline-block">กำหนดเองแล้ว · แก้ไขล่าสุด ' + escapeHtml(formatThaiDate(override.updatedAt)) + '</span>' : '')
+    + '</div>'
+    + '<div class="field"><label>หน้าที่และความรับผิดชอบ / Job Description (รายบุคคล)</label>'
+    + '<textarea id="employeeJdEditorInput" rows="10" style="width:100%">' + escapeHtml(override ? override.responsibility : templateResp) + '</textarea></div>'
+    + '<div class="actions" style="justify-content:flex-end;margin-top:14px">'
+    + (override ? '<button class="btn-ghost" onclick="resetEmployeeJdOverride(\'' + v4EscapeAttr(empCode) + '\')">รีเซ็ตเป็นค่ามาตรฐานของตำแหน่ง</button>' : '')
+    + '<button class="btn-ghost" onclick="closeSharedModal()">ยกเลิก</button>'
+    + '<button class="btn-primary" onclick="saveEmployeeJdOverride(\'' + v4EscapeAttr(empCode) + '\')">บันทึก JD รายบุคคล</button>'
+    + '</div>';
+  openSharedModal('แก้ไข JD รายบุคคล', html, true);
+}
+function saveEmployeeJdOverride(empCode){
+  const textarea = document.getElementById('employeeJdEditorInput');
+  const value = textarea ? textarea.value : '';
+  const list = DB.employeeJdOverrides = DB.employeeJdOverrides || [];
+  const existingIndex = list.findIndex(o => o.employeeCode===empCode);
+  const rec = {employeeCode:empCode, responsibility:value, updatedAt:new Date().toISOString()};
+  if(existingIndex>=0) list[existingIndex] = rec; else list.push(rec);
+  saveDB();
+  closeSharedModal();
+  if(jobSelected) renderJobPositionDetail();
+  toast('บันทึก JD รายบุคคลแล้ว');
+}
+function resetEmployeeJdOverride(empCode){
+  if(!confirm('ต้องการยกเลิก JD รายบุคคลของพนักงานคนนี้ และกลับไปใช้ JD มาตรฐานของตำแหน่งใช่หรือไม่?')) return;
+  DB.employeeJdOverrides = (DB.employeeJdOverrides||[]).filter(o => o.employeeCode!==empCode);
+  saveDB();
+  closeSharedModal();
+  if(jobSelected) renderJobPositionDetail();
+  toast('รีเซ็ต JD กลับเป็นค่ามาตรฐานของตำแหน่งแล้ว');
+}
 function renderJobPositionModule(){
   const options = getAllPositionOptions();
   const search = (document.getElementById('jobPositionSearch').value||'').trim().toLowerCase();
@@ -2555,8 +2682,7 @@ function frameworkPreviewHtml(data){
 function showEmployeeJdKpiModal(empCode){
   const emp = getEmployeeByCode(empCode);
   if(!emp){ toast('ไม่พบข้อมูลพนักงาน'); return; }
-  const selected = { company:emp.company, position:emp.position, jobCode:emp.jobCode, department:emp.department, level:emp.level };
-  const data = currentFrameworkData(selected);
+  const data = currentFrameworkDataForEmployee(emp);
   const dottedNames = (emp.dottedLineManagerCodes||[]).map(c => { const m = getEmployeeByCode(c); return m ? m.fullName : c; }).filter(Boolean);
   const header = '<div class="clean-note" style="margin-bottom:14px">'
     + '<strong>' + escapeHtml(emp.fullName) + '</strong>' + (emp.nickname ? ' (' + escapeHtml(emp.nickname) + ')' : '') + '<br>'
@@ -3050,7 +3176,7 @@ function reopenProbation(code){DB.probationActions=DB.probationActions.filter(fu
 function renderProbationTable(){
   var search=((document.getElementById('probSearch')||{}).value||'').trim().toLowerCase();var status=(document.getElementById('probStatusFilter')||{}).value||'';var showCompleted=!!((document.getElementById('probShowCompleted')||{}).checked);
   var rows=probationVisibleEmployees().filter(function(e){var completed=isProbationCompleted(e.empCode);if(completed&&!showCompleted)return false;if(search&&![e.empCode,e.fullName,e.department,e.position].join(' ').toLowerCase().includes(search))return false;if(status&&!completed&&probationStatusKey(e)!==status)return false;if(status&&completed&&status!=='completed')return false;return true;}).sort(function(a,b){return (probationDaysRemaining(a)??9999)-(probationDaysRemaining(b)??9999);});
-  document.getElementById('probTbody').innerHTML=rows.map(function(e){var action=probationAction(e.empCode);return '<tr data-code="'+v4EscapeAttr(e.empCode)+'"><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+escapeHtml(e.position||'-')+'</td><td>'+formatThaiDate(e.startDate)+'</td><td>'+formatThaiDate(probationDueDate(e))+'</td><td>'+(action?'<span class="badge active">ดำเนินการแล้ว</span><div class="small">'+formatThaiDate(action.completedAt)+' · '+escapeHtml(action.completedBy)+'</div>':probationStatusBadge(e))+'</td><td>'+formatThaiDate(nextWorkAnniversary(e))+'</td><td>'+escapeHtml(getEmployeeName(e.parentId)||'-')+'</td><td><div class="row-actions">'+(action?'<button class="btn-ghost btn-sm" data-action="reopen" data-code="'+v4EscapeAttr(e.empCode)+'" onclick="reopenProbation(\''+v4EscapeAttr(e.empCode)+'\')">นำกลับมาติดตาม</button>':'<button class="btn-primary btn-sm" data-action="complete" data-code="'+v4EscapeAttr(e.empCode)+'" onclick="completeProbation(\''+v4EscapeAttr(e.empCode)+'\')">ดำเนินการแล้ว</button>')+'<button class="btn-ghost btn-sm" onclick="downloadEmployeeProbationICS(\''+v4EscapeAttr(e.empCode)+'\')">.ics</button></div></td></tr>';}).join('');
+  document.getElementById('probTbody').innerHTML=rows.map(function(e){var action=probationAction(e.empCode);return '<tr data-code="'+v4EscapeAttr(e.empCode)+'"><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+escapeHtml(e.position||'-')+'</td><td>'+formatThaiDate(e.startDate)+'</td><td>'+formatThaiDate(probationDueDate(e))+'</td><td>'+(action?'<span class="badge active">ดำเนินการแล้ว</span><div class="small">'+formatThaiDate(action.completedAt)+' · '+escapeHtml(action.completedBy)+'</div>':probationStatusBadge(e))+'</td><td>'+formatThaiDate(nextWorkAnniversary(e))+'</td><td>'+escapeHtml(getEmployeeName(e.parentId)||'-')+'</td><td><div class="act-group"><div class="act-row">'+probationMilestoneChips(e)+'<a class="chip cal" href="'+escapeHtml(buildProbationGoogleCalendarUrl(e))+'" target="_blank" rel="noopener">ครบกำหนด</a><button class="chip" onclick="downloadEmployeeProbationICS(\''+v4EscapeAttr(e.empCode)+'\')">.ics</button></div><div class="act-row">'+(action?'<button class="btn-ghost btn-sm" data-action="reopen" data-code="'+v4EscapeAttr(e.empCode)+'" onclick="reopenProbation(\''+v4EscapeAttr(e.empCode)+'\')">นำกลับมาติดตาม</button>':'<button class="btn-primary btn-sm" data-action="complete" data-code="'+v4EscapeAttr(e.empCode)+'" onclick="completeProbation(\''+v4EscapeAttr(e.empCode)+'\')">ดำเนินการแล้ว</button>')+'</div></div></td></tr>';}).join('');
   document.getElementById('probEmpty').classList.toggle('hidden',rows.length>0);
 }
 function renderProbationSummary(){var rows=probationVisibleEmployees();var completed=rows.filter(function(e){return isProbationCompleted(e.empCode);}).length;var pending=rows.length-completed;var overdue=rows.filter(function(e){return !isProbationCompleted(e.empCode)&&probationStatusKey(e)==='overdue';}).length;var soon=rows.filter(function(e){return !isProbationCompleted(e.empCode)&&probationStatusKey(e)==='soon';}).length;document.getElementById('probSummaryGrid').innerHTML='<div class="summary-card"><div class="num">'+pending+'</div><div class="label">รอดำเนินการ</div></div><div class="summary-card"><div class="num">'+completed+'</div><div class="label">ดำเนินการแล้ว</div></div><div class="summary-card"><div class="num">'+soon+'</div><div class="label">ครบกำหนดใน 7 วัน</div></div><div class="summary-card"><div class="num">'+overdue+'</div><div class="label">เลยกำหนด</div></div>';}
@@ -3088,7 +3214,7 @@ function renderJobPositionDetail(){
   if(v4PositionDetailTab==='jd')content='<div class="clean-note" style="white-space:pre-wrap">'+escapeHtml(data.jd.responsibility||'ยังไม่มีข้อมูล Job Description')+'</div>';
   if(v4PositionDetailTab==='kpi')content='<div class="table-wrap"><table><thead><tr><th>Code</th><th>KPI</th><th>เป้าหมาย</th><th>น้ำหนัก</th><th>ความถี่</th></tr></thead><tbody>'+data.kpis.map(function(k){return '<tr><td>'+escapeHtml(k.code||'-')+'</td><td><strong>'+escapeHtml(k.name||'-')+'</strong><div class="small">'+escapeHtml(k.definition||k.formula||'')+'</div></td><td>'+escapeHtml(k.target||'-')+'</td><td>'+escapeHtml(k.weight||'-')+'</td><td>'+escapeHtml(k.frequency||'-')+'</td></tr>';}).join('')+'</tbody></table></div>';
   if(v4PositionDetailTab==='comp')content='<div class="table-wrap"><table><thead><tr><th>Code</th><th>ประเภท</th><th>สมรรถนะ</th><th>น้ำหนัก</th><th>ระดับ</th></tr></thead><tbody>'+data.comps.map(function(c){return '<tr><td>'+escapeHtml(c.code||'-')+'</td><td>'+escapeHtml(c.type||'-')+'</td><td>'+escapeHtml(c.name||'-')+'</td><td>'+escapeHtml(c.weight||'-')+'</td><td>'+escapeHtml(c.expectedLevel||'-')+'</td></tr>';}).join('')+'</tbody></table></div>';
-  if(v4PositionDetailTab==='people')content='<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th>แผนก</th><th>สถานะ</th><th></th></tr></thead><tbody>'+emps.map(function(e){return '<tr><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+statusBadge(e.status)+'</td><td><button class="btn-ghost btn-sm" onclick="editEmployeeFromJobPosition(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไขข้อมูลพนักงาน</button></td></tr>';}).join('')+'</tbody></table></div>';
+  if(v4PositionDetailTab==='people')content='<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th>แผนก</th><th>สถานะ</th><th>JD</th><th></th></tr></thead><tbody>'+emps.map(function(e){return '<tr><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+statusBadge(e.status)+'</td><td>'+(getEmployeeJdOverride(e.empCode)?'<span class="badge">กำหนดเอง</span>':'<span class="small">มาตรฐานตำแหน่ง</span>')+'</td><td><button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไข JD รายบุคคล</button> <button class="btn-ghost btn-sm" onclick="editEmployeeFromJobPosition(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไขข้อมูลพนักงาน</button></td></tr>';}).join('')+'</tbody></table></div>';
   var meta=getPositionMeta(jobSelected.key);
   var statusRow='<div class="form-grid two" style="margin:12px 0"><div class="field"><label>สถานะตำแหน่ง</label><select onchange="updatePositionStatus(this.value)"><option value="active" '+(meta.status==='active'?'selected':'')+'>ใช้งานปกติ</option><option value="frozen" '+(meta.status==='frozen'?'selected':'')+'>แช่แข็ง (Frozen)</option><option value="cancelled" '+(meta.status==='cancelled'?'selected':'')+'>ยกเลิก (Cancelled)</option></select></div><div class="field"><label>อัตรากำลังที่อนุมัติ (Budgeted Headcount)</label><input type="number" min="0" value="'+(meta.budgetedHeadcount==null?'':v4EscapeAttr(meta.budgetedHeadcount))+'" onchange="updatePositionBudget(this.value)" placeholder="ไม่ได้กำหนด"></div></div>';
   panel.innerHTML='<div class="toolbar"><div><h2>'+escapeHtml(jobSelected.position||'-')+'</h2><div class="sub">'+escapeHtml(jobSelected.company)+' · '+escapeHtml(jobSelected.department||'-')+' · '+escapeHtml(jobSelected.jobCode||'ไม่มี Job Code')+' · ระดับ '+escapeHtml(jobSelected.level||'-')+'</div></div><button id="jobEditOpenBtn" class="btn-primary" onclick="openPositionEditor(\''+v4EscapeAttr(jobSelected.key)+'\')">แก้ไข JD / KPI / Competency</button></div>'+statusRow+'<div class="detail-tabs">'+tabs.map(function(t){return '<button class="detail-tab '+(v4PositionDetailTab===t[0]?'active':'')+'" onclick="showPositionDetailTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>'+content;
@@ -4474,7 +4600,7 @@ function probationResultBadgeV43(action){if(!action)return '';if(action.result==
 window.renderProbationTable=function(){
   var search=((elV43('probSearch')||{}).value||'').trim().toLowerCase();var status=(elV43('probStatusFilter')||{}).value||'';var showCompleted=!!((elV43('probShowCompleted')||{}).checked);
   var rows=probationVisibleEmployees().filter(function(emp){var action=probationAction(emp.empCode);var completed=!!action;if(completed&&!showCompleted)return false;if(search&&![emp.empCode,emp.fullName,emp.department,emp.position].join(' ').toLowerCase().includes(search))return false;if(status==='completed'&&!completed)return false;if(status==='passed'&&(!action||action.result!=='PASS'))return false;if(status==='failed'&&(!action||action.result!=='FAIL'))return false;if(status&&!['completed','passed','failed'].includes(status)&&completed)return false;if(status&&!['completed','passed','failed'].includes(status)&&probationStatusKey(emp)!==status)return false;return true;}).sort(function(a,b){return (probationDaysRemaining(a)??9999)-(probationDaysRemaining(b)??9999);});
-  elV43('probTbody').innerHTML=rows.map(function(emp){var action=probationAction(emp.empCode);var actionMeta=action?'<div class="small">'+formatThaiDate(action.assessedAt||action.completedAt)+' · '+escapeHtml(action.completedBy||'HR')+'</div>':'';return '<tr data-code="'+escAttrV43(emp.empCode)+'"><td>'+escapeHtml(emp.empCode)+'</td><td>'+escapeHtml(emp.fullName)+'</td><td>'+escapeHtml(emp.department||'-')+'</td><td>'+escapeHtml(emp.position||'-')+'</td><td>'+formatThaiDate(emp.startDate)+'</td><td>'+formatThaiDate(probationDueDate(emp))+'</td><td>'+(action?probationResultBadgeV43(action)+actionMeta:probationStatusBadge(emp))+'</td><td>'+formatThaiDate(nextWorkAnniversary(emp))+'</td><td>'+escapeHtml(getEmployeeName(emp.parentId)||'-')+'</td><td><div class="row-actions">'+(action?'<button class="btn-ghost btn-sm" onclick="reopenProbation(\''+escAttrV43(emp.empCode)+'\')">นำกลับมาติดตาม</button>':'<button class="btn-primary btn-sm" onclick="completeProbation(\''+escAttrV43(emp.empCode)+'\')">ประเมินผลทดลองงาน</button>')+'<button class="btn-ghost btn-sm" onclick="downloadEmployeeProbationICS(\''+escAttrV43(emp.empCode)+'\')">.ics</button></div></td></tr>';}).join('');
+  elV43('probTbody').innerHTML=rows.map(function(emp){var action=probationAction(emp.empCode);var actionMeta=action?'<div class="small">'+formatThaiDate(action.assessedAt||action.completedAt)+' · '+escapeHtml(action.completedBy||'HR')+'</div>':'';return '<tr data-code="'+escAttrV43(emp.empCode)+'"><td>'+escapeHtml(emp.empCode)+'</td><td>'+escapeHtml(emp.fullName)+'</td><td>'+escapeHtml(emp.department||'-')+'</td><td>'+escapeHtml(emp.position||'-')+'</td><td>'+formatThaiDate(emp.startDate)+'</td><td>'+formatThaiDate(probationDueDate(emp))+'</td><td>'+(action?probationResultBadgeV43(action)+actionMeta:probationStatusBadge(emp))+'</td><td>'+formatThaiDate(nextWorkAnniversary(emp))+'</td><td>'+escapeHtml(getEmployeeName(emp.parentId)||'-')+'</td><td><div class="act-group"><div class="act-row">'+probationMilestoneChips(emp)+'<a class="chip cal" href="'+escapeHtml(buildProbationGoogleCalendarUrl(emp))+'" target="_blank" rel="noopener">ครบกำหนด</a><button class="chip" onclick="downloadEmployeeProbationICS(\''+escAttrV43(emp.empCode)+'\')">.ics</button></div><div class="act-row">'+(action?'<button class="btn-ghost btn-sm" onclick="reopenProbation(\''+escAttrV43(emp.empCode)+'\')">นำกลับมาติดตาม</button>':'<button class="btn-primary btn-sm" onclick="completeProbation(\''+escAttrV43(emp.empCode)+'\')">ประเมินผลทดลองงาน</button>')+'</div></div></td></tr>';}).join('');
   elV43('probEmpty').classList.toggle('hidden',rows.length>0);
 };renderProbationTable=window.renderProbationTable;
 function initV43(){installProbationOutcomeFieldsV43();renderProbationSummary();renderProbationTable();window.HR_V43_READY=true;}
@@ -4595,7 +4721,7 @@ window.renderJobPositionDetail=function(){
   if(v4PositionDetailTab==='jd')content='<div class="detail-section"><h3>วัตถุประสงค์ตำแหน่งงาน / Job Objective</h3><div class="clean-note jd-objective-v47">'+escapeHtml(objective||'ยังไม่มีข้อมูลวัตถุประสงค์ตำแหน่งงาน')+'</div></div><div class="detail-section"><h3>หน้าที่และความรับผิดชอบ / Job Description</h3><div class="clean-note" style="white-space:pre-wrap">'+escapeHtml(data.jd.responsibility||'ยังไม่มีข้อมูล Job Description')+'</div></div>';
   if(v4PositionDetailTab==='kpi')content='<div class="table-wrap"><table><thead><tr><th>Code</th><th>KPI</th><th>เป้าหมาย</th><th>น้ำหนัก</th><th>ความถี่</th></tr></thead><tbody>'+data.kpis.map(function(k){return '<tr><td>'+escapeHtml(k.code||'-')+'</td><td class="dictionary-hover-v47"'+dictionaryAttrsV47('kpi',k)+'><strong>'+escapeHtml(k.name||'-')+'</strong><div class="small">'+escapeHtml(k.definition||k.formula||'')+'</div></td><td>'+escapeHtml(k.target||'-')+'</td><td>'+escapeHtml(k.weight||'-')+'</td><td>'+escapeHtml(k.frequency||'-')+'</td></tr>';}).join('')+'</tbody></table></div>';
   if(v4PositionDetailTab==='comp')content='<div class="table-wrap"><table><thead><tr><th>Code</th><th>ประเภท</th><th>สมรรถนะ</th><th>น้ำหนัก</th><th>ระดับที่คาดหวัง / Expected Level</th></tr></thead><tbody>'+data.comps.map(function(c){return '<tr><td>'+escapeHtml(c.code||'-')+'</td><td>'+escapeHtml(c.type||'-')+'</td><td class="dictionary-hover-v47"'+dictionaryAttrsV47('competency',c)+'>'+escapeHtml(c.name||'-')+'</td><td>'+escapeHtml(c.weight||'-')+'</td><td>'+escapeHtml(c.expectedLevel||'-')+'</td></tr>';}).join('')+'</tbody></table></div>';
-  if(v4PositionDetailTab==='people')content='<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th>แผนก</th><th>สถานะ</th><th></th></tr></thead><tbody>'+emps.map(function(e){return '<tr><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+statusBadge(e.status)+'</td><td><button class="btn-ghost btn-sm" onclick="editEmployeeFromJobPosition(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไขข้อมูลพนักงาน</button></td></tr>';}).join('')+'</tbody></table></div>';
+  if(v4PositionDetailTab==='people')content='<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th>แผนก</th><th>สถานะ</th><th>JD</th><th></th></tr></thead><tbody>'+emps.map(function(e){return '<tr><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+statusBadge(e.status)+'</td><td>'+(getEmployeeJdOverride(e.empCode)?'<span class="badge">กำหนดเอง</span>':'<span class="small">มาตรฐานตำแหน่ง</span>')+'</td><td><button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไข JD รายบุคคล</button> <button class="btn-ghost btn-sm" onclick="editEmployeeFromJobPosition(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไขข้อมูลพนักงาน</button></td></tr>';}).join('')+'</tbody></table></div>';
   var meta=getPositionMeta(jobSelected.key);
   var statusRow='<div class="form-grid two" style="margin:12px 0"><div class="field"><label>สถานะตำแหน่ง</label><select onchange="updatePositionStatus(this.value)"><option value="active" '+(meta.status==='active'?'selected':'')+'>ใช้งานปกติ</option><option value="frozen" '+(meta.status==='frozen'?'selected':'')+'>แช่แข็ง (Frozen)</option><option value="cancelled" '+(meta.status==='cancelled'?'selected':'')+'>ยกเลิก (Cancelled)</option></select></div><div class="field"><label>อัตรากำลังที่อนุมัติ (Budgeted Headcount)</label><input type="number" min="0" value="'+(meta.budgetedHeadcount==null?'':v4EscapeAttr(meta.budgetedHeadcount))+'" onchange="updatePositionBudget(this.value)" placeholder="ไม่ได้กำหนด"></div></div>';
   panel.innerHTML='<div class="toolbar"><div><h2>'+escapeHtml(jobSelected.position||'-')+'</h2><div class="sub">'+escapeHtml(jobSelected.company)+' · '+escapeHtml(jobSelected.department||'-')+' · '+escapeHtml(jobSelected.jobCode||'ไม่มี Job Code')+' · ระดับ '+escapeHtml(jobSelected.level||'-')+'</div></div><button id="jobEditOpenBtn" class="btn-primary" onclick="openPositionEditor(\''+v4EscapeAttr(jobSelected.key)+'\')">แก้ไข JD / KPI / Competency</button></div>'+statusRow+'<div class="detail-tabs">'+tabs.map(function(t){return '<button class="detail-tab '+(v4PositionDetailTab===t[0]?'active':'')+'" onclick="showPositionDetailTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>'+content;
@@ -4759,6 +4885,15 @@ body{background:transparent!important}
 .gs-muted{color:var(--gs-ink-500)!important;font-size:12px;}
 .gs-pos{font-weight:600;font-size:12.5px;color:var(--gs-ink-900);}
 .gs-dept{font-size:11px;color:var(--gs-ink-500);margin-top:2px;}
+</style>
+
+<style id="probation-cal-chip-style">
+.chip{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#cbd5e1;border-radius:8px;padding:5px 9px;font-size:11px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;text-decoration:none;transition:.14s;line-height:1;white-space:nowrap;}
+.chip:hover{border-color:#38bdf8;color:#38bdf8;background:rgba(56,189,248,.10);}
+.chip.cal{border-color:rgba(56,189,248,.35);color:#38bdf8;background:rgba(56,189,248,.10);}
+.chip.cal:hover{background:rgba(56,189,248,.18);}
+.act-group{display:flex;flex-direction:column;gap:6px;}
+.act-row{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
 </style>
 
 </body>
