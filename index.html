@@ -9,6 +9,12 @@
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  var SUPABASE_URL = 'https://zkqewnwulnugbhndtnkr.supabase.co';
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcWV3bnd1bG51Z2JobmR0bmtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MTM5MjEsImV4cCI6MjEwMTQ4OTkyMX0.Rfo2492G7DtkhQuPfHCXCPX0jRIHUceRpDDd8AlHJh0';
+  var supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+</script>
 <style>
   :root{
     --navy-950:#0b1220; --navy-900:#0f1b30; --navy-800:#16233d; --navy-700:#1e3151;
@@ -152,6 +158,18 @@
   .stat-list-item{display:flex; justify-content:space-between; align-items:center; padding:8px; background:#fff; border-radius:7px; margin-bottom:6px; font-size:12.5px; border:1px solid var(--slate-200); cursor:pointer;}
   .stat-list-item:hover{background:#f0f5ff;}
   .stat-count{background:var(--cmn-bg); color:var(--cmn-color); padding:2px 8px; border-radius:20px; font-weight:700; font-size:11.5px;}
+  .auth-gate{position:fixed; inset:0; z-index:5000; display:flex; align-items:center; justify-content:center; background:var(--navy-950); padding:16px;}
+  .auth-gate.hidden{display:none;}
+  .auth-gate-box{width:100%; max-width:360px; background:var(--navy-900); border:1px solid var(--navy-700); border-radius:14px; padding:28px; text-align:center; color:#fff;}
+  .auth-gate-brand{width:44px; height:44px; margin:0 auto 12px; border-radius:10px; background:var(--cmn-color,#3b82f6); display:flex; align-items:center; justify-content:center; font-weight:700;}
+  .auth-gate-box h2{margin:0 0 4px; font-size:18px;}
+  .auth-gate-sub{color:var(--slate-500); font-size:12.5px; margin:0 0 18px;}
+  .auth-gate-box .field{text-align:left;}
+  .auth-gate-box input{width:100%; box-sizing:border-box; padding:9px 10px; border-radius:8px; border:1px solid var(--navy-700); background:var(--navy-950); color:#fff;}
+  .auth-gate-error{color:#fca5a5; font-size:12px; min-height:16px; margin-top:10px;}
+  .auth-gate-status{color:var(--slate-500); font-size:12px; margin-top:10px;}
+  .cloud-sync-status{display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--slate-500);}
+  .cloud-sync-status button{white-space:nowrap;}
   @media(max-width:900px){
     .form-grid{grid-template-columns:repeat(2,1fr);}
     .field.span2,.field.span4{grid-column:span 2;}
@@ -280,6 +298,18 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 @media(max-width:600px){.brand h1{font-size:17px!important}body{letter-spacing:0}.card h2{font-size:15.5px}}
 </style></head>
 <body>
+<div id="authGate" class="auth-gate">
+  <div class="auth-gate-box">
+    <div class="auth-gate-brand">HR</div>
+    <h2>เข้าสู่ระบบ HR รวมศูนย์</h2>
+    <p class="auth-gate-sub">ล็อกอินด้วยบัญชี HR เพื่อเข้าถึงฐานข้อมูลกลาง</p>
+    <div class="field"><label>อีเมล</label><input id="authGateEmail" type="email" autocomplete="username"></div>
+    <div class="field" style="margin-top:10px"><label>รหัสผ่าน</label><input id="authGatePassword" type="password" autocomplete="current-password"></div>
+    <div id="authGateError" class="auth-gate-error"></div>
+    <button class="btn-primary" style="width:100%;margin-top:14px" onclick="authGateLogin()">เข้าสู่ระบบ</button>
+    <div id="authGateStatus" class="auth-gate-status"></div>
+  </div>
+</div>
 <div class="gs-bg"></div>
 <div class="gs-orb gs-orb1"></div>
 <div class="gs-orb gs-orb2"></div>
@@ -296,6 +326,10 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <button class="cf-btn active" data-c="ALL" onclick="setCompanyFilter('ALL')">ทุกบริษัท</button>
 <button class="cf-btn" data-c="CMN" onclick="setCompanyFilter('CMN')">CMN</button>
 <button class="cf-btn" data-c="CIL" onclick="setCompanyFilter('CIL')">CIL</button>
+</div>
+<div class="cloud-sync-status" id="cloudSyncStatus">
+<span id="cloudSyncLabel">-</span>
+<button class="btn-ghost btn-sm" onclick="authGateLogout()">ออกจากระบบ</button>
 </div>
 </div>
 <div class="tabbar" id="tabbar">
@@ -4895,6 +4929,90 @@ body{background:transparent!important}
 .act-group{display:flex;flex-direction:column;gap:6px;}
 .act-row{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
 </style>
+
+<script id="supabase-sync-script">
+(function(){
+  var HR_DB_ROW_ID = 'main';
+  var saveDebounceTimer = null;
+  var cloudReady = false;
+
+  function setSyncLabel(text){ var elLabel=document.getElementById('cloudSyncLabel'); if(elLabel) elLabel.textContent=text; }
+  function showAuthGate(){ document.getElementById('authGate').classList.remove('hidden'); }
+  function hideAuthGate(){ document.getElementById('authGate').classList.add('hidden'); }
+  function setAuthError(msg){ var elErr=document.getElementById('authGateError'); if(elErr) elErr.textContent = msg||''; }
+  function setAuthStatus(msg){ var elStatus=document.getElementById('authGateStatus'); if(elStatus) elStatus.textContent = msg||''; }
+
+  function fetchCloudRow(){ return supabaseClient.from('hr_db').select('data').eq('id', HR_DB_ROW_ID).maybeSingle(); }
+  function pushToCloud(data){ return supabaseClient.from('hr_db').upsert({id: HR_DB_ROW_ID, data: data, updated_at: new Date().toISOString()}); }
+
+  function onAuthenticated(){
+    setSyncLabel('กำลังซิงก์ข้อมูล...');
+    fetchCloudRow().then(function(res){
+      if(res.error){ setSyncLabel('ซิงก์ล้มเหลว: ' + res.error.message); hideAuthGate(); return; }
+      if(res.data && res.data.data){
+        DB = migrateDB(res.data.data);
+        localStorage.setItem(DB_KEY, JSON.stringify(DB));
+        cloudReady = true;
+        hideAuthGate();
+        refreshAllViews();
+        setSyncLabel('ซิงก์แล้ว · ' + new Date().toLocaleTimeString('th-TH'));
+      } else {
+        var migrateLocal = confirm('ยังไม่พบฐานข้อมูลกลางบนคลาวด์ ต้องการอัปโหลดข้อมูลที่มีอยู่ในเครื่องนี้ตอนนี้ขึ้นไปเป็นฐานข้อมูลกลางหรือไม่?\n(กด "ยกเลิก" เพื่อเริ่มต้นด้วยข้อมูลตัวอย่างเปล่าแทน)');
+        if(!migrateLocal) DB = defaultDB();
+        pushToCloud(DB).then(function(res2){
+          cloudReady = true;
+          hideAuthGate();
+          refreshAllViews();
+          setSyncLabel(res2.error ? ('สร้างฐานข้อมูลกลางไม่สำเร็จ: ' + res2.error.message) : 'สร้างฐานข้อมูลกลางแล้ว');
+        });
+      }
+    });
+  }
+
+  window.authGateLogin = function(){
+    var email = (document.getElementById('authGateEmail')||{}).value || '';
+    var password = (document.getElementById('authGatePassword')||{}).value || '';
+    setAuthError(''); setAuthStatus('กำลังเข้าสู่ระบบ...');
+    supabaseClient.auth.signInWithPassword({email:email, password:password}).then(function(res){
+      setAuthStatus('');
+      if(res.error){ setAuthError('เข้าสู่ระบบไม่สำเร็จ: ' + res.error.message); return; }
+      onAuthenticated();
+    });
+  };
+
+  window.authGateLogout = function(){
+    if(!confirm('ต้องการออกจากระบบใช่หรือไม่?')) return;
+    supabaseClient.auth.signOut().then(function(){ location.reload(); });
+  };
+
+  var originalSaveDB = window.saveDB;
+  window.saveDB = function(){
+    originalSaveDB();
+    if(!cloudReady) return;
+    setSyncLabel('กำลังบันทึกขึ้นคลาวด์...');
+    clearTimeout(saveDebounceTimer);
+    saveDebounceTimer = setTimeout(function(){
+      saveDebounceTimer = null;
+      pushToCloud(DB).then(function(res){
+        setSyncLabel(res.error ? ('บันทึกขึ้นคลาวด์ล้มเหลว: ' + res.error.message) : ('บันทึกขึ้นคลาวด์แล้ว · ' + new Date().toLocaleTimeString('th-TH')));
+      });
+    }, 800);
+  };
+  saveDB = window.saveDB;
+
+  window.addEventListener('beforeunload', function(){
+    if(cloudReady && saveDebounceTimer){ clearTimeout(saveDebounceTimer); pushToCloud(DB); }
+  });
+
+  document.getElementById('authGatePassword').addEventListener('keydown', function(e){ if(e.key==='Enter') authGateLogin(); });
+
+  setSyncLabel('กำลังตรวจสอบสถานะเข้าสู่ระบบ...');
+  supabaseClient.auth.getSession().then(function(res){
+    if(res.data && res.data.session){ onAuthenticated(); }
+    else { setSyncLabel('ยังไม่ได้เข้าสู่ระบบ'); showAuthGate(); }
+  });
+})();
+</script>
 
 </body>
 </html>
