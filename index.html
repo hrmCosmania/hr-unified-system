@@ -365,7 +365,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <div class="field"><label>ประเภทการจ้าง</label><select id="emp_employmentType"><option value="ประจำ">ประจำ</option><option value="ทดลองงาน">ทดลองงาน</option><option value="สัญญาจ้าง">สัญญาจ้าง</option><option value="พาร์ทไทม์">พาร์ทไทม์</option></select></div>
 <div class="field combo-field"><label>ฝ่าย <span class="small" id="emp_divisionHint"></span></label><input id="emp_division" type="hidden"/><div class="combo-input-wrap"><input autocomplete="off" id="emp_divisionSearch" onfocus="divisionComboSearch(this.value)" oninput="divisionComboSearch(this.value)" placeholder="พิมพ์เพื่อค้นหาหรือเพิ่มฝ่ายใหม่"/></div><div class="combo-options hidden" id="empDivisionOptions" role="listbox"></div></div><div class="field combo-field"><label>แผนก/ฝ่าย</label><input id="emp_department" type="hidden"/><div class="combo-input-wrap"><input autocomplete="off" id="emp_departmentSearch" onfocus="departmentComboSearch(this.value)" oninput="departmentComboSearch(this.value)" placeholder="พิมพ์เพื่อค้นหาหรือเพิ่มแผนกใหม่"/></div><div class="combo-options hidden" id="empDepartmentOptions" role="listbox"></div></div>
 <div class="field combo-field"><label>ตำแหน่ง</label><input id="emp_position" type="hidden"/><div class="combo-input-wrap"><input autocomplete="off" id="emp_positionSearch" onfocus="this.dataset.prevValue=this.value;positionComboSearch(this.value)" oninput="positionComboSearch(this.value)" onblur="if(this.value!==this.dataset.prevValue)applyPositionJobCodeLookup(this.value)" placeholder="พิมพ์เพื่อค้นหาหรือเพิ่มตำแหน่งใหม่"/></div><div class="combo-options hidden" id="empPositionOptions" role="listbox"></div></div>
-<div class="field"><label>รหัสตำแหน่ง (Job Code)</label><input id="emp_jobCode" placeholder="เชื่อมกับ JD/KPI"/></div>
+<div class="field"><label>รหัสตำแหน่ง (Job Code)</label><input id="emp_jobCode" placeholder="เชื่อมกับ JD/KPI" onchange="renderEmpPositionFrameworkPreview()"/></div>
 <div class="field"><label>ระดับ</label><input id="emp_level"/></div>
 <div class="field combo-field"><label>หัวหน้างาน</label><input id="emp_parentId" type="hidden"/><div class="combo-input-wrap"><input autocomplete="off" id="emp_supervisorSearch" onfocus="supervisorComboSearch(this.value)" oninput="supervisorComboSearch(this.value)" placeholder="พิมพ์รหัส ชื่อ ชื่อเล่น แผนก หรือตำแหน่ง"/><button class="btn-ghost btn-sm" onclick="clearSupervisorSelection()" type="button">ล้าง</button></div><div class="selected-supervisor" id="empSupervisorSelected"></div><div class="combo-options hidden" id="empSupervisorOptions" role="listbox"></div></div>
 <div class="field"><label>อีเมลหัวหน้างาน</label><input id="emp_supervisorEmail" type="email"/></div>
@@ -384,6 +384,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <div class="field"><label>เลขบัตรประชาชน/พาสปอร์ต</label><input id="emp_idNumber" placeholder="ข้อมูลอ่อนไหว โปรดระมัดระวังการเข้าถึง"/></div>
 <div class="field span4"><label>หมายเหตุ / ประวัติสำคัญ</label><textarea id="emp_note"></textarea></div>
 </div>
+<div id="empPositionFrameworkPreview"></div>
 <div class="inline-error" id="employeeFormError"></div><div class="actions">
 <button class="btn-primary" type="submit">บันทึกข้อมูลพนักงาน</button>
 <button class="btn-ghost" onclick="resetEmployeeForm();showEmployeeSubtab('search')" type="button">ยกเลิก</button>
@@ -2995,6 +2996,22 @@ function selectPosition(value){
   document.getElementById('emp_positionSearch').value=value;
   document.getElementById('empPositionOptions').classList.add('hidden');
   applyPositionJobCodeLookup(value);
+  renderEmpPositionFrameworkPreview();
+}
+function renderEmpPositionFrameworkPreview(){
+  var container = document.getElementById('empPositionFrameworkPreview');
+  if(!container) return;
+  var position = (document.getElementById('emp_position')||{}).value || '';
+  var company = (document.getElementById('emp_company')||{}).value || '';
+  var jobCode = (document.getElementById('emp_jobCode')||{}).value || '';
+  var department = (document.getElementById('emp_department')||{}).value || '';
+  var level = (document.getElementById('emp_level')||{}).value || '';
+  if(!position && !jobCode){ container.innerHTML = ''; return; }
+  var selected = {company:company, position:position, jobCode:jobCode, department:department, level:level};
+  var data = currentFrameworkData(selected);
+  container.innerHTML = '<h3 class="section-title" style="margin-top:18px">JD / KPI / Competency ของตำแหน่งนี้</h3>'
+    + '<div class="clean-note" style="margin-bottom:10px">แสดงข้อมูลมาตรฐานของตำแหน่งที่เลือก เพื่อใช้อ้างอิงประกอบการกรอกข้อมูลพนักงาน — แก้ไข JD/KPI/Competency รายบุคคลได้ภายหลังจากตารางพนักงาน</div>'
+    + frameworkPreviewHtml(data);
 }
 function findJobCodeByPosition(positionName){
   var name=String(positionName||'').trim().toLowerCase(); if(!name) return '';
@@ -3861,7 +3878,7 @@ function populateEmployeeFormV42(code){
   var emp=getEmployeeByCode(code);if(!emp)return false;
   setValue('emp_editCode',emp.empCode);setValue('emp_empCode',emp.empCode);setValue('emp_fullName',emp.fullName);setValue('emp_nickname',emp.nickname);setValue('emp_company',emp.company||'CMN');setValue('emp_employmentType',emp.employmentType||'ประจำ');setValue('emp_division',emp.division||employeeDivision(emp));setValue('emp_divisionSearch',emp.division||employeeDivision(emp));var divBox=el('empDivisionOptions');if(divBox)divBox.classList.add('hidden');setValue('emp_department',emp.department);setValue('emp_departmentSearch',emp.department);var depBox=el('empDepartmentOptions');if(depBox)depBox.classList.add('hidden');setValue('emp_position',emp.position);setValue('emp_positionSearch',emp.position);var posBox=el('empPositionOptions');if(posBox)posBox.classList.add('hidden');setValue('emp_jobCode',emp.jobCode);setValue('emp_level',emp.level);setValue('emp_supervisorEmail',emp.supervisorEmail);setValue('emp_phone',emp.phone);setValue('emp_email',emp.email);setValue('emp_birthDate',emp.birthDate);setValue('emp_startDate',emp.startDate);setValue('emp_probationDays',emp.probationDays||120);setValue('emp_contractEndDate',emp.contractEndDate);setValue('emp_status',emp.status||'Active');setValue('emp_endDate',emp.endDate);setValue('emp_emergencyName',emp.emergencyName);setValue('emp_emergencyPhone',emp.emergencyPhone);setValue('emp_emergencyRelation',emp.emergencyRelation);setValue('emp_idNumber',emp.idNumber);setValue('emp_note',emp.note);
   var title=el('empFormTitle');if(title)title.innerHTML='แก้ไขข้อมูลพนักงาน: '+escapeHtml(emp.fullName)+'<span class="module-title-en">Edit Employee Record</span>';
-  clearSupervisorSelection();if(emp.parentId&&getEmployeeByCode(emp.parentId))selectSupervisor(emp.parentId);else syncDivisionLockV42(emp);setDottedCodes(emp.dottedLineManagerCodes||[]);showEmployeeSubtab('add');var form=el('employee-sub-add');if(form)form.scrollIntoView({behavior:'smooth',block:'start'});return true;
+  clearSupervisorSelection();if(emp.parentId&&getEmployeeByCode(emp.parentId))selectSupervisor(emp.parentId);else syncDivisionLockV42(emp);setDottedCodes(emp.dottedLineManagerCodes||[]);showEmployeeSubtab('add');var form=el('employee-sub-add');if(form)form.scrollIntoView({behavior:'smooth',block:'start'});renderEmpPositionFrameworkPreview();return true;
 }
 window.populateEmployeeFormV42=populateEmployeeFormV42;
 window.editEmployee = function(code){return populateEmployeeFormV42(code);};editEmployee=window.editEmployee;
@@ -3869,6 +3886,7 @@ window.resetEmployeeForm = function(){
   var form=el('employeeForm');if(form)form.reset();setValue('emp_editCode','');setValue('emp_probationDays',120);setValue('emp_employmentType','ประจำ');setValue('emp_contractEndDate','');setValue('emp_status','Active');setValue('emp_endDate','');setValue('emp_division','');setValue('emp_divisionSearch','');setValue('emp_department','');setValue('emp_departmentSearch','');setValue('emp_position','');setValue('emp_positionSearch','');
   var title=el('empFormTitle');if(title)title.innerHTML='เพิ่มข้อมูลพนักงาน<span class="module-title-en">Add Employee Record</span>';if(typeof clearSupervisorSelection==='function')clearSupervisorSelection();if(typeof v4SetInlineMessage==='function')v4SetInlineMessage('employeeFormError','');refreshParentSelect(null);
   var posBox=el('empPositionOptions');if(posBox)posBox.classList.add('hidden');
+  renderEmpPositionFrameworkPreview();
   var divBox=el('empDivisionOptions');if(divBox)divBox.classList.add('hidden');
   var depBox=el('empDepartmentOptions');if(depBox)depBox.classList.add('hidden');
   var divSearch=el('emp_divisionSearch');if(divSearch){divSearch.readOnly=false;divSearch.title='';}var divHint=el('emp_divisionHint');if(divHint)divHint.textContent='';
