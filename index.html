@@ -3327,7 +3327,7 @@ function renderJobPositionDetail(){
   if(v4PositionDetailTab==='people')content='<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th>แผนก</th><th>สถานะ</th><th>JD</th><th></th></tr></thead><tbody>'+emps.map(function(e){return '<tr><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+statusBadge(e.status)+'</td><td>'+(getEmployeeJdOverride(e.empCode)?'<span class="badge">กำหนดเอง</span>':'<span class="small">มาตรฐานตำแหน่ง</span>')+'</td><td><button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไข JD/KPI/Competency รายบุคคล</button></td></tr>';}).join('')+'</tbody></table></div>';
   var meta=getPositionMeta(jobSelected.key);
   var statusRow='<div class="form-grid two" style="margin:12px 0"><div class="field"><label>สถานะตำแหน่ง</label><select onchange="updatePositionStatus(this.value)"><option value="active" '+(meta.status==='active'?'selected':'')+'>ใช้งานปกติ</option><option value="frozen" '+(meta.status==='frozen'?'selected':'')+'>แช่แข็ง (Frozen)</option><option value="cancelled" '+(meta.status==='cancelled'?'selected':'')+'>ยกเลิก (Cancelled)</option></select></div><div class="field"><label>อัตรากำลังที่อนุมัติ (Budgeted Headcount)</label><input type="number" min="0" value="'+(meta.budgetedHeadcount==null?'':v4EscapeAttr(meta.budgetedHeadcount))+'" onchange="updatePositionBudget(this.value)" placeholder="ไม่ได้กำหนด"></div></div>';
-  panel.innerHTML='<div class="toolbar"><div><h2>'+escapeHtml(jobSelected.position||'-')+'</h2><div class="sub">'+escapeHtml(jobSelected.company)+' · '+escapeHtml(jobSelected.department||'-')+' · '+escapeHtml(jobSelected.jobCode||'ไม่มี Job Code')+' · ระดับ '+escapeHtml(jobSelected.level||'-')+'</div></div><button id="jobEditOpenBtn" class="btn-primary" onclick="openPositionEditor(\''+v4EscapeAttr(jobSelected.key)+'\')">แก้ไข JD / KPI / Competency</button></div>'+statusRow+'<div class="detail-tabs">'+tabs.map(function(t){return '<button class="detail-tab '+(v4PositionDetailTab===t[0]?'active':'')+'" onclick="showPositionDetailTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>'+content;
+  panel.innerHTML='<div class="toolbar"><div><h2>'+escapeHtml(jobSelected.position||'-')+'</h2><div class="sub">'+escapeHtml(jobSelected.company)+' · '+escapeHtml(jobSelected.department||'-')+' · '+escapeHtml(jobSelected.jobCode||'ไม่มี Job Code')+' · ระดับ '+escapeHtml(jobSelected.level||'-')+'</div></div><button id="jobEditOpenBtn" class="btn-primary" onclick="openPositionEditor(\''+v4EscapeAttr(jobSelected.key)+'\')">แก้ไข JD / KPI / Competency</button> <button class="btn-ghost" onclick="printPositionDocument(\''+v4EscapeAttr(jobSelected.key)+'\')">🖨️ พิมพ์เอกสาร JD/KPI/Competency</button></div>'+statusRow+'<div class="detail-tabs">'+tabs.map(function(t){return '<button class="detail-tab '+(v4PositionDetailTab===t[0]?'active':'')+'" onclick="showPositionDetailTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>'+content;
 }
 function openPositionEditor(key){if(key&&!jobSelected)jobSelected=v4JobOptions().find(function(o){return o.key===key;})||null;if(!jobSelected)return;var current=currentFrameworkData(jobSelected);jobDraft={jd:v4Clone(current.jd),kpis:v4Clone(current.kpis),comps:v4Clone(current.comps)};try{var saved=sessionStorage.getItem('hr_v4_position_draft_'+jobSelected.key);if(saved)jobDraft=JSON.parse(saved);}catch(e){}renderPositionEditorV4();document.getElementById('jobEditModal').classList.add('show');}
 function autosavePositionDraft(){if(!jobSelected||!jobDraft)return;try{sessionStorage.setItem('hr_v4_position_draft_'+jobSelected.key,JSON.stringify(jobDraft));document.getElementById('jobDraftStatus').textContent='บันทึก Draft อัตโนมัติ '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});}catch(e){}}
@@ -3537,11 +3537,38 @@ body[data-module="performance-tracking"]{--module-accent:#84CC16;--module-accent
 .org-toggle{color:#334155!important;background:rgba(255,255,255,.72)!important;border:1px solid #CBD5E1!important;border-radius:6px!important;width:22px;height:22px;display:grid!important;place-items:center;padding:0!important;cursor:pointer!important}.org-drag-grip{position:absolute;left:7px;top:7px;color:#64748B;font-family:var(--font-data);font-size:11px;letter-spacing:-2px;user-select:none}.org-card.dragging{opacity:.48!important;cursor:grabbing!important}.org-card.drop-valid{outline:4px solid #22C55E!important;outline-offset:3px;transform:translateY(-3px) scale(1.015)}.org-card.drop-invalid{outline:4px solid #EF4444!important;outline-offset:3px;cursor:not-allowed!important}.org-drop-help{font-size:10.5px;color:var(--v4-muted);display:flex;align-items:center;gap:6px}.org-drop-help:before{content:"↕";color:var(--module-accent);font-weight:700}.org-card[data-root="true"]{cursor:default!important}.org-card[data-root="true"] .org-drag-grip{display:none}
 .competency-hover{cursor:help!important;text-decoration:underline dotted color-mix(in srgb,var(--module-accent) 78%,white);text-underline-offset:4px}.competency-hover:focus{outline:2px solid var(--module-accent);outline-offset:3px;border-radius:4px}.competency-popover{position:fixed;z-index:500;width:min(430px,calc(100vw - 28px));max-height:min(560px,calc(100vh - 28px));overflow:auto;background:#F8FAFC;color:#0F172A;border:1px solid #CBD5E1;border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,.5);padding:16px;display:none}.competency-popover.show{display:block}.competency-popover h4{font-size:15px;margin:0;color:#0F172A}.competency-popover .comp-en{font-family:var(--font-data);font-size:11px;color:#475569;margin-top:3px}.competency-popover .comp-definition{font-size:12px;line-height:1.65;color:#334155;margin:11px 0;padding:10px;border-radius:9px;background:#E2E8F0}.competency-levels{display:grid;gap:7px}.competency-level{display:grid;grid-template-columns:62px 1fr;gap:8px;padding:8px 9px;border-radius:8px;background:#F1F5F9;border:1px solid #E2E8F0;font-size:11.5px;line-height:1.5}.competency-level.expected{background:#DBEAFE;border-color:#60A5FA;box-shadow:inset 3px 0 0 #2563EB}.competency-level strong{color:#1D4ED8}.performance-placeholder{min-height:520px;display:grid;place-items:center;text-align:center}.performance-placeholder-inner{max-width:620px;padding:46px}.performance-placeholder-icon{width:76px;height:76px;margin:0 auto 18px;border-radius:22px;display:grid;place-items:center;font-size:34px;background:var(--module-accent-soft);border:1px solid var(--module-accent-border);color:var(--module-accent)}.performance-placeholder h2{font-size:25px;margin:0}.performance-placeholder p{color:var(--v4-muted);max-width:520px;margin:12px auto 0;line-height:1.75}
 #orgPrintArea{display:none}.org-print-toolbar-note{font-size:10px;color:var(--v4-muted)}
+#positionPrintArea{display:none}
+#positionPrintArea{font-family:'IBM Plex Sans Thai','Inter',system-ui,sans-serif;color:#0F172A;background:#fff;}
+#positionPrintArea .pos-print-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding-bottom:14px;border-bottom:2px solid #1E3151;margin-bottom:16px;}
+#positionPrintArea .pos-print-brand{display:flex;align-items:center;gap:14px;}
+#positionPrintArea .pos-print-mark{width:40px;height:40px;border-radius:10px;background:#1E3151;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;}
+#positionPrintArea .pos-print-title{font-size:18px;font-weight:700;margin:0;}
+#positionPrintArea .pos-print-subtitle{font-size:11px;color:#5b6579;margin-top:2px;}
+#positionPrintArea .pos-print-ref{text-align:right;font-size:10.5px;color:#5b6579;}
+#positionPrintArea .pos-print-ref strong{display:block;font-size:12px;color:#0F172A;margin:2px 0;}
+#positionPrintArea .pos-print-infobar{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;}
+#positionPrintArea .pos-print-infobox{border:1px solid #cbd3e1;border-radius:8px;padding:8px 12px;}
+#positionPrintArea .pos-print-infobox label{display:block;font-size:9.5px;color:#5b6579;margin-bottom:2px;}
+#positionPrintArea .pos-print-infobox strong{font-size:12.5px;}
+#positionPrintArea .pos-print-section-head{display:flex;align-items:center;gap:8px;background:#eaf1ff;padding:6px 10px;border-radius:6px;margin:16px 0 10px;}
+#positionPrintArea .pos-print-section-badge{background:#1E3151;color:#fff;font-size:10px;font-weight:700;border-radius:4px;padding:2px 7px;}
+#positionPrintArea .pos-print-section-head h3{margin:0;font-size:13px;}
+#positionPrintArea .pos-print-twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+#positionPrintArea .pos-print-twocol label{display:block;font-size:9.5px;color:#5b6579;margin-bottom:3px;}
+#positionPrintArea table{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:6px;}
+#positionPrintArea th{background:#1E3151;color:#fff;text-align:left;padding:6px 8px;font-size:9.5px;}
+#positionPrintArea td{border-bottom:1px solid #e6eaf2;padding:6px 8px;vertical-align:top;}
+#positionPrintArea tr:nth-child(even) td{background:#f6f8fb;}
+#positionPrintArea .pos-print-code{display:block;font-size:9px;color:#5b6579;}
+#positionPrintArea .pos-print-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px;text-align:center;font-size:10.5px;}
+#positionPrintArea .pos-print-sign div{border-top:1px solid #0F172A;padding-top:6px;}
+#positionPrintArea .pos-print-footer{display:flex;justify-content:space-between;margin-top:20px;font-size:9.5px;color:#5b6579;}
 @media(max-width:900px){.tab-label-en{display:none}.org-card{width:196px!important}}
 @media print{
   @page{margin:8mm}
-  body>*:not(#orgPrintArea){display:none!important}
-  #orgPrintArea{display:block!important;position:absolute!important;inset:0!important;background:white!important;color:#0F172A!important;overflow:hidden!important}
+  body>*:not(.hr-print-area){display:none!important}
+  .hr-print-area{display:block!important}
+  #orgPrintArea{position:absolute!important;inset:0!important;background:white!important;color:#0F172A!important;overflow:hidden!important}
   #orgPrintArea .org-print-title{font-family:var(--font-ui);font-size:16pt;font-weight:700;margin:0 0 2mm;color:#0F172A}
   #orgPrintArea .org-print-subtitle{font-family:var(--font-data);font-size:8pt;color:#475569;margin-bottom:4mm}
   #orgPrintArea .org-print-stage{transform-origin:top left}
@@ -3550,6 +3577,11 @@ body[data-module="performance-tracking"]{--module-accent:#84CC16;--module-accent
   #orgPrintArea .org-card{width:175px!important;min-height:58px!important;padding:8px 9px!important;box-shadow:none!important;break-inside:avoid!important}
   #orgPrintArea .org-card .org-title{font-size:9px!important}#orgPrintArea .org-card .org-name{font-size:8px!important}#orgPrintArea .org-card .org-dept{font-size:7px!important}
   #orgPrintArea .org-toggle,#orgPrintArea .org-drag-grip{display:none!important}
+  #positionPrintArea{position:static!important;padding:0!important;}
+  #positionPrintArea table{break-inside:auto;}
+  #positionPrintArea tr{break-inside:avoid;}
+  #positionPrintArea .pos-print-section-head{break-after:avoid;break-inside:avoid;}
+  #positionPrintArea .pos-print-sign{break-inside:avoid;}
 }
 </style>
 <div id="competencyDictionaryPopover" class="competency-popover" role="tooltip" aria-hidden="true"></div>
@@ -3909,12 +3941,75 @@ el('competencyDictionaryPopover').addEventListener('mouseenter',function(){clear
 
 function buildPrintTreeV42(company){var children=orgChildrenMapV42(company),roots=children.__root__||[];return '<ul class="org-tree-v4">'+roots.map(function(root){return orgRenderNodeV42(root,children,'',company,true);}).join('')+'</ul>';}
 window.prepareOrgPrintV42 = function(size){
-  size=size==='A3'?'A3':'A4';var company=(el('orgCompanySelect')||{}).value||'CMN';var old=el('orgPrintArea');if(old)old.remove();var area=document.createElement('section');area.id='orgPrintArea';area.dataset.paper=size;area.innerHTML='<h1 class="org-print-title">ผังองค์กร / Organization Chart — '+escapeHtml(company)+'</h1><div class="org-print-subtitle">พิมพ์เมื่อ '+escapeHtml(new Date().toLocaleString('th-TH'))+' · กระดาษ '+size+' แนวนอน</div><div class="org-print-stage">'+buildPrintTreeV42(company)+'</div>';document.body.appendChild(area);
+  size=size==='A3'?'A3':'A4';var company=(el('orgCompanySelect')||{}).value||'CMN';var old=el('orgPrintArea');if(old)old.remove();var area=document.createElement('section');area.id='orgPrintArea';area.className='hr-print-area';area.dataset.paper=size;area.innerHTML='<h1 class="org-print-title">ผังองค์กร / Organization Chart — '+escapeHtml(company)+'</h1><div class="org-print-subtitle">พิมพ์เมื่อ '+escapeHtml(new Date().toLocaleString('th-TH'))+' · กระดาษ '+size+' แนวนอน</div><div class="org-print-stage">'+buildPrintTreeV42(company)+'</div>';document.body.appendChild(area);
   var pageStyle=el('orgPrintPageStyle');if(pageStyle)pageStyle.remove();pageStyle=document.createElement('style');pageStyle.id='orgPrintPageStyle';pageStyle.textContent='@page{size:'+size+' landscape;margin:8mm;}';document.head.appendChild(pageStyle);
   area.style.display='block';area.style.position='fixed';area.style.left='-100000px';area.style.top='0';area.style.background='white';var stage=area.querySelector('.org-print-stage');stage.style.transform='scale(1)';var contentWidth=Math.max(stage.scrollWidth,stage.getBoundingClientRect().width,1),contentHeight=Math.max(stage.scrollHeight,stage.getBoundingClientRect().height,1);var target=size==='A3'?{w:1520,h:1000}:{w:1050,h:700};var scale=Math.min(1,target.w/contentWidth,target.h/contentHeight);stage.style.width=contentWidth+'px';stage.style.transform='scale('+scale+')';area.dataset.scale=String(scale);area.style.display='';area.style.position='';area.style.left='';area.style.top='';return {size:size,scale:scale,nodeCount:ensureOrgEmployeeLinksV42(company).positions.length};
 };
 window.printOrgChartV42 = function(size){prepareOrgPrintV42(size);setTimeout(function(){window.print();},80);};
-window.addEventListener('afterprint',function(){var area=el('orgPrintArea');if(area)area.remove();});
+window.addEventListener('afterprint',function(){document.querySelectorAll('.hr-print-area').forEach(function(area){area.remove();});});
+
+/* ---------- Position JD/KPI/Competency print document ---------- */
+var POS_PRINT_MONTHS_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+function positionPrintTimestamp(){
+  var d = new Date();
+  var buddhistYear = d.getFullYear() + 543;
+  var hh = String(d.getHours()).padStart(2,'0'), mm = String(d.getMinutes()).padStart(2,'0');
+  return d.getDate() + ' ' + POS_PRINT_MONTHS_TH[d.getMonth()] + ' ' + buddhistYear + ' เวลา ' + hh + ':' + mm;
+}
+function positionDocumentReference(selected){
+  var code = String(selected.jobCode||'').trim() || String(selected.position||'ไม่มีรหัส').trim().toUpperCase().replace(/\s+/g,'-');
+  return 'POSITION-' + String(selected.company||'-').trim() + '-' + code;
+}
+function positionPrintInfoRows(text){
+  return String(text||'').split(/\n+/).map(function(x){return x.trim();}).filter(Boolean);
+}
+function buildPositionPrintDocumentHtml(selected, data){
+  var jd = data.jd || {}, kpis = data.kpis||[], comps = data.comps||[];
+  var respItems = positionPrintInfoRows(jd.responsibility);
+  var objItems = positionPrintInfoRows(jobObjectiveTextV47 ? jobObjectiveTextV47(jd) : (jd.objective||''));
+  var jdRows = respItems.length ? respItems.map(function(r,i){
+    return '<tr><td>'+(i+1)+'</td><td>'+escapeHtml(r)+'</td><td>'+escapeHtml(objItems[i]||'')+'</td></tr>';
+  }).join('') : '<tr><td colspan="3" class="empty">ยังไม่มีข้อมูล Job Description</td></tr>';
+  var kpiRows = kpis.length ? kpis.map(function(k,i){
+    return '<tr><td>'+(i+1)+'</td><td><strong>'+escapeHtml(k.name||'-')+'</strong><span class="pos-print-code">'+escapeHtml(k.code||'')+'</span></td>'
+      + '<td>'+escapeHtml(k.weight?k.weight+'%':'-')+'</td><td>'+escapeHtml(k.target||'-')+'</td><td>'+escapeHtml(k.formula||k.definition||'-')+'</td><td>'+escapeHtml(k.perspective||'-')+'</td></tr>';
+  }).join('') : '<tr><td colspan="6" class="empty">ยังไม่มี KPI</td></tr>';
+  var compRows = comps.length ? comps.map(function(c,i){
+    return '<tr><td>'+(i+1)+'</td><td>'+escapeHtml(c.type||'-')+'</td><td><strong>'+escapeHtml(c.name||'-')+'</strong></td><td>'+escapeHtml(c.weight?c.weight+'%':'-')+'</td><td>'+escapeHtml(c.expectedLevel||'-')+'</td></tr>';
+  }).join('') : '<tr><td colspan="5" class="empty">ยังไม่มี Competency</td></tr>';
+  var extraInfo = ['English: '+(jd.positionEn||'-'), 'แผนก: '+(selected.department||'-'), 'ระดับ: '+(selected.level||'-'), 'หัวหน้างาน/สังกัด: '+(jd.supervisor||'-')].join(' | ');
+  return '<div class="pos-print-header">'
+    + '<div class="pos-print-brand"><div class="pos-print-mark">HR</div><div><h1 class="pos-print-title">เอกสาร JD / KPI / Competency ประจำตำแหน่ง</h1><div class="pos-print-subtitle">Job Description · Key Performance Indicators · Competency</div></div></div>'
+    + '<div class="pos-print-ref">Document Reference<strong>'+escapeHtml(positionDocumentReference(selected))+'</strong>'+escapeHtml(positionPrintTimestamp())+'</div>'
+    + '</div>'
+    + '<div class="pos-print-infobar">'
+    + '<div class="pos-print-infobox"><label>บริษัท</label><strong>'+escapeHtml(selected.company||'-')+'</strong></div>'
+    + '<div class="pos-print-infobox"><label>ตำแหน่ง</label><strong>'+escapeHtml(selected.position||'-')+'</strong></div>'
+    + '<div class="pos-print-infobox"><label>Job ID</label><strong>'+escapeHtml(selected.jobCode||'-')+'</strong></div>'
+    + '</div>'
+    + '<div class="pos-print-infobox" style="margin-bottom:14px"><label>ประเภทเอกสาร</label><strong>Position Standard</strong></div>'
+    + '<div class="pos-print-section-head"><span class="pos-print-section-badge">01</span><h3>Job Description</h3></div>'
+    + '<div class="pos-print-twocol"><div><label>ข้อมูลเพิ่มเติม</label>'+escapeHtml(extraInfo)+'</div><div><label>คุณสมบัติ</label>-</div></div>'
+    + '<table><thead><tr><th>ลำดับ</th><th>หน้าที่ความรับผิดชอบหลัก</th><th>วัตถุประสงค์</th></tr></thead><tbody>'+jdRows+'</tbody></table>'
+    + '<div class="pos-print-section-head"><span class="pos-print-section-badge">02</span><h3>Key Performance Indicators (KPI)</h3></div>'
+    + '<table><thead><tr><th>ลำดับ</th><th>ตัวชี้วัด</th><th>น้ำหนัก</th><th>เป้าหมาย</th><th>สูตรคำนวณ</th><th>BSC</th></tr></thead><tbody>'+kpiRows+'</tbody></table>'
+    + '<div class="pos-print-section-head"><span class="pos-print-section-badge">03</span><h3>Competency</h3></div>'
+    + '<table><thead><tr><th>ลำดับ</th><th>ประเภท</th><th>ชื่อสมรรถนะ</th><th>น้ำหนัก</th><th>ระดับคาดหวัง</th></tr></thead><tbody>'+compRows+'</tbody></table>'
+    + '<div class="pos-print-sign"><div>ผู้จัดทำ / พนักงาน<br>วันที่ ____________</div><div>ผู้ทบทวน / ผู้บังคับบัญชา<br>วันที่ ____________</div><div>ผู้อนุมัติ<br>วันที่ ____________</div></div>'
+    + '<div class="pos-print-footer"><span>'+escapeHtml(positionDocumentReference(selected))+'</span><span>Confidential · Internal Use</span></div>';
+}
+window.printPositionDocument = function(key){
+  var selected = key ? (v4JobOptions().find(function(o){return o.key===key;}) || jobSelected) : jobSelected;
+  if(!selected){ toast('กรุณาเลือกตำแหน่งงานก่อนพิมพ์'); return; }
+  var data = currentFrameworkData(selected);
+  var old = document.getElementById('positionPrintArea'); if(old) old.remove();
+  var area = document.createElement('section');
+  area.id = 'positionPrintArea';
+  area.className = 'hr-print-area';
+  area.innerHTML = buildPositionPrintDocumentHtml(selected, data);
+  document.body.appendChild(area);
+  setTimeout(function(){ window.print(); }, 80);
+};
 
 function moduleHeadingV42(viewId,thai,english){var view=el(viewId);if(!view)return;var heading=view.querySelector('h2');if(!heading)return;if(!heading.querySelector('.module-title-en'))heading.insertAdjacentHTML('beforeend','<span class="module-title-en">'+escapeHtml(english)+'</span>');}
 function setTabLabelV42(button,icon,thai,english){if(!button)return;button.innerHTML='<span aria-hidden="true">'+icon+'</span><span class="tab-label"><span class="tab-label-th">'+escapeHtml(thai)+'</span><span class="tab-label-en">'+escapeHtml(english)+'</span></span>';}
@@ -4835,7 +4930,7 @@ window.renderJobPositionDetail=function(){
   if(v4PositionDetailTab==='people')content='<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th>แผนก</th><th>สถานะ</th><th>JD</th><th></th></tr></thead><tbody>'+emps.map(function(e){return '<tr><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+statusBadge(e.status)+'</td><td>'+(getEmployeeJdOverride(e.empCode)?'<span class="badge">กำหนดเอง</span>':'<span class="small">มาตรฐานตำแหน่ง</span>')+'</td><td><button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไข JD/KPI/Competency รายบุคคล</button></td></tr>';}).join('')+'</tbody></table></div>';
   var meta=getPositionMeta(jobSelected.key);
   var statusRow='<div class="form-grid two" style="margin:12px 0"><div class="field"><label>สถานะตำแหน่ง</label><select onchange="updatePositionStatus(this.value)"><option value="active" '+(meta.status==='active'?'selected':'')+'>ใช้งานปกติ</option><option value="frozen" '+(meta.status==='frozen'?'selected':'')+'>แช่แข็ง (Frozen)</option><option value="cancelled" '+(meta.status==='cancelled'?'selected':'')+'>ยกเลิก (Cancelled)</option></select></div><div class="field"><label>อัตรากำลังที่อนุมัติ (Budgeted Headcount)</label><input type="number" min="0" value="'+(meta.budgetedHeadcount==null?'':v4EscapeAttr(meta.budgetedHeadcount))+'" onchange="updatePositionBudget(this.value)" placeholder="ไม่ได้กำหนด"></div></div>';
-  panel.innerHTML='<div class="toolbar"><div><h2>'+escapeHtml(jobSelected.position||'-')+'</h2><div class="sub">'+escapeHtml(jobSelected.company)+' · '+escapeHtml(jobSelected.department||'-')+' · '+escapeHtml(jobSelected.jobCode||'ไม่มี Job Code')+' · ระดับ '+escapeHtml(jobSelected.level||'-')+'</div></div><button id="jobEditOpenBtn" class="btn-primary" onclick="openPositionEditor(\''+v4EscapeAttr(jobSelected.key)+'\')">แก้ไข JD / KPI / Competency</button></div>'+statusRow+'<div class="detail-tabs">'+tabs.map(function(t){return '<button class="detail-tab '+(v4PositionDetailTab===t[0]?'active':'')+'" onclick="showPositionDetailTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>'+content;
+  panel.innerHTML='<div class="toolbar"><div><h2>'+escapeHtml(jobSelected.position||'-')+'</h2><div class="sub">'+escapeHtml(jobSelected.company)+' · '+escapeHtml(jobSelected.department||'-')+' · '+escapeHtml(jobSelected.jobCode||'ไม่มี Job Code')+' · ระดับ '+escapeHtml(jobSelected.level||'-')+'</div></div><button id="jobEditOpenBtn" class="btn-primary" onclick="openPositionEditor(\''+v4EscapeAttr(jobSelected.key)+'\')">แก้ไข JD / KPI / Competency</button> <button class="btn-ghost" onclick="printPositionDocument(\''+v4EscapeAttr(jobSelected.key)+'\')">🖨️ พิมพ์เอกสาร JD/KPI/Competency</button></div>'+statusRow+'<div class="detail-tabs">'+tabs.map(function(t){return '<button class="detail-tab '+(v4PositionDetailTab===t[0]?'active':'')+'" onclick="showPositionDetailTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>'+content;
 };renderJobPositionDetail=window.renderJobPositionDetail;
 
 function autoGrowTextareaV47(textarea){if(!textarea)return;textarea.style.height='auto';textarea.style.height=Math.max(textarea.scrollHeight,textarea.classList.contains('large')?96:42)+'px';}
