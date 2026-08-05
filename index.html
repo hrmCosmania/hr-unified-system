@@ -3149,7 +3149,7 @@ function renderEmployeesTable(){
     +'<td class="gs-muted">'+escapeHtml(getEmployeeName(e.parentId)||'-')+'</td>'
     +'<td><span class="gs-status-pill '+statusKey+'"><span class="dot"></span>'+statusLabel+'</span></td>'
     +'<td class="gs-muted">'+escapeHtml(e.email||'-')+'</td>'
-    +'<td><div class="row-actions"><button class="btn-ghost btn-sm" onclick="editEmployee(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไขประวัติ</button>'+'<button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+v4EscapeAttr(e.empCode)+'\')">JD/KPI/Competency</button>'+(e.status!=='Inactive'?'<button class="btn-danger btn-sm" onclick="openOffboardingModal(\''+v4EscapeAttr(e.empCode)+'\')">สิ้นสุดสถานะ</button>':'<button class="btn-ghost btn-sm" onclick="openOffboardingModal(\''+v4EscapeAttr(e.empCode)+'\')">ดู Offboarding</button>')+'</div></td></tr>';
+    +'<td><div class="row-actions"><button class="btn-ghost btn-sm" onclick="editEmployee(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไขประวัติ</button>'+'<button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+v4EscapeAttr(e.empCode)+'\')">JD/KPI/Competency</button>'+'<button class="btn-ghost btn-sm" onclick="printEmployeePositionDocument(\''+v4EscapeAttr(e.empCode)+'\')">🖨️ พิมพ์</button>'+(e.status!=='Inactive'?'<button class="btn-danger btn-sm" onclick="openOffboardingModal(\''+v4EscapeAttr(e.empCode)+'\')">สิ้นสุดสถานะ</button>':'<button class="btn-ghost btn-sm" onclick="openOffboardingModal(\''+v4EscapeAttr(e.empCode)+'\')">ดู Offboarding</button>')+'</div></td></tr>';
   }).join('');
   document.getElementById('employeesEmpty').classList.toggle('hidden',rows.length>0);
   document.getElementById('empCount').textContent='แสดง '+rows.length+' จาก '+DB.employees.length+' คน';
@@ -3324,7 +3324,7 @@ function renderJobPositionDetail(){
   if(v4PositionDetailTab==='jd')content='<div class="clean-note" style="white-space:pre-wrap">'+escapeHtml(data.jd.responsibility||'ยังไม่มีข้อมูล Job Description')+'</div>';
   if(v4PositionDetailTab==='kpi')content='<div class="table-wrap"><table><thead><tr><th>Code</th><th>KPI</th><th>เป้าหมาย</th><th>น้ำหนัก</th><th>ความถี่</th></tr></thead><tbody>'+data.kpis.map(function(k){return '<tr><td>'+escapeHtml(k.code||'-')+'</td><td><strong>'+escapeHtml(k.name||'-')+'</strong><div class="small">'+escapeHtml(k.definition||k.formula||'')+'</div></td><td>'+escapeHtml(k.target||'-')+'</td><td>'+escapeHtml(k.weight||'-')+'</td><td>'+escapeHtml(k.frequency||'-')+'</td></tr>';}).join('')+'</tbody></table></div>';
   if(v4PositionDetailTab==='comp')content='<div class="table-wrap"><table><thead><tr><th>Code</th><th>ประเภท</th><th>สมรรถนะ</th><th>น้ำหนัก</th><th>ระดับ</th></tr></thead><tbody>'+data.comps.map(function(c){return '<tr><td>'+escapeHtml(c.code||'-')+'</td><td>'+escapeHtml(c.type||'-')+'</td><td>'+escapeHtml(c.name||'-')+'</td><td>'+escapeHtml(c.weight||'-')+'</td><td>'+escapeHtml(c.expectedLevel||'-')+'</td></tr>';}).join('')+'</tbody></table></div>';
-  if(v4PositionDetailTab==='people')content='<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th>แผนก</th><th>สถานะ</th><th>JD</th><th></th></tr></thead><tbody>'+emps.map(function(e){return '<tr><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+statusBadge(e.status)+'</td><td>'+(getEmployeeJdOverride(e.empCode)?'<span class="badge">กำหนดเอง</span>':'<span class="small">มาตรฐานตำแหน่ง</span>')+'</td><td><button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไข JD/KPI/Competency รายบุคคล</button></td></tr>';}).join('')+'</tbody></table></div>';
+  if(v4PositionDetailTab==='people')content='<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th>แผนก</th><th>สถานะ</th><th>JD</th><th></th></tr></thead><tbody>'+emps.map(function(e){return '<tr><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+statusBadge(e.status)+'</td><td>'+(getEmployeeJdOverride(e.empCode)?'<span class="badge">กำหนดเอง</span>':'<span class="small">มาตรฐานตำแหน่ง</span>')+'</td><td><button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไข JD/KPI/Competency รายบุคคล</button> <button class="btn-ghost btn-sm" onclick="printEmployeePositionDocument(\''+v4EscapeAttr(e.empCode)+'\')">🖨️ พิมพ์</button></td></tr>';}).join('')+'</tbody></table></div>';
   var meta=getPositionMeta(jobSelected.key);
   var statusRow='<div class="form-grid two" style="margin:12px 0"><div class="field"><label>สถานะตำแหน่ง</label><select onchange="updatePositionStatus(this.value)"><option value="active" '+(meta.status==='active'?'selected':'')+'>ใช้งานปกติ</option><option value="frozen" '+(meta.status==='frozen'?'selected':'')+'>แช่แข็ง (Frozen)</option><option value="cancelled" '+(meta.status==='cancelled'?'selected':'')+'>ยกเลิก (Cancelled)</option></select></div><div class="field"><label>อัตรากำลังที่อนุมัติ (Budgeted Headcount)</label><input type="number" min="0" value="'+(meta.budgetedHeadcount==null?'':v4EscapeAttr(meta.budgetedHeadcount))+'" onchange="updatePositionBudget(this.value)" placeholder="ไม่ได้กำหนด"></div></div>';
   panel.innerHTML='<div class="toolbar"><div><h2>'+escapeHtml(jobSelected.position||'-')+'</h2><div class="sub">'+escapeHtml(jobSelected.company)+' · '+escapeHtml(jobSelected.department||'-')+' · '+escapeHtml(jobSelected.jobCode||'ไม่มี Job Code')+' · ระดับ '+escapeHtml(jobSelected.level||'-')+'</div></div><button id="jobEditOpenBtn" class="btn-primary" onclick="openPositionEditor(\''+v4EscapeAttr(jobSelected.key)+'\')">แก้ไข JD / KPI / Competency</button> <button class="btn-ghost" onclick="printPositionDocument(\''+v4EscapeAttr(jobSelected.key)+'\')">🖨️ พิมพ์เอกสาร JD/KPI/Competency</button></div>'+statusRow+'<div class="detail-tabs">'+tabs.map(function(t){return '<button class="detail-tab '+(v4PositionDetailTab===t[0]?'active':'')+'" onclick="showPositionDetailTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>'+content;
@@ -3942,11 +3942,15 @@ el('competencyDictionaryPopover').addEventListener('mouseenter',function(){clear
 function buildPrintTreeV42(company){var children=orgChildrenMapV42(company),roots=children.__root__||[];return '<ul class="org-tree-v4">'+roots.map(function(root){return orgRenderNodeV42(root,children,'',company,true);}).join('')+'</ul>';}
 window.prepareOrgPrintV42 = function(size){
   size=size==='A3'?'A3':'A4';var company=(el('orgCompanySelect')||{}).value||'CMN';var old=el('orgPrintArea');if(old)old.remove();var area=document.createElement('section');area.id='orgPrintArea';area.className='hr-print-area';area.dataset.paper=size;area.innerHTML='<h1 class="org-print-title">ผังองค์กร / Organization Chart — '+escapeHtml(company)+'</h1><div class="org-print-subtitle">พิมพ์เมื่อ '+escapeHtml(new Date().toLocaleString('th-TH'))+' · กระดาษ '+size+' แนวนอน</div><div class="org-print-stage">'+buildPrintTreeV42(company)+'</div>';document.body.appendChild(area);
+  var posPageStyle=el('positionPrintPageStyle');if(posPageStyle)posPageStyle.remove();
   var pageStyle=el('orgPrintPageStyle');if(pageStyle)pageStyle.remove();pageStyle=document.createElement('style');pageStyle.id='orgPrintPageStyle';pageStyle.textContent='@page{size:'+size+' landscape;margin:8mm;}';document.head.appendChild(pageStyle);
   area.style.display='block';area.style.position='fixed';area.style.left='-100000px';area.style.top='0';area.style.background='white';var stage=area.querySelector('.org-print-stage');stage.style.transform='scale(1)';var contentWidth=Math.max(stage.scrollWidth,stage.getBoundingClientRect().width,1),contentHeight=Math.max(stage.scrollHeight,stage.getBoundingClientRect().height,1);var target=size==='A3'?{w:1520,h:1000}:{w:1050,h:700};var scale=Math.min(1,target.w/contentWidth,target.h/contentHeight);stage.style.width=contentWidth+'px';stage.style.transform='scale('+scale+')';area.dataset.scale=String(scale);area.style.display='';area.style.position='';area.style.left='';area.style.top='';return {size:size,scale:scale,nodeCount:ensureOrgEmployeeLinksV42(company).positions.length};
 };
 window.printOrgChartV42 = function(size){prepareOrgPrintV42(size);setTimeout(function(){window.print();},80);};
-window.addEventListener('afterprint',function(){document.querySelectorAll('.hr-print-area').forEach(function(area){area.remove();});});
+window.addEventListener('afterprint',function(){
+  document.querySelectorAll('.hr-print-area').forEach(function(area){area.remove();});
+  ['orgPrintPageStyle','positionPrintPageStyle'].forEach(function(id){var s=document.getElementById(id);if(s)s.remove();});
+});
 
 /* ---------- Position JD/KPI/Competency print document ---------- */
 var POS_PRINT_MONTHS_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
@@ -3956,14 +3960,15 @@ function positionPrintTimestamp(){
   var hh = String(d.getHours()).padStart(2,'0'), mm = String(d.getMinutes()).padStart(2,'0');
   return d.getDate() + ' ' + POS_PRINT_MONTHS_TH[d.getMonth()] + ' ' + buddhistYear + ' เวลา ' + hh + ':' + mm;
 }
-function positionDocumentReference(selected){
+function positionDocumentReference(selected, employee){
   var code = String(selected.jobCode||'').trim() || String(selected.position||'ไม่มีรหัส').trim().toUpperCase().replace(/\s+/g,'-');
-  return 'POSITION-' + String(selected.company||'-').trim() + '-' + code;
+  var ref = 'POSITION-' + String(selected.company||'-').trim() + '-' + code;
+  return employee ? ref + '-' + String(employee.empCode||'').trim() : ref;
 }
 function positionPrintInfoRows(text){
   return String(text||'').split(/\n+/).map(function(x){return x.trim();}).filter(Boolean);
 }
-function buildPositionPrintDocumentHtml(selected, data){
+function buildPositionPrintDocumentHtml(selected, data, employee){
   var jd = data.jd || {}, kpis = data.kpis||[], comps = data.comps||[];
   var respItems = positionPrintInfoRows(jd.responsibility);
   var objItems = positionPrintInfoRows(jobObjectiveTextV47 ? jobObjectiveTextV47(jd) : (jd.objective||''));
@@ -3978,16 +3983,20 @@ function buildPositionPrintDocumentHtml(selected, data){
     return '<tr><td>'+(i+1)+'</td><td>'+escapeHtml(c.type||'-')+'</td><td><strong>'+escapeHtml(c.name||'-')+'</strong></td><td>'+escapeHtml(c.weight?c.weight+'%':'-')+'</td><td>'+escapeHtml(c.expectedLevel||'-')+'</td></tr>';
   }).join('') : '<tr><td colspan="5" class="empty">ยังไม่มี Competency</td></tr>';
   var extraInfo = ['English: '+(jd.positionEn||'-'), 'แผนก: '+(selected.department||'-'), 'ระดับ: '+(selected.level||'-'), 'หัวหน้างาน/สังกัด: '+(jd.supervisor||'-')].join(' | ');
+  var docTypeRow = '<div class="pos-print-twocol" style="margin-bottom:14px">'
+    + '<div class="pos-print-infobox"><label>ประเภทเอกสาร</label><strong>'+(employee?'Employee JD/KPI/Competency':'Position Standard')+'</strong></div>'
+    + (employee ? '<div class="pos-print-infobox"><label>พนักงาน</label><strong>'+escapeHtml(employee.fullName)+' ('+escapeHtml(employee.empCode)+')</strong></div>' : '<div></div>')
+    + '</div>';
   return '<div class="pos-print-header">'
-    + '<div class="pos-print-brand"><div class="pos-print-mark">HR</div><div><h1 class="pos-print-title">เอกสาร JD / KPI / Competency ประจำตำแหน่ง</h1><div class="pos-print-subtitle">Job Description · Key Performance Indicators · Competency</div></div></div>'
-    + '<div class="pos-print-ref">Document Reference<strong>'+escapeHtml(positionDocumentReference(selected))+'</strong>'+escapeHtml(positionPrintTimestamp())+'</div>'
+    + '<div class="pos-print-brand"><div class="pos-print-mark">HR</div><div><h1 class="pos-print-title">เอกสาร JD / KPI / Competency ประจำตำแหน่ง'+(employee?' (รายบุคคล)':'')+'</h1><div class="pos-print-subtitle">Job Description · Key Performance Indicators · Competency</div></div></div>'
+    + '<div class="pos-print-ref">Document Reference<strong>'+escapeHtml(positionDocumentReference(selected, employee))+'</strong>'+escapeHtml(positionPrintTimestamp())+'</div>'
     + '</div>'
     + '<div class="pos-print-infobar">'
     + '<div class="pos-print-infobox"><label>บริษัท</label><strong>'+escapeHtml(selected.company||'-')+'</strong></div>'
     + '<div class="pos-print-infobox"><label>ตำแหน่ง</label><strong>'+escapeHtml(selected.position||'-')+'</strong></div>'
     + '<div class="pos-print-infobox"><label>Job ID</label><strong>'+escapeHtml(selected.jobCode||'-')+'</strong></div>'
     + '</div>'
-    + '<div class="pos-print-infobox" style="margin-bottom:14px"><label>ประเภทเอกสาร</label><strong>Position Standard</strong></div>'
+    + docTypeRow
     + '<div class="pos-print-section-head"><span class="pos-print-section-badge">01</span><h3>Job Description</h3></div>'
     + '<div class="pos-print-twocol"><div><label>ข้อมูลเพิ่มเติม</label>'+escapeHtml(extraInfo)+'</div><div><label>คุณสมบัติ</label>-</div></div>'
     + '<table><thead><tr><th>ลำดับ</th><th>หน้าที่ความรับผิดชอบหลัก</th><th>วัตถุประสงค์</th></tr></thead><tbody>'+jdRows+'</tbody></table>'
@@ -3996,19 +4005,35 @@ function buildPositionPrintDocumentHtml(selected, data){
     + '<div class="pos-print-section-head"><span class="pos-print-section-badge">03</span><h3>Competency</h3></div>'
     + '<table><thead><tr><th>ลำดับ</th><th>ประเภท</th><th>ชื่อสมรรถนะ</th><th>น้ำหนัก</th><th>ระดับคาดหวัง</th></tr></thead><tbody>'+compRows+'</tbody></table>'
     + '<div class="pos-print-sign"><div>ผู้จัดทำ / พนักงาน<br>วันที่ ____________</div><div>ผู้ทบทวน / ผู้บังคับบัญชา<br>วันที่ ____________</div><div>ผู้อนุมัติ<br>วันที่ ____________</div></div>'
-    + '<div class="pos-print-footer"><span>'+escapeHtml(positionDocumentReference(selected))+'</span><span>Confidential · Internal Use</span></div>';
+    + '<div class="pos-print-footer"><span>'+escapeHtml(positionDocumentReference(selected, employee))+'</span><span>Confidential · Internal Use</span></div>';
+}
+function renderPositionPrintArea(html){
+  var old = document.getElementById('positionPrintArea'); if(old) old.remove();
+  var area = document.createElement('section');
+  area.id = 'positionPrintArea';
+  area.className = 'hr-print-area';
+  area.innerHTML = html;
+  document.body.appendChild(area);
+  var orgPageStyle = document.getElementById('orgPrintPageStyle'); if(orgPageStyle) orgPageStyle.remove();
+  var pageStyle = document.getElementById('positionPrintPageStyle'); if(pageStyle) pageStyle.remove();
+  pageStyle = document.createElement('style');
+  pageStyle.id = 'positionPrintPageStyle';
+  pageStyle.textContent = '@page{size:A4 portrait;margin:20mm 18mm;}';
+  document.head.appendChild(pageStyle);
+  setTimeout(function(){ window.print(); }, 80);
 }
 window.printPositionDocument = function(key){
   var selected = key ? (v4JobOptions().find(function(o){return o.key===key;}) || jobSelected) : jobSelected;
   if(!selected){ toast('กรุณาเลือกตำแหน่งงานก่อนพิมพ์'); return; }
   var data = currentFrameworkData(selected);
-  var old = document.getElementById('positionPrintArea'); if(old) old.remove();
-  var area = document.createElement('section');
-  area.id = 'positionPrintArea';
-  area.className = 'hr-print-area';
-  area.innerHTML = buildPositionPrintDocumentHtml(selected, data);
-  document.body.appendChild(area);
-  setTimeout(function(){ window.print(); }, 80);
+  renderPositionPrintArea(buildPositionPrintDocumentHtml(selected, data));
+};
+window.printEmployeePositionDocument = function(empCode){
+  var emp = getEmployeeByCode(empCode);
+  if(!emp){ toast('ไม่พบข้อมูลพนักงาน'); return; }
+  var selected = {company:emp.company, position:emp.position, jobCode:emp.jobCode, department:emp.department, level:emp.level};
+  var data = currentFrameworkDataForEmployee(emp);
+  renderPositionPrintArea(buildPositionPrintDocumentHtml(selected, data, emp));
 };
 
 function moduleHeadingV42(viewId,thai,english){var view=el(viewId);if(!view)return;var heading=view.querySelector('h2');if(!heading)return;if(!heading.querySelector('.module-title-en'))heading.insertAdjacentHTML('beforeend','<span class="module-title-en">'+escapeHtml(english)+'</span>');}
@@ -4927,7 +4952,7 @@ window.renderJobPositionDetail=function(){
   if(v4PositionDetailTab==='jd')content='<div class="detail-section"><h3>วัตถุประสงค์ตำแหน่งงาน / Job Objective</h3><div class="clean-note jd-objective-v47">'+escapeHtml(objective||'ยังไม่มีข้อมูลวัตถุประสงค์ตำแหน่งงาน')+'</div></div><div class="detail-section"><h3>หน้าที่และความรับผิดชอบ / Job Description</h3><div class="clean-note" style="white-space:pre-wrap">'+escapeHtml(data.jd.responsibility||'ยังไม่มีข้อมูล Job Description')+'</div></div>';
   if(v4PositionDetailTab==='kpi')content='<div class="table-wrap"><table><thead><tr><th>Code</th><th>KPI</th><th>เป้าหมาย</th><th>น้ำหนัก</th><th>ความถี่</th></tr></thead><tbody>'+data.kpis.map(function(k){return '<tr><td>'+escapeHtml(k.code||'-')+'</td><td class="dictionary-hover-v47"'+dictionaryAttrsV47('kpi',k)+'><strong>'+escapeHtml(k.name||'-')+'</strong><div class="small">'+escapeHtml(k.definition||k.formula||'')+'</div></td><td>'+escapeHtml(k.target||'-')+'</td><td>'+escapeHtml(k.weight||'-')+'</td><td>'+escapeHtml(k.frequency||'-')+'</td></tr>';}).join('')+'</tbody></table></div>';
   if(v4PositionDetailTab==='comp')content='<div class="table-wrap"><table><thead><tr><th>Code</th><th>ประเภท</th><th>สมรรถนะ</th><th>น้ำหนัก</th><th>ระดับที่คาดหวัง / Expected Level</th></tr></thead><tbody>'+data.comps.map(function(c){return '<tr><td>'+escapeHtml(c.code||'-')+'</td><td>'+escapeHtml(c.type||'-')+'</td><td class="dictionary-hover-v47"'+dictionaryAttrsV47('competency',c)+'>'+escapeHtml(c.name||'-')+'</td><td>'+escapeHtml(c.weight||'-')+'</td><td>'+escapeHtml(c.expectedLevel||'-')+'</td></tr>';}).join('')+'</tbody></table></div>';
-  if(v4PositionDetailTab==='people')content='<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th>แผนก</th><th>สถานะ</th><th>JD</th><th></th></tr></thead><tbody>'+emps.map(function(e){return '<tr><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+statusBadge(e.status)+'</td><td>'+(getEmployeeJdOverride(e.empCode)?'<span class="badge">กำหนดเอง</span>':'<span class="small">มาตรฐานตำแหน่ง</span>')+'</td><td><button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไข JD/KPI/Competency รายบุคคล</button></td></tr>';}).join('')+'</tbody></table></div>';
+  if(v4PositionDetailTab==='people')content='<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th>แผนก</th><th>สถานะ</th><th>JD</th><th></th></tr></thead><tbody>'+emps.map(function(e){return '<tr><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+statusBadge(e.status)+'</td><td>'+(getEmployeeJdOverride(e.empCode)?'<span class="badge">กำหนดเอง</span>':'<span class="small">มาตรฐานตำแหน่ง</span>')+'</td><td><button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไข JD/KPI/Competency รายบุคคล</button> <button class="btn-ghost btn-sm" onclick="printEmployeePositionDocument(\''+v4EscapeAttr(e.empCode)+'\')">🖨️ พิมพ์</button></td></tr>';}).join('')+'</tbody></table></div>';
   var meta=getPositionMeta(jobSelected.key);
   var statusRow='<div class="form-grid two" style="margin:12px 0"><div class="field"><label>สถานะตำแหน่ง</label><select onchange="updatePositionStatus(this.value)"><option value="active" '+(meta.status==='active'?'selected':'')+'>ใช้งานปกติ</option><option value="frozen" '+(meta.status==='frozen'?'selected':'')+'>แช่แข็ง (Frozen)</option><option value="cancelled" '+(meta.status==='cancelled'?'selected':'')+'>ยกเลิก (Cancelled)</option></select></div><div class="field"><label>อัตรากำลังที่อนุมัติ (Budgeted Headcount)</label><input type="number" min="0" value="'+(meta.budgetedHeadcount==null?'':v4EscapeAttr(meta.budgetedHeadcount))+'" onchange="updatePositionBudget(this.value)" placeholder="ไม่ได้กำหนด"></div></div>';
   panel.innerHTML='<div class="toolbar"><div><h2>'+escapeHtml(jobSelected.position||'-')+'</h2><div class="sub">'+escapeHtml(jobSelected.company)+' · '+escapeHtml(jobSelected.department||'-')+' · '+escapeHtml(jobSelected.jobCode||'ไม่มี Job Code')+' · ระดับ '+escapeHtml(jobSelected.level||'-')+'</div></div><button id="jobEditOpenBtn" class="btn-primary" onclick="openPositionEditor(\''+v4EscapeAttr(jobSelected.key)+'\')">แก้ไข JD / KPI / Competency</button> <button class="btn-ghost" onclick="printPositionDocument(\''+v4EscapeAttr(jobSelected.key)+'\')">🖨️ พิมพ์เอกสาร JD/KPI/Competency</button></div>'+statusRow+'<div class="detail-tabs">'+tabs.map(function(t){return '<button class="detail-tab '+(v4PositionDetailTab===t[0]?'active':'')+'" onclick="showPositionDetailTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>'+content;
