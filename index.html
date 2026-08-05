@@ -2629,7 +2629,7 @@ function originalFrameworkData(selected){
     comps: frameworkRowsFor(HR_SEED_DATA.competencies,selected).map(x=>Object.assign({},x))
   };
 }
-/* ---------- Per-employee JD override (responsibility text only) ---------- */
+/* ---------- Per-employee JD / KPI / Competency override ---------- */
 function getEmployeeJdOverride(empCode){
   return (DB.employeeJdOverrides||[]).find(o => o.employeeCode===empCode) || null;
 }
@@ -2637,48 +2637,113 @@ function currentFrameworkDataForEmployee(emp){
   const selected = {company:emp.company, position:emp.position, jobCode:emp.jobCode, department:emp.department, level:emp.level};
   const data = currentFrameworkData(selected);
   const override = getEmployeeJdOverride(emp.empCode);
-  if(override) data.jd = Object.assign({}, data.jd, {responsibility: override.responsibility});
+  if(override){
+    data.jd = Object.assign({}, data.jd, {responsibility: override.responsibility});
+    if(Array.isArray(override.kpis)) data.kpis = override.kpis.map(x => Object.assign({}, x));
+    if(Array.isArray(override.comps)) data.comps = override.comps.map(x => Object.assign({}, x));
+  }
   return data;
 }
+var employeeFrameworkDraft = null;
+var employeeFrameworkDraftEmpCode = null;
 function openEmployeeJdEditor(empCode){
   const emp = getEmployeeByCode(empCode);
   if(!emp){ toast('ไม่พบข้อมูลพนักงาน'); return; }
   const selected = {company:emp.company, position:emp.position, jobCode:emp.jobCode, department:emp.department, level:emp.level};
-  const templateResp = currentFrameworkData(selected).jd.responsibility || '';
+  const template = currentFrameworkData(selected);
   const override = getEmployeeJdOverride(empCode);
+  employeeFrameworkDraftEmpCode = empCode;
+  employeeFrameworkDraft = {
+    responsibility: override ? override.responsibility : (template.jd.responsibility||''),
+    kpis: (override && Array.isArray(override.kpis) ? override.kpis : template.kpis).map(x=>Object.assign({},x)),
+    comps: (override && Array.isArray(override.comps) ? override.comps : template.comps).map(x=>Object.assign({},x))
+  };
+  renderEmployeeFrameworkEditor();
+}
+function rerenderEmployeeFrameworkEditor(){ renderEmployeeFrameworkEditor(); }
+function updateEmployeeDraftResponsibility(value){ if(employeeFrameworkDraft) employeeFrameworkDraft.responsibility = value; }
+function updateEmployeeDraftKpi(index, field, value){ if(employeeFrameworkDraft && employeeFrameworkDraft.kpis[index]) employeeFrameworkDraft.kpis[index][field] = value; }
+function updateEmployeeDraftComp(index, field, value){ if(employeeFrameworkDraft && employeeFrameworkDraft.comps[index]) employeeFrameworkDraft.comps[index][field] = value; }
+function addEmployeeDraftKpiRow(){ employeeFrameworkDraft.kpis.push({code:'',name:'',definition:'',target:'',weight:'',frequency:''}); rerenderEmployeeFrameworkEditor(); }
+function removeEmployeeDraftKpiRow(i){ employeeFrameworkDraft.kpis.splice(i,1); rerenderEmployeeFrameworkEditor(); }
+function addEmployeeDraftCompRow(){ employeeFrameworkDraft.comps.push({code:'',type:'',name:'',weight:'',expectedLevel:''}); rerenderEmployeeFrameworkEditor(); }
+function removeEmployeeDraftCompRow(i){ employeeFrameworkDraft.comps.splice(i,1); rerenderEmployeeFrameworkEditor(); }
+function renderEmployeeFrameworkEditor(){
+  if(!employeeFrameworkDraft || !employeeFrameworkDraftEmpCode) return;
+  const empCode = employeeFrameworkDraftEmpCode;
+  const emp = getEmployeeByCode(empCode);
+  if(!emp) return;
+  const d = employeeFrameworkDraft;
+  const override = getEmployeeJdOverride(empCode);
+  const kpiRows = d.kpis.map((k,i) => '<tr>'
+    + '<td><input value="'+v4EscapeAttr(k.code||'')+'" onchange="updateEmployeeDraftKpi('+i+',\'code\',this.value)"></td>'
+    + '<td><input value="'+v4EscapeAttr(k.name||'')+'" onchange="updateEmployeeDraftKpi('+i+',\'name\',this.value)"></td>'
+    + '<td><input value="'+v4EscapeAttr(k.target||'')+'" onchange="updateEmployeeDraftKpi('+i+',\'target\',this.value)"></td>'
+    + '<td><input type="number" value="'+v4EscapeAttr(k.weight||'')+'" onchange="updateEmployeeDraftKpi('+i+',\'weight\',this.value)"></td>'
+    + '<td><input value="'+v4EscapeAttr(k.frequency||'')+'" onchange="updateEmployeeDraftKpi('+i+',\'frequency\',this.value)"></td>'
+    + '<td><button class="btn-danger btn-sm" onclick="removeEmployeeDraftKpiRow('+i+')">✕</button></td>'
+    + '</tr>').join('');
+  const compRows = d.comps.map((c,i) => '<tr>'
+    + '<td><input value="'+v4EscapeAttr(c.code||'')+'" onchange="updateEmployeeDraftComp('+i+',\'code\',this.value)"></td>'
+    + '<td><input value="'+v4EscapeAttr(c.type||'')+'" onchange="updateEmployeeDraftComp('+i+',\'type\',this.value)"></td>'
+    + '<td><input value="'+v4EscapeAttr(c.name||'')+'" onchange="updateEmployeeDraftComp('+i+',\'name\',this.value)"></td>'
+    + '<td><input type="number" value="'+v4EscapeAttr(c.weight||'')+'" onchange="updateEmployeeDraftComp('+i+',\'weight\',this.value)"></td>'
+    + '<td><input type="number" min="1" max="5" value="'+v4EscapeAttr(c.expectedLevel||'')+'" onchange="updateEmployeeDraftComp('+i+',\'expectedLevel\',this.value)"></td>'
+    + '<td><button class="btn-danger btn-sm" onclick="removeEmployeeDraftCompRow('+i+')">✕</button></td>'
+    + '</tr>').join('');
   const html = '<div class="clean-note" style="margin-bottom:10px">'
     + '<strong>' + escapeHtml(emp.fullName) + '</strong> · ' + escapeHtml(emp.position||'-') + ' · ' + escapeHtml(emp.department||'-')
-    + '<br><span class="small">แก้ไขเฉพาะข้อความ JD (หน้าที่และความรับผิดชอบ) ของพนักงานคนนี้ — KPI และ Competency ยังคงใช้ร่วมกับตำแหน่งเหมือนเดิม</span>'
+    + '<br><span class="small">แก้ไข JD / KPI / Competency เฉพาะพนักงานคนนี้ — ไม่กระทบตำแหน่งอื่นหรือคนอื่นที่ดำรงตำแหน่งเดียวกัน</span>'
     + (override ? '<br><span class="badge" style="margin-top:6px;display:inline-block">กำหนดเองแล้ว · แก้ไขล่าสุด ' + escapeHtml(formatThaiDate(override.updatedAt)) + '</span>' : '')
     + '</div>'
     + '<div class="field"><label>หน้าที่และความรับผิดชอบ / Job Description (รายบุคคล)</label>'
-    + '<textarea id="employeeJdEditorInput" rows="10" style="width:100%">' + escapeHtml(override ? override.responsibility : templateResp) + '</textarea></div>'
+    + '<textarea id="employeeJdEditorInput" rows="8" style="width:100%" onchange="updateEmployeeDraftResponsibility(this.value)">' + escapeHtml(d.responsibility) + '</textarea></div>'
+    + '<h3 class="section-title" style="margin-top:18px">KPI (รายบุคคล)</h3>'
+    + '<div class="table-wrap"><table><thead><tr><th>Code</th><th>ชื่อ KPI</th><th>เป้าหมาย</th><th>น้ำหนัก</th><th>ความถี่</th><th></th></tr></thead><tbody>' + (kpiRows||'<tr><td colspan="6" class="empty">ยังไม่มี KPI</td></tr>') + '</tbody></table></div>'
+    + '<button class="btn-ghost btn-sm" style="margin-top:8px" onclick="addEmployeeDraftKpiRow()">+ เพิ่ม KPI</button>'
+    + '<h3 class="section-title" style="margin-top:18px">Competency (รายบุคคล)</h3>'
+    + '<div class="table-wrap"><table><thead><tr><th>Code</th><th>ประเภท</th><th>ชื่อ</th><th>น้ำหนัก</th><th>ระดับที่คาดหวัง</th><th></th></tr></thead><tbody>' + (compRows||'<tr><td colspan="6" class="empty">ยังไม่มี Competency</td></tr>') + '</tbody></table></div>'
+    + '<button class="btn-ghost btn-sm" style="margin-top:8px" onclick="addEmployeeDraftCompRow()">+ เพิ่ม Competency</button>'
     + '<div class="actions" style="justify-content:flex-end;margin-top:14px">'
     + (override ? '<button class="btn-ghost" onclick="resetEmployeeJdOverride(\'' + v4EscapeAttr(empCode) + '\')">รีเซ็ตเป็นค่ามาตรฐานของตำแหน่ง</button>' : '')
-    + '<button class="btn-ghost" onclick="closeSharedModal()">ยกเลิก</button>'
-    + '<button class="btn-primary" onclick="saveEmployeeJdOverride(\'' + v4EscapeAttr(empCode) + '\')">บันทึก JD รายบุคคล</button>'
+    + '<button class="btn-ghost" onclick="closeEmployeeFrameworkEditor()">ยกเลิก</button>'
+    + '<button class="btn-primary" onclick="saveEmployeeJdOverride()">บันทึก</button>'
     + '</div>';
-  openSharedModal('แก้ไข JD รายบุคคล', html, true);
+  openSharedModal('แก้ไข JD / KPI / Competency รายบุคคล', html, true);
 }
-function saveEmployeeJdOverride(empCode){
+function closeEmployeeFrameworkEditor(){
+  employeeFrameworkDraft = null; employeeFrameworkDraftEmpCode = null;
+  closeSharedModal();
+}
+function saveEmployeeJdOverride(){
+  if(!employeeFrameworkDraft || !employeeFrameworkDraftEmpCode) return;
+  const empCode = employeeFrameworkDraftEmpCode;
   const textarea = document.getElementById('employeeJdEditorInput');
-  const value = textarea ? textarea.value : '';
+  if(textarea) employeeFrameworkDraft.responsibility = textarea.value;
   const list = DB.employeeJdOverrides = DB.employeeJdOverrides || [];
   const existingIndex = list.findIndex(o => o.employeeCode===empCode);
-  const rec = {employeeCode:empCode, responsibility:value, updatedAt:new Date().toISOString()};
+  const rec = {
+    employeeCode: empCode,
+    responsibility: employeeFrameworkDraft.responsibility,
+    kpis: employeeFrameworkDraft.kpis.map(x=>Object.assign({},x)),
+    comps: employeeFrameworkDraft.comps.map(x=>Object.assign({},x)),
+    updatedAt: new Date().toISOString()
+  };
   if(existingIndex>=0) list[existingIndex] = rec; else list.push(rec);
   saveDB();
+  employeeFrameworkDraft = null; employeeFrameworkDraftEmpCode = null;
   closeSharedModal();
   if(jobSelected) renderJobPositionDetail();
-  toast('บันทึก JD รายบุคคลแล้ว');
+  toast('บันทึก JD / KPI / Competency รายบุคคลแล้ว');
 }
 function resetEmployeeJdOverride(empCode){
-  if(!confirm('ต้องการยกเลิก JD รายบุคคลของพนักงานคนนี้ และกลับไปใช้ JD มาตรฐานของตำแหน่งใช่หรือไม่?')) return;
+  if(!confirm('ต้องการยกเลิกการกำหนด JD / KPI / Competency รายบุคคลของพนักงานคนนี้ และกลับไปใช้ค่ามาตรฐานของตำแหน่งใช่หรือไม่?')) return;
   DB.employeeJdOverrides = (DB.employeeJdOverrides||[]).filter(o => o.employeeCode!==empCode);
   saveDB();
+  employeeFrameworkDraft = null; employeeFrameworkDraftEmpCode = null;
   closeSharedModal();
   if(jobSelected) renderJobPositionDetail();
-  toast('รีเซ็ต JD กลับเป็นค่ามาตรฐานของตำแหน่งแล้ว');
+  toast('รีเซ็ตกลับเป็นค่ามาตรฐานของตำแหน่งแล้ว');
 }
 function renderJobPositionModule(){
   const options = getAllPositionOptions();
@@ -3248,7 +3313,7 @@ function renderJobPositionDetail(){
   if(v4PositionDetailTab==='jd')content='<div class="clean-note" style="white-space:pre-wrap">'+escapeHtml(data.jd.responsibility||'ยังไม่มีข้อมูล Job Description')+'</div>';
   if(v4PositionDetailTab==='kpi')content='<div class="table-wrap"><table><thead><tr><th>Code</th><th>KPI</th><th>เป้าหมาย</th><th>น้ำหนัก</th><th>ความถี่</th></tr></thead><tbody>'+data.kpis.map(function(k){return '<tr><td>'+escapeHtml(k.code||'-')+'</td><td><strong>'+escapeHtml(k.name||'-')+'</strong><div class="small">'+escapeHtml(k.definition||k.formula||'')+'</div></td><td>'+escapeHtml(k.target||'-')+'</td><td>'+escapeHtml(k.weight||'-')+'</td><td>'+escapeHtml(k.frequency||'-')+'</td></tr>';}).join('')+'</tbody></table></div>';
   if(v4PositionDetailTab==='comp')content='<div class="table-wrap"><table><thead><tr><th>Code</th><th>ประเภท</th><th>สมรรถนะ</th><th>น้ำหนัก</th><th>ระดับ</th></tr></thead><tbody>'+data.comps.map(function(c){return '<tr><td>'+escapeHtml(c.code||'-')+'</td><td>'+escapeHtml(c.type||'-')+'</td><td>'+escapeHtml(c.name||'-')+'</td><td>'+escapeHtml(c.weight||'-')+'</td><td>'+escapeHtml(c.expectedLevel||'-')+'</td></tr>';}).join('')+'</tbody></table></div>';
-  if(v4PositionDetailTab==='people')content='<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th>แผนก</th><th>สถานะ</th><th>JD</th><th></th></tr></thead><tbody>'+emps.map(function(e){return '<tr><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+statusBadge(e.status)+'</td><td>'+(getEmployeeJdOverride(e.empCode)?'<span class="badge">กำหนดเอง</span>':'<span class="small">มาตรฐานตำแหน่ง</span>')+'</td><td><button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไข JD รายบุคคล</button> <button class="btn-ghost btn-sm" onclick="editEmployeeFromJobPosition(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไขข้อมูลพนักงาน</button></td></tr>';}).join('')+'</tbody></table></div>';
+  if(v4PositionDetailTab==='people')content='<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th>แผนก</th><th>สถานะ</th><th>JD</th><th></th></tr></thead><tbody>'+emps.map(function(e){return '<tr><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+statusBadge(e.status)+'</td><td>'+(getEmployeeJdOverride(e.empCode)?'<span class="badge">กำหนดเอง</span>':'<span class="small">มาตรฐานตำแหน่ง</span>')+'</td><td><button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไข JD/KPI/Competency รายบุคคล</button> <button class="btn-ghost btn-sm" onclick="editEmployeeFromJobPosition(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไขข้อมูลพนักงาน</button></td></tr>';}).join('')+'</tbody></table></div>';
   var meta=getPositionMeta(jobSelected.key);
   var statusRow='<div class="form-grid two" style="margin:12px 0"><div class="field"><label>สถานะตำแหน่ง</label><select onchange="updatePositionStatus(this.value)"><option value="active" '+(meta.status==='active'?'selected':'')+'>ใช้งานปกติ</option><option value="frozen" '+(meta.status==='frozen'?'selected':'')+'>แช่แข็ง (Frozen)</option><option value="cancelled" '+(meta.status==='cancelled'?'selected':'')+'>ยกเลิก (Cancelled)</option></select></div><div class="field"><label>อัตรากำลังที่อนุมัติ (Budgeted Headcount)</label><input type="number" min="0" value="'+(meta.budgetedHeadcount==null?'':v4EscapeAttr(meta.budgetedHeadcount))+'" onchange="updatePositionBudget(this.value)" placeholder="ไม่ได้กำหนด"></div></div>';
   panel.innerHTML='<div class="toolbar"><div><h2>'+escapeHtml(jobSelected.position||'-')+'</h2><div class="sub">'+escapeHtml(jobSelected.company)+' · '+escapeHtml(jobSelected.department||'-')+' · '+escapeHtml(jobSelected.jobCode||'ไม่มี Job Code')+' · ระดับ '+escapeHtml(jobSelected.level||'-')+'</div></div><button id="jobEditOpenBtn" class="btn-primary" onclick="openPositionEditor(\''+v4EscapeAttr(jobSelected.key)+'\')">แก้ไข JD / KPI / Competency</button></div>'+statusRow+'<div class="detail-tabs">'+tabs.map(function(t){return '<button class="detail-tab '+(v4PositionDetailTab===t[0]?'active':'')+'" onclick="showPositionDetailTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>'+content;
@@ -4755,7 +4820,7 @@ window.renderJobPositionDetail=function(){
   if(v4PositionDetailTab==='jd')content='<div class="detail-section"><h3>วัตถุประสงค์ตำแหน่งงาน / Job Objective</h3><div class="clean-note jd-objective-v47">'+escapeHtml(objective||'ยังไม่มีข้อมูลวัตถุประสงค์ตำแหน่งงาน')+'</div></div><div class="detail-section"><h3>หน้าที่และความรับผิดชอบ / Job Description</h3><div class="clean-note" style="white-space:pre-wrap">'+escapeHtml(data.jd.responsibility||'ยังไม่มีข้อมูล Job Description')+'</div></div>';
   if(v4PositionDetailTab==='kpi')content='<div class="table-wrap"><table><thead><tr><th>Code</th><th>KPI</th><th>เป้าหมาย</th><th>น้ำหนัก</th><th>ความถี่</th></tr></thead><tbody>'+data.kpis.map(function(k){return '<tr><td>'+escapeHtml(k.code||'-')+'</td><td class="dictionary-hover-v47"'+dictionaryAttrsV47('kpi',k)+'><strong>'+escapeHtml(k.name||'-')+'</strong><div class="small">'+escapeHtml(k.definition||k.formula||'')+'</div></td><td>'+escapeHtml(k.target||'-')+'</td><td>'+escapeHtml(k.weight||'-')+'</td><td>'+escapeHtml(k.frequency||'-')+'</td></tr>';}).join('')+'</tbody></table></div>';
   if(v4PositionDetailTab==='comp')content='<div class="table-wrap"><table><thead><tr><th>Code</th><th>ประเภท</th><th>สมรรถนะ</th><th>น้ำหนัก</th><th>ระดับที่คาดหวัง / Expected Level</th></tr></thead><tbody>'+data.comps.map(function(c){return '<tr><td>'+escapeHtml(c.code||'-')+'</td><td>'+escapeHtml(c.type||'-')+'</td><td class="dictionary-hover-v47"'+dictionaryAttrsV47('competency',c)+'>'+escapeHtml(c.name||'-')+'</td><td>'+escapeHtml(c.weight||'-')+'</td><td>'+escapeHtml(c.expectedLevel||'-')+'</td></tr>';}).join('')+'</tbody></table></div>';
-  if(v4PositionDetailTab==='people')content='<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th>แผนก</th><th>สถานะ</th><th>JD</th><th></th></tr></thead><tbody>'+emps.map(function(e){return '<tr><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+statusBadge(e.status)+'</td><td>'+(getEmployeeJdOverride(e.empCode)?'<span class="badge">กำหนดเอง</span>':'<span class="small">มาตรฐานตำแหน่ง</span>')+'</td><td><button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไข JD รายบุคคล</button> <button class="btn-ghost btn-sm" onclick="editEmployeeFromJobPosition(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไขข้อมูลพนักงาน</button></td></tr>';}).join('')+'</tbody></table></div>';
+  if(v4PositionDetailTab==='people')content='<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th>แผนก</th><th>สถานะ</th><th>JD</th><th></th></tr></thead><tbody>'+emps.map(function(e){return '<tr><td>'+escapeHtml(e.empCode)+'</td><td>'+escapeHtml(e.fullName)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+statusBadge(e.status)+'</td><td>'+(getEmployeeJdOverride(e.empCode)?'<span class="badge">กำหนดเอง</span>':'<span class="small">มาตรฐานตำแหน่ง</span>')+'</td><td><button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไข JD/KPI/Competency รายบุคคล</button> <button class="btn-ghost btn-sm" onclick="editEmployeeFromJobPosition(\''+v4EscapeAttr(e.empCode)+'\')">แก้ไขข้อมูลพนักงาน</button></td></tr>';}).join('')+'</tbody></table></div>';
   var meta=getPositionMeta(jobSelected.key);
   var statusRow='<div class="form-grid two" style="margin:12px 0"><div class="field"><label>สถานะตำแหน่ง</label><select onchange="updatePositionStatus(this.value)"><option value="active" '+(meta.status==='active'?'selected':'')+'>ใช้งานปกติ</option><option value="frozen" '+(meta.status==='frozen'?'selected':'')+'>แช่แข็ง (Frozen)</option><option value="cancelled" '+(meta.status==='cancelled'?'selected':'')+'>ยกเลิก (Cancelled)</option></select></div><div class="field"><label>อัตรากำลังที่อนุมัติ (Budgeted Headcount)</label><input type="number" min="0" value="'+(meta.budgetedHeadcount==null?'':v4EscapeAttr(meta.budgetedHeadcount))+'" onchange="updatePositionBudget(this.value)" placeholder="ไม่ได้กำหนด"></div></div>';
   panel.innerHTML='<div class="toolbar"><div><h2>'+escapeHtml(jobSelected.position||'-')+'</h2><div class="sub">'+escapeHtml(jobSelected.company)+' · '+escapeHtml(jobSelected.department||'-')+' · '+escapeHtml(jobSelected.jobCode||'ไม่มี Job Code')+' · ระดับ '+escapeHtml(jobSelected.level||'-')+'</div></div><button id="jobEditOpenBtn" class="btn-primary" onclick="openPositionEditor(\''+v4EscapeAttr(jobSelected.key)+'\')">แก้ไข JD / KPI / Competency</button></div>'+statusRow+'<div class="detail-tabs">'+tabs.map(function(t){return '<button class="detail-tab '+(v4PositionDetailTab===t[0]?'active':'')+'" onclick="showPositionDetailTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>'+content;
