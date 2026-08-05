@@ -3577,7 +3577,7 @@ body[data-module="performance-tracking"]{--module-accent:#84CC16;--module-accent
   #orgPrintArea .org-card{width:175px!important;min-height:58px!important;padding:8px 9px!important;box-shadow:none!important;break-inside:avoid!important}
   #orgPrintArea .org-card .org-title{font-size:9px!important}#orgPrintArea .org-card .org-name{font-size:8px!important}#orgPrintArea .org-card .org-dept{font-size:7px!important}
   #orgPrintArea .org-toggle,#orgPrintArea .org-drag-grip{display:none!important}
-  #positionPrintArea{position:static!important;padding:0!important;}
+  #positionPrintArea{position:static!important;padding:14mm 12mm!important;box-sizing:border-box!important;}
   #positionPrintArea table{break-inside:auto;}
   #positionPrintArea tr{break-inside:avoid;}
   #positionPrintArea .pos-print-section-head{break-after:avoid;break-inside:avoid;}
@@ -4018,7 +4018,7 @@ function renderPositionPrintArea(html){
   var pageStyle = document.getElementById('positionPrintPageStyle'); if(pageStyle) pageStyle.remove();
   pageStyle = document.createElement('style');
   pageStyle.id = 'positionPrintPageStyle';
-  pageStyle.textContent = '@page{size:A4 portrait;margin:20mm 18mm;}';
+  pageStyle.textContent = '@page{size:A4 portrait;margin:10mm;}';
   document.head.appendChild(pageStyle);
   setTimeout(function(){ window.print(); }, 80);
 }
