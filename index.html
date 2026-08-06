@@ -4113,7 +4113,8 @@ function renderPositionPrintArea(html){
   document.head.appendChild(pageStyle);
   setTimeout(function(){ window.print(); }, 80);
 }
-function renderAssetFormPrintArea(html){
+function renderAssetFormPrintArea(html, orientation){
+  orientation = orientation==='portrait' ? 'portrait' : 'landscape';
   var old = document.getElementById('assetFormPrintArea'); if(old) old.remove();
   var area = document.createElement('section');
   area.id = 'assetFormPrintArea';
@@ -4124,13 +4125,14 @@ function renderAssetFormPrintArea(html){
   var pageStyle = document.getElementById('assetFormPrintPageStyle'); if(pageStyle) pageStyle.remove();
   pageStyle = document.createElement('style');
   pageStyle.id = 'assetFormPrintPageStyle';
-  pageStyle.textContent = '@page{size:A4 landscape;margin:8mm;}';
+  pageStyle.textContent = '@page{size:A4 '+orientation+';margin:8mm;}';
   document.head.appendChild(pageStyle);
   area.style.display='block';area.style.position='fixed';area.style.left='-100000px';area.style.top='0';area.style.background='white';
   var stage=area.querySelector('.asset-print-stage');
-  stage.style.width='277mm';stage.style.transform='scale(1)';
+  var stageWidthMm = orientation==='portrait' ? 194 : 281;
+  var target = orientation==='portrait' ? {w:733,h:1062} : {w:1062,h:733};
+  stage.style.width=stageWidthMm+'mm';stage.style.transform='scale(1)';
   var contentWidth=Math.max(stage.scrollWidth,stage.getBoundingClientRect().width,1),contentHeight=Math.max(stage.scrollHeight,stage.getBoundingClientRect().height,1);
-  var target={w:1047,h:718};
   var scale=Math.min(1,target.w/contentWidth,target.h/contentHeight);
   stage.style.transform='scale('+scale+')';stage.style.transformOrigin='top left';
   area.style.display='';area.style.position='';area.style.left='';area.style.top='';
@@ -4177,10 +4179,10 @@ function buildAssetBorrowReturnFormHtml(emp){
     + '<div class="pos-print-sign"><div>ผู้เบิก/ยืม (พนักงาน)<br>วันที่ ____________</div><div>ผู้บังคับบัญชา<br>วันที่ ____________</div><div>ผู้อนุมัติ<br>วันที่ ____________</div></div>';
   return header + categories + footer;
 }
-window.printAssetBorrowReturnForm = function(empCode){
+window.printAssetBorrowReturnForm = function(empCode, orientation){
   var emp = getEmployeeByCode(empCode);
   if(!emp){ toast('ไม่พบข้อมูลพนักงาน'); return; }
-  renderAssetFormPrintArea(buildAssetBorrowReturnFormHtml(emp));
+  renderAssetFormPrintArea(buildAssetBorrowReturnFormHtml(emp), orientation);
 };
 window.printPositionDocument = function(key){
   var selected = key ? (v4JobOptions().find(function(o){return o.key===key;}) || jobSelected) : jobSelected;
@@ -4890,7 +4892,7 @@ window.renderDocumentAutomationDetail = function(){
   if(!emp){ panel.innerHTML = '<div class="position-detail-empty">เลือกพนักงานจากรายการด้านซ้ายเพื่อสร้างเอกสาร</div>'; return; }
   panel.innerHTML = '<div class="toolbar"><div><h2>'+escapeHtml(emp.fullName)+'</h2><div class="sub">'+escapeHtml(emp.empCode)+' · '+escapeHtml(emp.position||'-')+' · '+escapeHtml(emp.department||'-')+'</div></div></div>'
     + '<div class="detail-section"><h3>เอกสารที่พร้อมสร้าง</h3>'
-    + '<div class="job-row" style="cursor:default"><div><div class="job-name">📄 แบบฟอร์มยืม-คืนทรัพย์สินบริษัท</div><div class="job-meta">FM-HRXXX · Asset Borrow-Return Form</div></div><div><button class="btn-primary btn-sm" onclick="printAssetBorrowReturnForm(\''+v4EscapeAttr(emp.empCode)+'\')">🖨️ พิมพ์เอกสาร</button></div></div>'
+    + '<div class="job-row" style="cursor:default"><div><div class="job-name">📄 แบบฟอร์มยืม-คืนทรัพย์สินบริษัท</div><div class="job-meta">FM-HRXXX · Asset Borrow-Return Form</div></div><div style="display:flex;gap:6px"><button class="btn-primary btn-sm" onclick="printAssetBorrowReturnForm(\''+v4EscapeAttr(emp.empCode)+'\',\'landscape\')">🖨️ แนวนอน</button><button class="btn-ghost btn-sm" onclick="printAssetBorrowReturnForm(\''+v4EscapeAttr(emp.empCode)+'\',\'portrait\')">🖨️ แนวตั้ง</button></div></div>'
     + '</div>';
 }
 function initV42(){
