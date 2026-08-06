@@ -3623,6 +3623,35 @@ body[data-module="performance-tracking"]{--module-accent:#84CC16;--module-accent
 #positionPrintArea .pos-print-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px;text-align:center;font-size:10.5px;}
 #positionPrintArea .pos-print-sign div{border-top:1px solid #0F172A;padding-top:6px;}
 #positionPrintArea .pos-print-footer{display:flex;justify-content:space-between;margin-top:20px;font-size:9.5px;color:#5b6579;}
+#assetFormPrintArea{display:none}
+#assetFormPrintArea{font-family:'IBM Plex Sans Thai','Inter',system-ui,sans-serif;color:#0F172A;background:#fff;font-size:9.5px;}
+#assetFormPrintArea .asset-print-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding-bottom:12px;border-bottom:2px solid #1E3151;margin-bottom:12px;}
+#assetFormPrintArea .asset-print-brand{display:flex;align-items:center;gap:14px;}
+#assetFormPrintArea .pos-print-mark{width:38px;height:38px;border-radius:10px;background:#1E3151;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;}
+#assetFormPrintArea .pos-print-title{font-size:16px;font-weight:700;margin:0;}
+#assetFormPrintArea .pos-print-subtitle{font-size:10.5px;color:#5b6579;margin-top:2px;}
+#assetFormPrintArea .asset-print-doc-ctrl{text-align:right;font-size:9px;color:#5b6579;line-height:1.6;}
+#assetFormPrintArea .pos-print-infobar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;}
+#assetFormPrintArea .pos-print-infobox{border:1px solid #cbd3e1;border-radius:7px;padding:6px 10px;}
+#assetFormPrintArea .pos-print-infobox label{display:block;font-size:8.5px;color:#5b6579;margin-bottom:2px;}
+#assetFormPrintArea .pos-print-infobox strong{font-size:11px;}
+#assetFormPrintArea .asset-print-cat-title{background:#eaf1ff;color:#1E3151;font-weight:700;padding:5px 10px;border-radius:6px;margin:12px 0 6px;font-size:11px;}
+#assetFormPrintArea table{width:100%;border-collapse:collapse;font-size:8.7px;margin-bottom:2px;table-layout:fixed;}
+#assetFormPrintArea th{background:#1E3151;color:#fff;text-align:left;padding:4px 5px;font-size:8.3px;font-weight:600;}
+#assetFormPrintArea td{border:1px solid #e6eaf2;padding:5px 5px;vertical-align:top;height:16px;}
+#assetFormPrintArea .asset-item-cell{text-align:left;}
+#assetFormPrintArea .asset-print-note{font-size:8.7px;margin:6px 0 4px;}
+#assetFormPrintArea .asset-print-footer-note{margin-top:10px;font-size:9px;}
+#assetFormPrintArea .asset-print-blank-lines{border-bottom:1px solid #cbd3e1;height:16px;margin-top:4px;}
+#assetFormPrintArea .asset-print-disclaimer{font-size:8px;color:#5b6579;margin-top:8px;line-height:1.5;}
+#assetFormPrintArea .pos-print-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px;text-align:center;font-size:9.5px;}
+#assetFormPrintArea .pos-print-sign div{border-top:1px solid #0F172A;padding-top:5px;}
+@media print{
+  #assetFormPrintArea table{break-inside:auto;}
+  #assetFormPrintArea tr{break-inside:avoid;}
+  #assetFormPrintArea .asset-print-cat-title{break-after:avoid;break-inside:avoid;}
+  #assetFormPrintArea .pos-print-sign{break-inside:avoid;}
+}
 @media(max-width:900px){.tab-label-en{display:none}.org-card{width:196px!important}}
 @media print{
   @page{margin:8mm}
@@ -4002,14 +4031,14 @@ el('competencyDictionaryPopover').addEventListener('mouseenter',function(){clear
 function buildPrintTreeV42(company){var children=orgChildrenMapV42(company),roots=children.__root__||[];return '<ul class="org-tree-v4">'+roots.map(function(root){return orgRenderNodeV42(root,children,'',company,true);}).join('')+'</ul>';}
 window.prepareOrgPrintV42 = function(size){
   size=size==='A3'?'A3':'A4';var company=(el('orgCompanySelect')||{}).value||'CMN';var old=el('orgPrintArea');if(old)old.remove();var area=document.createElement('section');area.id='orgPrintArea';area.className='hr-print-area';area.dataset.paper=size;area.innerHTML='<h1 class="org-print-title">ผังองค์กร / Organization Chart — '+escapeHtml(company)+'</h1><div class="org-print-subtitle">พิมพ์เมื่อ '+escapeHtml(new Date().toLocaleString('th-TH'))+' · กระดาษ '+size+' แนวนอน</div><div class="org-print-stage">'+buildPrintTreeV42(company)+'</div>';document.body.appendChild(area);
-  var posPageStyle=el('positionPrintPageStyle');if(posPageStyle)posPageStyle.remove();
+  ['positionPrintPageStyle','assetFormPrintPageStyle'].forEach(function(id){var s=el(id);if(s)s.remove();});
   var pageStyle=el('orgPrintPageStyle');if(pageStyle)pageStyle.remove();pageStyle=document.createElement('style');pageStyle.id='orgPrintPageStyle';pageStyle.textContent='@page{size:'+size+' landscape;margin:8mm;}';document.head.appendChild(pageStyle);
   area.style.display='block';area.style.position='fixed';area.style.left='-100000px';area.style.top='0';area.style.background='white';var stage=area.querySelector('.org-print-stage');stage.style.transform='scale(1)';var contentWidth=Math.max(stage.scrollWidth,stage.getBoundingClientRect().width,1),contentHeight=Math.max(stage.scrollHeight,stage.getBoundingClientRect().height,1);var target=size==='A3'?{w:1520,h:1000}:{w:1050,h:700};var scale=Math.min(1,target.w/contentWidth,target.h/contentHeight);stage.style.width=contentWidth+'px';stage.style.transform='scale('+scale+')';area.dataset.scale=String(scale);area.style.display='';area.style.position='';area.style.left='';area.style.top='';return {size:size,scale:scale,nodeCount:ensureOrgEmployeeLinksV42(company).positions.length};
 };
 window.printOrgChartV42 = function(size){prepareOrgPrintV42(size);setTimeout(function(){window.print();},80);};
 window.addEventListener('afterprint',function(){
   document.querySelectorAll('.hr-print-area').forEach(function(area){area.remove();});
-  ['orgPrintPageStyle','positionPrintPageStyle'].forEach(function(id){var s=document.getElementById(id);if(s)s.remove();});
+  ['orgPrintPageStyle','positionPrintPageStyle','assetFormPrintPageStyle'].forEach(function(id){var s=document.getElementById(id);if(s)s.remove();});
 });
 
 /* ---------- Position JD/KPI/Competency print document ---------- */
@@ -4074,7 +4103,7 @@ function renderPositionPrintArea(html){
   area.className = 'hr-print-area';
   area.innerHTML = html;
   document.body.appendChild(area);
-  var orgPageStyle = document.getElementById('orgPrintPageStyle'); if(orgPageStyle) orgPageStyle.remove();
+  ['orgPrintPageStyle','assetFormPrintPageStyle'].forEach(function(id){var s=document.getElementById(id); if(s) s.remove();});
   var pageStyle = document.getElementById('positionPrintPageStyle'); if(pageStyle) pageStyle.remove();
   pageStyle = document.createElement('style');
   pageStyle.id = 'positionPrintPageStyle';
@@ -4082,6 +4111,67 @@ function renderPositionPrintArea(html){
   document.head.appendChild(pageStyle);
   setTimeout(function(){ window.print(); }, 80);
 }
+function renderAssetFormPrintArea(html){
+  var old = document.getElementById('assetFormPrintArea'); if(old) old.remove();
+  var area = document.createElement('section');
+  area.id = 'assetFormPrintArea';
+  area.className = 'hr-print-area';
+  area.innerHTML = html;
+  document.body.appendChild(area);
+  ['orgPrintPageStyle','positionPrintPageStyle'].forEach(function(id){var s=document.getElementById(id); if(s) s.remove();});
+  var pageStyle = document.getElementById('assetFormPrintPageStyle'); if(pageStyle) pageStyle.remove();
+  pageStyle = document.createElement('style');
+  pageStyle.id = 'assetFormPrintPageStyle';
+  pageStyle.textContent = '@page{size:A4 landscape;margin:8mm;}';
+  document.head.appendChild(pageStyle);
+  setTimeout(function(){ window.print(); }, 80);
+}
+var ASSET_FORM_CATEGORIES = [
+  {title:'หมวด 1 : Human Resource Development', noteLabel:'บันทึกตรวจสอบสภาพ', items:[
+    'กุญแจ Locker/โต๊ะ','กุญแจห้อง/อาคาร','บัตรพนักงาน','บัตร RFID สำหรับสแกนเข้าตึก','บัตรประกันกลุ่ม',
+    'บัตรเข้าอาคาร/ขึ้นลิฟต์','บัตรจอดรถ','โทรศัพท์','ซิมการ์ด','นามบัตร / นามบัตร Electronic','อื่นๆ ระบุ .....................................'
+  ], afterNote:'กองทุนในกรณีที่ท่านเป็นสมาชิกกองทุนสำรองเลี้ยงชีพ ท่านมีความประสงค์จะ &nbsp;☐&nbsp;ถอนกองทุน &nbsp;☐&nbsp;คงเงินไว้ในกองทุน &nbsp;แจ้งความประสงค์ต่อ HR'},
+  {title:'หมวด 2 : Information Technology', noteLabel:'บันทึกตรวจสอบสภาพ', items:[
+    'Computer PC','Computer Notebook','Mouse','Keyboard','จอ Monitor','External Harddisk','Email','IP Phone','อื่นๆ ระบุ .....................................'
+  ]},
+  {title:'หมวด 3 : Accounting And Financial', noteLabel:'บันทึกเพิ่มเติม', items:[
+    'เงินทดรองจ่าย','เงินสดย่อย','อื่นๆ ระบุ .....................................'
+  ]}
+];
+function assetFormCategoryTableHtml(cat){
+  var rows = cat.items.map(function(item, i){
+    return '<tr><td>'+(i+1)+'</td><td class="asset-item-cell">'+escapeHtml(item)+'</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+  }).join('');
+  return '<div class="asset-print-cat-title">'+escapeHtml(cat.title)+'</div>'
+    + '<table><thead><tr><th rowspan="2">ลำดับ</th><th rowspan="2">รายการทรัพย์สิน/อุปกรณ์</th><th rowspan="2">จำนวน</th><th rowspan="2">รหัสทรัพย์สิน<br>(ถ้ามี)</th><th colspan="2">เบิก/ยืม</th><th rowspan="2">'+escapeHtml(cat.noteLabel)+'</th><th colspan="2">เคลียร์/คืน</th><th rowspan="2">'+escapeHtml(cat.noteLabel)+'</th><th rowspan="2">หมายเหตุ<br>(ถ้ามี)</th></tr><tr><th>วันที่</th><th>ผู้รับ</th><th>วันที่</th><th>ผู้รับคืน</th></tr></thead><tbody>'+rows+'</tbody></table>'
+    + (cat.afterNote ? '<div class="asset-print-note">'+cat.afterNote+'</div>' : '');
+}
+function buildAssetBorrowReturnFormHtml(emp){
+  var header = '<div class="asset-print-header">'
+    + '<div class="asset-print-brand"><div class="pos-print-mark">HR</div><div><h1 class="pos-print-title">แบบฟอร์มยืม-คืนทรัพย์สินบริษัท</h1><div class="pos-print-subtitle">Company Asset Borrow / Return Form</div></div></div>'
+    + '<div class="asset-print-doc-ctrl">รหัสเอกสาร: FM-HRXXX<br>ประกาศใช้: 28/2/2022<br>แก้ไขครั้งที่ : -<br>เลขที่เข้า.................................. เลขที่ออก.................................</div>'
+    + '</div>'
+    + '<div class="pos-print-infobar">'
+    + '<div class="pos-print-infobox"><label>รหัสพนักงาน</label><strong>'+escapeHtml(emp.empCode||'-')+'</strong></div>'
+    + '<div class="pos-print-infobox"><label>ผู้เบิก/ยืม</label><strong>'+escapeHtml(emp.fullName||'-')+'</strong></div>'
+    + '<div class="pos-print-infobox"><label>แผนก/ฝ่าย</label><strong>'+escapeHtml(emp.department||'-')+'</strong></div>'
+    + '</div>'
+    + '<div class="pos-print-infobar">'
+    + '<div class="pos-print-infobox"><label>ตำแหน่ง</label><strong>'+escapeHtml(emp.position||'-')+'</strong></div>'
+    + '<div class="pos-print-infobox"><label>วันที่เริ่มงาน</label><strong>'+escapeHtml(formatThaiDate(emp.startDate))+'</strong></div>'
+    + '<div class="pos-print-infobox"><label>วันที่จัดทำเอกสาร</label><strong>'+escapeHtml(formatThaiDate(new Date()))+'</strong></div>'
+    + '</div>';
+  var categories = ASSET_FORM_CATEGORIES.map(assetFormCategoryTableHtml).join('');
+  var footer = '<div class="asset-print-footer-note"><strong>บันทึกเพิ่มเติม</strong><div class="asset-print-blank-lines"></div></div>'
+    + '<div class="asset-print-disclaimer">*หากทรัพย์สินมีการชำรุด สูญหาย หรือมีหนี้คงค้างที่เกี่ยวข้อง ทางพนักงานยินยอมให้ดำเนินการหักค่าใช้จ่ายที่เกิดจากเงินเดือนพนักงานของรอบเงินเดือนสุดท้ายที่พนักงานปฏิบัติงานตามมูลค่าทางบัญชีที่บริษัทกำหนด</div>'
+    + '<div class="pos-print-sign"><div>ผู้เบิก/ยืม (พนักงาน)<br>วันที่ ____________</div><div>ผู้บังคับบัญชา<br>วันที่ ____________</div><div>ผู้อนุมัติ<br>วันที่ ____________</div></div>';
+  return header + categories + footer;
+}
+window.printAssetBorrowReturnForm = function(empCode){
+  var emp = getEmployeeByCode(empCode);
+  if(!emp){ toast('ไม่พบข้อมูลพนักงาน'); return; }
+  renderAssetFormPrintArea(buildAssetBorrowReturnFormHtml(emp));
+};
 window.printPositionDocument = function(key){
   var selected = key ? (v4JobOptions().find(function(o){return o.key===key;}) || jobSelected) : jobSelected;
   if(!selected){ toast('กรุณาเลือกตำแหน่งงานก่อนพิมพ์'); return; }
@@ -4759,8 +4849,39 @@ function installDocumentAutomationModule(){
   var wrap=document.querySelector('.wrap');
   var view=el('view-documents');
   if(wrap && !view){ view=document.createElement('div'); view.className='view'; view.id='view-documents'; wrap.insertBefore(view, el('view-settings')); }
-  if(view) view.innerHTML='<section class="card performance-placeholder"><div class="performance-placeholder-inner"><div class="performance-placeholder-icon">📄</div><h2>จัดทำเอกสารอัตโนมัติ<span class="module-title-en">Document Automation</span></h2><p>โมดูลนี้เตรียมพื้นที่ไว้สำหรับสร้างเอกสารอัตโนมัติจากแบบฟอร์ม (เช่น หนังสือรับรองการทำงาน สัญญาจ้าง ใบเตือน ฯลฯ) โดยจะเพิ่มการอัปโหลดเทมเพลตและตั้งค่าการดึงข้อมูลพนักงานมาเติมในเอกสารในขั้นตอนถัดไป เมื่อได้รับไฟล์แบบฟอร์มแล้ว ยังไม่มีฟังก์ชันการทำงานใด ๆ ในเวอร์ชันนี้</p></div></section>';
-  TAB_RENDERERS['documents']=function(){};
+  if(view) view.innerHTML='<section class="card"><h2>📄 จัดทำเอกสารอัตโนมัติ<span class="module-title-en">Document Automation</span></h2><div class="sub">คลิกชื่อพนักงานเพื่อสร้างเอกสารที่กรอกข้อมูลพนักงานให้อัตโนมัติ</div></section>'
+    + '<div style="display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start">'
+    + '<section class="card"><div class="field"><label>ค้นหาพนักงาน</label><input id="docAutoSearch" placeholder="ชื่อ/รหัส/ตำแหน่ง" oninput="renderDocumentAutomationEmployeeList()"></div><div id="docAutoEmployeeList" style="max-height:600px;overflow:auto;margin-top:10px"></div></section>'
+    + '<section class="card" id="docAutoDetail"><div class="position-detail-empty">เลือกพนักงานจากรายการด้านซ้ายเพื่อสร้างเอกสาร</div></section>'
+    + '</div>';
+  TAB_RENDERERS['documents']=function(){ renderDocumentAutomationEmployeeList(); renderDocumentAutomationDetail(); };
+}
+window.renderDocumentAutomationEmployeeList = function(){
+  var list = document.getElementById('docAutoEmployeeList');
+  if(!list) return;
+  var q = ((document.getElementById('docAutoSearch')||{}).value||'').trim().toLowerCase();
+  var rows = (companyFilter==='ALL'?DB.employees:DB.employees.filter(function(e){return e.company===companyFilter;}))
+    .filter(function(e){return e.status!=='Inactive';})
+    .filter(function(e){return !q || [e.empCode,e.fullName,e.nickname,e.position,e.department].join(' ').toLowerCase().includes(q);})
+    .sort(function(a,b){return String(a.fullName||'').localeCompare(String(b.fullName||''),'th');});
+  list.innerHTML = rows.map(function(e){
+    return '<div class="job-row" onclick="selectDocumentAutomationEmployee(\''+v4EscapeAttr(e.empCode)+'\')"><div><div class="job-name">'+escapeHtml(e.fullName)+'</div><div class="job-meta">'+escapeHtml(e.empCode)+' · '+escapeHtml(e.position||'-')+' · '+escapeHtml(e.department||'-')+'</div></div></div>';
+  }).join('') || '<div class="empty">ไม่พบพนักงาน</div>';
+}
+window.selectDocumentAutomationEmployee = function(empCode){
+  docAutoSelectedEmpCode = empCode;
+  renderDocumentAutomationDetail();
+};
+var docAutoSelectedEmpCode = null;
+window.renderDocumentAutomationDetail = function(){
+  var panel = document.getElementById('docAutoDetail');
+  if(!panel) return;
+  var emp = docAutoSelectedEmpCode ? getEmployeeByCode(docAutoSelectedEmpCode) : null;
+  if(!emp){ panel.innerHTML = '<div class="position-detail-empty">เลือกพนักงานจากรายการด้านซ้ายเพื่อสร้างเอกสาร</div>'; return; }
+  panel.innerHTML = '<div class="toolbar"><div><h2>'+escapeHtml(emp.fullName)+'</h2><div class="sub">'+escapeHtml(emp.empCode)+' · '+escapeHtml(emp.position||'-')+' · '+escapeHtml(emp.department||'-')+'</div></div></div>'
+    + '<div class="detail-section"><h3>เอกสารที่พร้อมสร้าง</h3>'
+    + '<div class="job-row" style="cursor:default"><div><div class="job-name">📄 แบบฟอร์มยืม-คืนทรัพย์สินบริษัท</div><div class="job-meta">FM-HRXXX · Asset Borrow-Return Form</div></div><div><button class="btn-primary btn-sm" onclick="printAssetBorrowReturnForm(\''+v4EscapeAttr(emp.empCode)+'\')">🖨️ พิมพ์เอกสาร</button></div></div>'
+    + '</div>';
 }
 function initV42(){
   installPerformanceTrackingV42();installDocumentAutomationModule();applyBilingualHeadersV42();enhanceOrgToolbarV42();['CMN','CIL'].forEach(ensureOrgEmployeeLinksV42);var selected=(el('orgCompanySelect')||{}).value||'CMN';if(el('orgCompanySelect')){el('orgCompanySelect').value=selected;window.renderOrgChartV4();centerOrgViewportV42();}renderEmployeesTable();window.HR_V42_READY=true;
