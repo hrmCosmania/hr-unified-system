@@ -187,6 +187,8 @@
   .subnav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--slate-200)}
   .subnav-btn{background:#fff;color:var(--slate-600);border:1.5px solid var(--slate-300);padding:8px 14px}
   .subnav-btn.active{background:var(--navy-900);color:#fff;border-color:var(--navy-900)}
+  .onb-notif-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:6px;border-radius:999px;background:var(--danger);color:#fff;font-size:10.5px;font-weight:700;vertical-align:middle}
+  .onb-notif-badge.hidden{display:none}
   .subview{display:none}.subview.active{display:block;animation:fade .18s ease}
   .section-title{font-size:13px;font-weight:700;color:var(--navy-900);margin:0 0 10px}
   .clean-note{padding:11px 14px;border-radius:10px;background:#f8fafc;border:1px solid var(--slate-200);font-size:12.5px;color:var(--slate-600);line-height:1.65}
@@ -399,7 +401,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <div class="view" id="view-onboarding">
 <section class="card">
 <h2>🧭 Tracking Onboarding</h2><div class="sub">Checklist การเริ่มงานใหม่ ติดตามวันเกิด และกำหนดทดลองงาน</div>
-<div class="subnav"><button class="subnav-btn active" id="onboardSubBtnChecklist" onclick="showOnboardingSubtab('checklist')">✅ Checklist เริ่มงานใหม่</button><button class="subnav-btn" id="onboardSubBtnBirthday" onclick="showOnboardingSubtab('birthday')">🎂 วันเกิด</button><button class="subnav-btn" id="onboardSubBtnProbation" onclick="showOnboardingSubtab('probation')">📋 ทดลองงาน</button></div>
+<div class="subnav"><button class="subnav-btn active" id="onboardSubBtnChecklist" onclick="showOnboardingSubtab('checklist')">✅ Checklist เริ่มงานใหม่<span id="onbChecklistNotifBadge" class="onb-notif-badge hidden">0</span></button><button class="subnav-btn" id="onboardSubBtnBirthday" onclick="showOnboardingSubtab('birthday')">🎂 วันเกิด</button><button class="subnav-btn" id="onboardSubBtnProbation" onclick="showOnboardingSubtab('probation')">📋 ทดลองงาน</button></div>
 </section>
 <div class="subview" id="onboarding-sub-checklist">
 <section class="summary-grid" id="onbChecklistSummaryGrid"></section>
@@ -2426,7 +2428,7 @@ function onbEmployeeOptionsHtml(){
 function getOnboardingChecklist(empCode, createIfMissing){
   let record = DB.onboardingChecklists.find(r => r.employeeCode===empCode);
   if(!record && createIfMissing){
-    record = { id: uid('onb_'), employeeCode: empCode, buddyEmpCode:'', note:'', tasks: ONBOARDING_TASK_TEMPLATE.map(t => ({key:t.key, done:false, doneAt:''})), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    record = { id: uid('onb_'), employeeCode: empCode, buddyEmpCode:'', note:'', tasks: ONBOARDING_TASK_TEMPLATE.map(t => ({key:t.key, done:false, doneAt:''})), closed:false, closedAt:'', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
     DB.onboardingChecklists.push(record);
     saveDB();
   }
@@ -2452,6 +2454,12 @@ function loadOnboardingChecklist(){
     }).join('');
     return `<div style="margin-top:10px"><strong>${escapeHtml(m)}</strong>${rows}</div>`;
   }).join('');
+  const progress = onboardingProgress(record);
+  if(record.closed){
+    body.innerHTML += `<div class="clean-note" style="margin-top:14px">✅ ปิดงาน Onboarding แล้ว เมื่อ ${escapeHtml(formatThaiDate(record.closedAt))} <button class="btn-ghost btn-sm" style="margin-left:8px" onclick="reopenOnboardingCase('${empCode}')">เปิดเคสอีกครั้ง</button></div>`;
+  } else if(progress.done >= progress.total){
+    body.innerHTML += `<div class="actions" style="margin-top:14px"><button class="btn-primary" onclick="closeOnboardingCase('${empCode}')">✅ ปิดงาน Onboarding (ครบ ${progress.total} Task แล้ว)</button></div>`;
+  }
   renderOnboardingSummary();
 }
 function toggleOnboardingTask(empCode, key, checked){
@@ -2493,12 +2501,51 @@ function renderOnboardingSummary(){
     <div class="summary-card"><div class="num">${notStarted}</div><div class="label">ยังไม่เริ่ม Checklist</div></div>
     <div class="summary-card"><div class="num">${inProgress}</div><div class="label">กำลังดำเนินการ</div></div>
     <div class="summary-card"><div class="num">${completed}</div><div class="label">เสร็จสมบูรณ์</div></div>`;
+  renderOnboardingNotifBadge();
 }
 function isRecentHire(emp){
   const start = parseDate(emp.startDate);
   if(!start) return false;
   const diffDays = (todayStart() - start) / 86400000;
   return diffDays >= -7 && diffDays <= 90;
+}
+function onboardingOpenCasesCount(){
+  return onbActiveEmployees().filter(isRecentHire).filter(e => {
+    const record = getOnboardingChecklist(e.empCode, false);
+    return !record || !record.closed;
+  }).length;
+}
+function renderOnboardingNotifBadge(){
+  const badge = document.getElementById('onbChecklistNotifBadge');
+  if(!badge) return;
+  const count = onboardingOpenCasesCount();
+  badge.textContent = String(count);
+  badge.classList.toggle('hidden', count===0);
+}
+function closeOnboardingCase(empCode){
+  const record = getOnboardingChecklist(empCode, true);
+  const progress = onboardingProgress(record);
+  if(progress.done < progress.total){ toast('ต้องทำครบทุก Task ก่อนจึงจะปิดงานได้'); return; }
+  record.closed = true;
+  record.closedAt = new Date().toISOString();
+  record.updatedAt = record.closedAt;
+  saveDB();
+  loadOnboardingChecklist();
+  renderOnboardingNewHireTable();
+  renderOnboardingSummary();
+  renderOnboardingNotifBadge();
+  toast('ปิดงาน Onboarding แล้ว');
+}
+function reopenOnboardingCase(empCode){
+  const record = getOnboardingChecklist(empCode, true);
+  record.closed = false;
+  record.closedAt = '';
+  record.updatedAt = new Date().toISOString();
+  saveDB();
+  loadOnboardingChecklist();
+  renderOnboardingNewHireTable();
+  renderOnboardingSummary();
+  renderOnboardingNotifBadge();
 }
 function renderOnboardingNewHireTable(){
   const tbody = document.getElementById('onbNewHireTbody');
@@ -2508,7 +2555,9 @@ function renderOnboardingNewHireTable(){
     const record = getOnboardingChecklist(e.empCode, false);
     const progress = onboardingProgress(record);
     const buddy = record && record.buddyEmpCode ? getEmployeeByCode(record.buddyEmpCode) : null;
-    return `<tr><td><strong>${escapeHtml(e.fullName)}</strong><div class="small">${escapeHtml(e.empCode)}</div></td><td>${escapeHtml(formatThaiDate(e.startDate))}</td><td>${buddy?escapeHtml(buddy.fullName):'-'}</td><td>${progress.done}/${progress.total}</td><td><button class="btn-ghost btn-sm" onclick="openOnboardingChecklistFor('${escapeHtml(e.empCode)}')">เปิด Checklist</button></td></tr>`;
+    const posInfo = [e.position, e.department, employeeDivision(e)].filter(Boolean).join(' · ');
+    const progressLabel = `${progress.done}/${progress.total}` + (record && record.closed ? ' <span class="badge">ปิดงานแล้ว</span>' : '');
+    return `<tr><td><strong>${escapeHtml(e.fullName)}</strong><div class="small">${escapeHtml(e.empCode)}${posInfo?' · '+escapeHtml(posInfo):''}</div></td><td>${escapeHtml(formatThaiDate(e.startDate))}</td><td>${buddy?escapeHtml(buddy.fullName):'-'}</td><td>${progressLabel}</td><td><button class="btn-ghost btn-sm" onclick="openOnboardingChecklistFor('${escapeHtml(e.empCode)}')">เปิด Checklist</button></td></tr>`;
   }).join('');
   const empty = document.getElementById('onbNewHireEmpty');
   if(empty) empty.classList.toggle('hidden', rows.length>0);
