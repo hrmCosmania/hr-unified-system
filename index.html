@@ -3480,6 +3480,9 @@ function saveTrainingBudget(){
   else DB.trainingBudgets.push({id:uid('tbud_'), company:company, department:department, year:year, budgetAmount:amount, createdAt:v4Now(), updatedAt:v4Now()});
   saveDB();
   renderTrainingBudgetTable();
+  var deptField=document.getElementById('tb_department'); if(deptField) deptField.value='';
+  var yearField=document.getElementById('tb_year'); if(yearField) yearField.value='';
+  var amountField=document.getElementById('tb_amount'); if(amountField) amountField.value='';
   toast('บันทึกงบประมาณแล้ว');
 }
 function deleteTrainingBudget(id){
