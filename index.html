@@ -3646,7 +3646,9 @@ body[data-module="performance-tracking"]{--module-accent:#84CC16;--module-accent
 #assetFormPrintArea .asset-print-disclaimer{font-size:8px;color:#5b6579;margin-top:8px;line-height:1.5;}
 #assetFormPrintArea .pos-print-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px;text-align:center;font-size:9.5px;}
 #assetFormPrintArea .pos-print-sign div{border-top:1px solid #0F172A;padding-top:5px;}
+#assetFormPrintArea .asset-print-stage{transform-origin:top left;}
 @media print{
+  #assetFormPrintArea{position:absolute!important;inset:0!important;background:white!important;overflow:hidden!important;}
   #assetFormPrintArea table{break-inside:auto;}
   #assetFormPrintArea tr{break-inside:avoid;}
   #assetFormPrintArea .asset-print-cat-title{break-after:avoid;break-inside:avoid;}
@@ -4116,7 +4118,7 @@ function renderAssetFormPrintArea(html){
   var area = document.createElement('section');
   area.id = 'assetFormPrintArea';
   area.className = 'hr-print-area';
-  area.innerHTML = html;
+  area.innerHTML = '<div class="asset-print-stage">'+html+'</div>';
   document.body.appendChild(area);
   ['orgPrintPageStyle','positionPrintPageStyle'].forEach(function(id){var s=document.getElementById(id); if(s) s.remove();});
   var pageStyle = document.getElementById('assetFormPrintPageStyle'); if(pageStyle) pageStyle.remove();
@@ -4124,6 +4126,14 @@ function renderAssetFormPrintArea(html){
   pageStyle.id = 'assetFormPrintPageStyle';
   pageStyle.textContent = '@page{size:A4 landscape;margin:8mm;}';
   document.head.appendChild(pageStyle);
+  area.style.display='block';area.style.position='fixed';area.style.left='-100000px';area.style.top='0';area.style.background='white';
+  var stage=area.querySelector('.asset-print-stage');
+  stage.style.width='277mm';stage.style.transform='scale(1)';
+  var contentWidth=Math.max(stage.scrollWidth,stage.getBoundingClientRect().width,1),contentHeight=Math.max(stage.scrollHeight,stage.getBoundingClientRect().height,1);
+  var target={w:1047,h:718};
+  var scale=Math.min(1,target.w/contentWidth,target.h/contentHeight);
+  stage.style.transform='scale('+scale+')';stage.style.transformOrigin='top left';
+  area.style.display='';area.style.position='';area.style.left='';area.style.top='';
   setTimeout(function(){ window.print(); }, 80);
 }
 var ASSET_FORM_CATEGORIES = [
