@@ -565,11 +565,15 @@ const HR_SEED_DATA = {"meta":{"source":"CMN/CIL employee reports and JD_Competen
   function mergeEmployeeRecords(db, records){
     db.employees=Array.isArray(db.employees)?db.employees:[];
     const map=new Map(db.employees.map(e=>[clean(e.empCode).toUpperCase(),e]));
-    let added=0,updated=0,skipped=0;
+    const nameMap=new Map(db.employees.map(e=>[norm(e.fullName),e]));
+    let added=0,updated=0,skipped=0,duplicateName=0;
     records.forEach(rec=>{
       const key=clean(rec.empCode).toUpperCase(); if(!key||!clean(rec.fullName)){skipped++;return;}
       const existing=map.get(key);
-      if(!existing){ const n={...rec,parentId:null,note:rec.note||'',updatedAt:new Date().toISOString()}; delete n.parentRef; db.employees.push(n); map.set(key,n); added++; return; }
+      if(!existing){
+        if(nameMap.has(norm(rec.fullName))){ duplicateName++; return; }
+        const n={...rec,parentId:null,note:rec.note||'',updatedAt:new Date().toISOString()}; delete n.parentRef; db.employees.push(n); map.set(key,n); nameMap.set(norm(n.fullName),n); added++; return;
+      }
       const preserve={parentId:existing.parentId||null,note:existing.note||'',email:existing.email||'',supervisorEmail:existing.supervisorEmail||'',probationDays:existing.probationDays||120};
       Object.keys(rec).forEach(field=>{ if(field==='parentRef'||field==='parentId'||field==='note')return; const value=rec[field]; if(value!==''&&value!=null)existing[field]=value; });
       existing.parentId=preserve.parentId; existing.note=preserve.note;
@@ -579,7 +583,7 @@ const HR_SEED_DATA = {"meta":{"source":"CMN/CIL employee reports and JD_Competen
       existing.updatedAt=new Date().toISOString(); updated++;
     });
     records.forEach(rec=>{ if(!rec.parentRef)return; const e=map.get(clean(rec.empCode).toUpperCase()); const ref=norm(rec.parentRef); const p=db.employees.find(x=>norm(x.empCode)===ref||norm(x.fullName)===ref); if(e&&p&&e!==p)e.parentId=p.empCode; });
-    return {added,updated,skipped,total:records.length};
+    return {added,updated,skipped,duplicateName,total:records.length};
   }
 
   function upsertByKey(existing,incoming,keyFn){
@@ -1241,12 +1245,18 @@ function importEmployeesExcel(event){
       const hint = /cil|คอสซูติค/i.test(file.name) ? 'CIL' : /cmn|คอสเมเนีย/i.test(file.name) ? 'CMN' : '';
       const records = parseEmployeeAoa(aoa, hint);
       if(!records.length) throw new Error('ไม่พบรายการพนักงานที่นำเข้าได้');
+      const normName = v => String(v||'').trim().toLowerCase().replace(/[\s_\-./()]+/g,'');
       const existingMap = new Map(DB.employees.map(e => [String(e.empCode||'').trim().toUpperCase(), e]));
+      const existingNameMap = new Map(DB.employees.map(e => [normName(e.fullName), e]));
       const newHires = [], resignations = [];
+      let duplicateNameSkipped = 0;
       records.forEach(rec => {
         const key = String(rec.empCode||'').trim().toUpperCase();
         const existing = existingMap.get(key);
-        if(!existing){ newHires.push(rec); return; }
+        if(!existing){
+          if(existingNameMap.has(normName(rec.fullName))){ duplicateNameSkipped++; return; }
+          newHires.push(rec); return;
+        }
         if(rec.status === 'Inactive' && existing.status !== 'Inactive') resignations.push(rec);
       });
       event.target.value='';
@@ -1254,8 +1264,8 @@ function importEmployeesExcel(event){
         applyEmployeeImport(records, file.name);
         return;
       }
-      pendingEmployeeImport = {records, newHires, resignations, fileName:file.name};
-      showEmployeeImportReview(newHires, resignations);
+      pendingEmployeeImport = {records, newHires, resignations, fileName:file.name, duplicateNameSkipped};
+      showEmployeeImportReview(newHires, resignations, duplicateNameSkipped);
     }catch(err){ console.error(err); toast('นำเข้าทะเบียนพนักงานไม่สำเร็จ: ' + err.message); }
   };
   reader.readAsArrayBuffer(file);
@@ -1266,7 +1276,8 @@ function applyEmployeeImport(records, fileName){
   saveDB(); refreshAllViews();
   showImportSummary('ผลการนำเข้าทะเบียนพนักงาน', [
     {label:'รายการในไฟล์',value:summary.total}, {label:'เพิ่มใหม่',value:summary.added},
-    {label:'อัปเดต',value:summary.updated}, {label:'ข้าม',value:summary.skipped}
+    {label:'อัปเดต',value:summary.updated}, {label:'ข้าม (ข้อมูลไม่ครบ)',value:summary.skipped},
+    {label:'ข้าม (มีชื่อนี้ในระบบแล้ว)',value:summary.duplicateName||0}
   ]);
 }
 function employeeImportReviewRowHtml(rec, kind, index){
@@ -1275,8 +1286,9 @@ function employeeImportReviewRowHtml(rec, kind, index){
     + '<span><strong>' + escapeHtml(rec.fullName) + '</strong> (' + escapeHtml(rec.empCode) + ') — ' + escapeHtml(rec.company) + ' · ' + escapeHtml(rec.position||'-') + '</span>'
     + '</label>';
 }
-function showEmployeeImportReview(newHires, resignations){
+function showEmployeeImportReview(newHires, resignations, duplicateNameSkipped){
   const html = '<div class="clean-note" style="margin-bottom:10px">พบรายการที่ต้องยืนยันก่อนนำเข้า — ยกเลิกติ๊กรายการที่ไม่ต้องการดำเนินการ แล้วกด "ยืนยันนำเข้า" (รายการอื่นที่เป็นแค่อัปเดตข้อมูลปกติจะนำเข้าให้อัตโนมัติ)</div>'
+    + (duplicateNameSkipped ? '<div class="clean-note" style="margin-bottom:10px">ข้ามอัตโนมัติ ' + duplicateNameSkipped + ' รายการ เนื่องจากมีชื่อนี้อยู่ในระบบแล้ว (รหัสพนักงานต่างกัน)</div>' : '')
     + (newHires.length ? '<div class="detail-section"><h3>พนักงานเข้าใหม่ (' + newHires.length + ')</h3>' + newHires.map((r,i)=>employeeImportReviewRowHtml(r,'new',i)).join('') + '</div>' : '')
     + (resignations.length ? '<div class="detail-section"><h3>พนักงานลาออก / พ้นสภาพ (' + resignations.length + ')</h3>' + resignations.map((r,i)=>employeeImportReviewRowHtml(r,'resign',i)).join('') + '</div>' : '')
     + '<div class="actions" style="justify-content:flex-end;margin-top:14px">'
