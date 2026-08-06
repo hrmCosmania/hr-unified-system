@@ -414,6 +414,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <div class="field" style="margin-top:12px"><label>หมายเหตุ</label><textarea id="onb_note" rows="2" oninput="updateOnboardingNote(this.value)"></textarea></div>
 </section>
 <section class="card"><h3 class="section-title">พนักงานใหม่ (เริ่มงานภายใน 90 วัน)</h3>
+<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-bottom:8px"><input type="checkbox" id="onbShowClosed" onchange="renderOnboardingNewHireTable()"> แสดงเคสที่ปิดงานแล้ว (Archive)</label>
 <div class="table-wrap"><table><thead><tr><th>พนักงาน</th><th>วันเริ่มงาน</th><th>Buddy</th><th>ความคืบหน้า</th><th></th></tr></thead><tbody id="onbNewHireTbody"></tbody></table></div>
 <div class="empty hidden" id="onbNewHireEmpty">ไม่พบพนักงานที่เริ่มงานใหม่ในช่วง 90 วันที่ผ่านมา</div>
 </section>
@@ -2550,7 +2551,12 @@ function reopenOnboardingCase(empCode){
 function renderOnboardingNewHireTable(){
   const tbody = document.getElementById('onbNewHireTbody');
   if(!tbody) return;
-  const rows = onbActiveEmployees().filter(isRecentHire);
+  const showClosed = !!(document.getElementById('onbShowClosed')||{}).checked;
+  const rows = onbActiveEmployees().filter(isRecentHire).filter(e => {
+    if(showClosed) return true;
+    const record = getOnboardingChecklist(e.empCode, false);
+    return !record || !record.closed;
+  });
   tbody.innerHTML = rows.map(e => {
     const record = getOnboardingChecklist(e.empCode, false);
     const progress = onboardingProgress(record);
@@ -2560,7 +2566,12 @@ function renderOnboardingNewHireTable(){
     return `<tr><td><strong>${escapeHtml(e.fullName)}</strong><div class="small">${escapeHtml(e.empCode)}${posInfo?' · '+escapeHtml(posInfo):''}</div></td><td>${escapeHtml(formatThaiDate(e.startDate))}</td><td>${buddy?escapeHtml(buddy.fullName):'-'}</td><td>${progressLabel}</td><td><button class="btn-ghost btn-sm" onclick="openOnboardingChecklistFor('${escapeHtml(e.empCode)}')">เปิด Checklist</button></td></tr>`;
   }).join('');
   const empty = document.getElementById('onbNewHireEmpty');
-  if(empty) empty.classList.toggle('hidden', rows.length>0);
+  if(empty){
+    empty.classList.toggle('hidden', rows.length>0);
+    empty.textContent = (!showClosed && rows.length===0 && onbActiveEmployees().filter(isRecentHire).length>0)
+      ? 'ทุกเคสในช่วง 90 วันปิดงานแล้ว — ติ๊ก "แสดงเคสที่ปิดงานแล้ว" เพื่อดู'
+      : 'ไม่พบพนักงานที่เริ่มงานใหม่ในช่วง 90 วันที่ผ่านมา';
+  }
 }
 function openOnboardingChecklistFor(empCode){
   document.getElementById('onb_empCode').value = empCode;
