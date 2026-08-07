@@ -3418,6 +3418,60 @@ function resetTrainingCourseForm(){var f=document.getElementById('trainingCourse
 function saveTrainingCourse(event){if(event)event.preventDefault();var id=document.getElementById('course_id').value||uid('course_');var title=document.getElementById('course_title').value.trim();if(!title){v4SetInlineMessage('trainingFormError','กรุณากรอกชื่อหลักสูตร');return;}var rec={id:id,title:title,description:document.getElementById('course_description').value.trim(),category:document.getElementById('course_category').value.trim(),provider:document.getElementById('course_provider').value.trim(),instructor:document.getElementById('course_instructor').value.trim(),location:document.getElementById('course_location').value.trim(),format:document.getElementById('course_format').value,startDate:document.getElementById('course_startDate').value,endDate:document.getElementById('course_endDate').value,startTime:document.getElementById('course_startTime').value,endTime:document.getElementById('course_endTime').value,hours:Number(document.getElementById('course_hours').value)||0,cost:Number(document.getElementById('course_cost').value)||0,logisticsCost:Number(document.getElementById('course_logisticsCost').value)||0,objectives:document.getElementById('course_objectives').value.trim(),kpiCompetencyLink:document.getElementById('course_kpiCompetencyLink').value.trim(),documents:document.getElementById('course_documents').value.trim(),note:document.getElementById('course_note').value.trim(),company:companyFilter==='ALL'?'':companyFilter,updatedAt:v4Now()};var idx=DB.trainingCourses.findIndex(function(c){return c.id===id;});if(idx>=0){rec.createdAt=DB.trainingCourses[idx].createdAt||v4Now();DB.trainingCourses[idx]=rec;}else{rec.createdAt=v4Now();DB.trainingCourses.push(rec);}v4SelectedCourseId=id;saveDB();resetTrainingCourseForm();v4SetInlineMessage('trainingFormError','');renderTrainingModuleV4();}
 function editTrainingCourse(id){var c=courseById(id);if(!c)return;v4SelectedCourseId=id;['id','title','description','category','provider','instructor','location','format','startDate','endDate','startTime','endTime','hours','cost','logisticsCost','objectives','kpiCompetencyLink','documents','note'].forEach(function(f){var el=document.getElementById('course_'+f);if(el)el.value=c[f]??'';});renderTrainingModuleV4();document.getElementById('trainingCourseForm').scrollIntoView({behavior:'smooth'});}
 function deleteTrainingCourse(id){DB.trainingCourses=DB.trainingCourses.filter(function(c){return c.id!==id;});DB.trainingEnrollments=DB.trainingEnrollments.filter(function(e){return e.courseId!==id;});if(v4SelectedCourseId===id)v4SelectedCourseId='';saveDB();renderTrainingModuleV4();}
+/* ---------- FM-HR 026: Training approval request print document ---------- */
+function buildTrainingApprovalFormHtml(course){
+  var enroll = courseEnrollments(course.id);
+  var participantRows = enroll.length ? enroll.map(function(e,i){
+    var emp = getEmployeeByCode(e.employeeCode) || {};
+    return '<tr><td>'+(i+1)+'</td><td>'+escapeHtml(emp.fullName||e.employeeCode)+'</td><td>'+escapeHtml(emp.position||'-')+'</td><td>'+escapeHtml(emp.department||'-')+'</td><td></td></tr>';
+  }).join('') : '<tr><td colspan="5" class="empty">ยังไม่มีรายชื่อผู้เข้าอบรม</td></tr>';
+  var totalCost = Number(course.cost||0) + Number(course.logisticsCost||0);
+  var dateRange = formatThaiDate(course.startDate) + (course.endDate && course.endDate!==course.startDate ? ' – ' + formatThaiDate(course.endDate) : '');
+  var budgetRows = [
+    ['1.) ค่าวิทยากร', '', '', ''],
+    ['2.) ค่าสถานที่', '', '', ''],
+    ['3.) ค่าอาหาร/เครื่องดื่ม', '', '', ''],
+    ['4.) ค่าเอกสาร/อุปกรณ์', '', '', ''],
+    ['ค่าใช้จ่ายอื่นๆ (ค่าใช้จ่ายการจัดฝึกอบรม)', '', '', course.logisticsCost ? Number(course.logisticsCost).toLocaleString('th-TH') : '']
+  ].map(function(r){ return '<tr><td class="asset-item-cell">'+escapeHtml(r[0])+'</td><td>'+escapeHtml(r[1])+'</td><td>'+escapeHtml(r[2])+'</td><td>'+escapeHtml(r[3])+'</td></tr>'; }).join('');
+  return '<div class="asset-print-header">'
+    + '<div class="asset-print-brand"><div class="pos-print-mark">HR</div><div><h1 class="pos-print-title">ใบขออนุมัติฝึกอบรม</h1><div class="pos-print-subtitle">Training Approval Request</div></div></div>'
+    + '<div class="asset-print-doc-ctrl">รหัสเอกสาร: FM-HR 026<br>บริษัท: '+escapeHtml(course.company||'-')+'</div>'
+    + '</div>'
+    + '<div class="asset-print-cat-title">ส่วนที่ 1 : ข้อมูลการฝึกอบรม / Training Information</div>'
+    + '<div class="pos-print-infobar"><div class="pos-print-infobox"><label>ชื่อหลักสูตร</label><strong>'+escapeHtml(course.title||'-')+'</strong></div><div class="pos-print-infobox"><label>สถานที่</label><strong>'+escapeHtml(course.location||'-')+'</strong></div><div class="pos-print-infobox"><label>วันที่ฝึกอบรม</label><strong>'+escapeHtml(dateRange||'-')+'</strong></div></div>'
+    + '<div class="pos-print-infobar"><div class="pos-print-infobox"><label>รูปแบบ</label><strong>'+escapeHtml(course.format||'-')+'</strong></div><div class="pos-print-infobox"><label>สถาบันฝึกอบรม</label><strong>'+escapeHtml(course.provider||'-')+'</strong></div><div class="pos-print-infobox"><label>จำนวนชั่วโมง</label><strong>'+escapeHtml(String(course.hours||'-'))+'</strong></div></div>'
+    + '<div class="pos-print-twocol"><div><label>ชื่อวิทยากร</label>'+escapeHtml(course.instructor||'-')+'</div><div><label>ผู้รับผิดชอบ</label>-</div></div>'
+    + '<div class="pos-print-twocol"><div style="grid-column:1/-1"><label>วัตถุประสงค์</label>'+escapeHtml(course.objectives||'-')+'</div></div>'
+    + '<div class="asset-print-cat-title">ส่วนที่ 2 : งบประมาณ / Budget</div>'
+    + '<table><thead><tr><th>รายการค่าใช้จ่าย</th><th>จำนวน</th><th>ราคาต่อหน่วย (บาท)</th><th>รวม (บาท)</th></tr></thead><tbody>'+budgetRows+'<tr><td colspan="3" style="text-align:right;font-weight:700">รวมงบประมาณทั้งหมด</td><td style="font-weight:700">'+totalCost.toLocaleString('th-TH')+'</td></tr></tbody></table>'
+    + '<div class="asset-print-cat-title">ส่วนที่ 3 : รายชื่อผู้เข้าอบรม / Participant List</div>'
+    + '<table><thead><tr><th>ลำดับ</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>แผนก/ฝ่าย</th><th>หมายเหตุ</th></tr></thead><tbody>'+participantRows+'</tbody></table>'
+    + '<div class="asset-print-note">รวมจำนวนผู้เข้าฝึกอบรม '+enroll.length+' คน · รวมค่าใช้จ่าย '+totalCost.toLocaleString('th-TH')+' บาท</div>'
+    + '<div class="asset-print-cat-title">ส่วนที่ 4 : หมายเหตุ / เอกสารแนบ</div>'
+    + '<div class="asset-print-note">เอกสารแนบ &nbsp; ☐ กำหนดการ &nbsp; ☐ ใบเสนอราคา &nbsp; ☐ หลักสูตร &nbsp; ☐ อื่นๆ ......................................</div>'
+    + '<div class="pos-print-sign"><div>ผู้ขออนุมัติ<br>วันที่ ____________</div><div>ผู้ตรวจสอบ<br>วันที่ ____________</div><div>ผู้อนุมัติ<br>วันที่ ____________</div></div>';
+}
+function renderTrainingApprovalPrintArea(html){
+  var old = document.getElementById('trainingApprovalPrintArea'); if(old) old.remove();
+  var area = document.createElement('section');
+  area.id = 'trainingApprovalPrintArea';
+  area.className = 'hr-print-area';
+  area.innerHTML = html;
+  document.body.appendChild(area);
+  ['orgPrintPageStyle','positionPrintPageStyle','assetFormPrintPageStyle'].forEach(function(id){var s=document.getElementById(id); if(s) s.remove();});
+  var pageStyle = document.getElementById('trainingApprovalPrintPageStyle'); if(pageStyle) pageStyle.remove();
+  pageStyle = document.createElement('style');
+  pageStyle.id = 'trainingApprovalPrintPageStyle';
+  pageStyle.textContent = '@page{size:A4 portrait;margin:10mm;}';
+  document.head.appendChild(pageStyle);
+  setTimeout(function(){ window.print(); }, 80);
+}
+function printTrainingApprovalForm(courseId){
+  var course = courseById(courseId);
+  if(!course){ toast('ไม่พบหลักสูตร'); return; }
+  renderTrainingApprovalPrintArea(buildTrainingApprovalFormHtml(course));
+}
 function selectTrainingCourse(id){v4SelectedCourseId=id;renderTrainingModuleV4();}
 function refreshTrainingParticipantFilters(){var rows=companyFilter==='ALL'?DB.employees:DB.employees.filter(function(e){return e.company===companyFilter;});v4SelectOptions('trainingParticipantDepartment',v4Unique(rows.map(function(e){return e.department;})),'ทุกแผนก');v4SelectOptions('trainingParticipantPosition',v4Unique(rows.map(function(e){return e.position;})),'ทุกตำแหน่ง');}
 function renderTrainingParticipantPicker(){var box=document.getElementById('trainingParticipantPicker');if(!box)return;var q=((document.getElementById('trainingParticipantSearch')||{}).value||'').trim().toLowerCase();var dep=(document.getElementById('trainingParticipantDepartment')||{}).value||'';var pos=(document.getElementById('trainingParticipantPosition')||{}).value||'';if(!q&&!dep&&!pos){box.innerHTML='<div class="empty">พิมพ์ชื่อ/รหัส หรือเลือกแผนก/ตำแหน่ง เพื่อค้นหาพนักงานที่จะเพิ่ม</div>';return;}var enrolled=new Set(courseEnrollments(v4SelectedCourseId).map(function(e){return e.employeeCode;}));var rows=(companyFilter==='ALL'?DB.employees:DB.employees.filter(function(e){return e.company===companyFilter;})).filter(function(e){return e.status!=='Inactive'&&!enrolled.has(e.empCode)&&(!dep||e.department===dep)&&(!pos||e.position===pos)&&(!q||[e.empCode,e.fullName,e.nickname,e.department,e.position].join(' ').toLowerCase().includes(q));}).sort(function(a,b){return a.fullName.localeCompare(b.fullName,'th');});box.innerHTML=rows.map(function(e){return '<label class="participant-row"><input type="checkbox" value="'+v4EscapeAttr(e.empCode)+'"><span><strong>'+escapeHtml(e.fullName)+'</strong><span class="small" style="display:block">'+escapeHtml(e.empCode)+' · '+escapeHtml(e.department||'-')+' · '+escapeHtml(e.position||'-')+'</span></span></label>';}).join('')||'<div class="empty">ไม่มีพนักงานที่เพิ่มได้</div>';}
@@ -3425,7 +3479,7 @@ function addCourseParticipants(){if(!v4SelectedCourseId)return;var selected=Arra
 function updateEnrollment(courseId,employeeCode,patch){var row=DB.trainingEnrollments.find(function(e){return e.courseId===courseId&&e.employeeCode===employeeCode;});if(!row)return;Object.assign(row,patch,{updatedAt:v4Now()});saveDB();renderTrainingCourseDetail();}
 function removeEnrollment(courseId,employeeCode){DB.trainingEnrollments=DB.trainingEnrollments.filter(function(e){return !(e.courseId===courseId&&e.employeeCode===employeeCode);});saveDB();renderTrainingModuleV4();}
 function renderTrainingCourseList(){var q=((document.getElementById('trainingCourseSearch')||{}).value||'').trim().toLowerCase();var rows=DB.trainingCourses.filter(function(c){if(companyFilter!=='ALL'&&c.company&&c.company!==companyFilter)return false;return !q||[c.title,c.category,c.provider,c.location].join(' ').toLowerCase().includes(q);}).sort(function(a,b){return String(b.startDate||b.createdAt).localeCompare(String(a.startDate||a.createdAt));});if(!v4SelectedCourseId&&rows.length)v4SelectedCourseId=rows[0].id;document.getElementById('trainingCourseList').innerHTML=rows.map(function(c){var n=courseEnrollments(c.id).length;return '<div class="course-item '+(c.id===v4SelectedCourseId?'active':'')+'" onclick="selectTrainingCourse(\''+v4EscapeAttr(c.id)+'\')"><div class="course-title">'+escapeHtml(c.title)+'</div><div class="course-meta">'+formatThaiDate(c.startDate)+' · '+escapeHtml(c.provider||'-')+' · '+n+' คน</div></div>';}).join('')||'<div class="empty">ยังไม่มีหลักสูตร</div>';}
-function renderTrainingCourseDetail(){var panel=document.getElementById('trainingCourseDetail');if(!panel)return;var c=courseById(v4SelectedCourseId);if(!c){panel.innerHTML='<div class="position-detail-empty">สร้างหรือเลือกหลักสูตรเพื่อเพิ่มรายชื่อพนักงาน</div>';document.getElementById('trainingParticipantPicker').innerHTML='';document.getElementById('trainingEnrollmentTbody').innerHTML='';return;}var enroll=courseEnrollments(c.id);var attended=enroll.filter(function(e){return e.attendance==='Attended';}).length;var cert=enroll.filter(function(e){return !!e.certificate;}).length;panel.innerHTML='<div class="toolbar"><div><h2>'+escapeHtml(c.title)+'</h2><div class="sub">'+formatThaiDate(c.startDate)+(c.endDate?' – '+formatThaiDate(c.endDate):'')+' · '+escapeHtml(c.provider||'-')+(c.instructor?' · วิทยากร: '+escapeHtml(c.instructor):'')+' · '+Number(c.hours||0)+' ชั่วโมง</div></div><div class="row-actions"><button class="btn-ghost btn-sm" onclick="editTrainingCourse(\''+v4EscapeAttr(c.id)+'\')">แก้ไขหลักสูตร</button><button class="btn-danger btn-sm" onclick="deleteTrainingCourse(\''+v4EscapeAttr(c.id)+'\')">ลบ</button></div></div><div class="summary-grid"><div class="summary-card"><div class="num">'+enroll.length+'</div><div class="label">ผู้เข้าร่วม</div></div><div class="summary-card"><div class="num">'+attended+'</div><div class="label">เข้าอบรมแล้ว</div></div><div class="summary-card"><div class="num">'+Number(c.hours||0)+'</div><div class="label">ชั่วโมงหลักสูตร</div></div><div class="summary-card"><div class="num">'+Number(c.cost||0).toLocaleString('th-TH')+'</div><div class="label">ค่าใช้จ่ายหลักสูตร</div></div><div class="summary-card"><div class="num">'+Number(c.logisticsCost||0).toLocaleString('th-TH')+'</div><div class="label">ค่าใช้จ่ายการจัดฝึกอบรม</div></div><div class="summary-card"><div class="num">'+cert+'</div><div class="label">มีใบรับรอง</div></div></div><div class="clean-note"><strong>วัตถุประสงค์</strong><br>'+escapeHtml(c.objectives||c.description||'—')+'</div>'+(c.kpiCompetencyLink?'<div class="clean-note" style="margin-top:8px"><strong>ปิด Gap ด้าน KPI/Competency</strong><br>'+escapeHtml(c.kpiCompetencyLink)+'</div>':'');
+function renderTrainingCourseDetail(){var panel=document.getElementById('trainingCourseDetail');if(!panel)return;var c=courseById(v4SelectedCourseId);if(!c){panel.innerHTML='<div class="position-detail-empty">สร้างหรือเลือกหลักสูตรเพื่อเพิ่มรายชื่อพนักงาน</div>';document.getElementById('trainingParticipantPicker').innerHTML='';document.getElementById('trainingEnrollmentTbody').innerHTML='';return;}var enroll=courseEnrollments(c.id);var attended=enroll.filter(function(e){return e.attendance==='Attended';}).length;var cert=enroll.filter(function(e){return !!e.certificate;}).length;panel.innerHTML='<div class="toolbar"><div><h2>'+escapeHtml(c.title)+'</h2><div class="sub">'+formatThaiDate(c.startDate)+(c.endDate?' – '+formatThaiDate(c.endDate):'')+' · '+escapeHtml(c.provider||'-')+(c.instructor?' · วิทยากร: '+escapeHtml(c.instructor):'')+' · '+Number(c.hours||0)+' ชั่วโมง</div></div><div class="row-actions"><button class="btn-ghost btn-sm" onclick="printTrainingApprovalForm(\''+v4EscapeAttr(c.id)+'\')">🖨️ ใบขออนุมัติฝึกอบรม</button><button class="btn-ghost btn-sm" onclick="editTrainingCourse(\''+v4EscapeAttr(c.id)+'\')">แก้ไขหลักสูตร</button><button class="btn-danger btn-sm" onclick="deleteTrainingCourse(\''+v4EscapeAttr(c.id)+'\')">ลบ</button></div></div><div class="summary-grid"><div class="summary-card"><div class="num">'+enroll.length+'</div><div class="label">ผู้เข้าร่วม</div></div><div class="summary-card"><div class="num">'+attended+'</div><div class="label">เข้าอบรมแล้ว</div></div><div class="summary-card"><div class="num">'+Number(c.hours||0)+'</div><div class="label">ชั่วโมงหลักสูตร</div></div><div class="summary-card"><div class="num">'+Number(c.cost||0).toLocaleString('th-TH')+'</div><div class="label">ค่าใช้จ่ายหลักสูตร</div></div><div class="summary-card"><div class="num">'+Number(c.logisticsCost||0).toLocaleString('th-TH')+'</div><div class="label">ค่าใช้จ่ายการจัดฝึกอบรม</div></div><div class="summary-card"><div class="num">'+cert+'</div><div class="label">มีใบรับรอง</div></div></div><div class="clean-note"><strong>วัตถุประสงค์</strong><br>'+escapeHtml(c.objectives||c.description||'—')+'</div>'+(c.kpiCompetencyLink?'<div class="clean-note" style="margin-top:8px"><strong>ปิด Gap ด้าน KPI/Competency</strong><br>'+escapeHtml(c.kpiCompetencyLink)+'</div>':'');
   document.getElementById('trainingEnrollmentTbody').innerHTML=enroll.map(function(e){var emp=getEmployeeByCode(e.employeeCode)||{};return '<tr><td><strong>'+escapeHtml(emp.fullName||e.employeeCode)+'</strong><div class="small">'+escapeHtml(e.employeeCode)+' · '+escapeHtml(emp.department||'-')+'</div></td><td><select onchange="updateEnrollment(\''+v4EscapeAttr(c.id)+'\',\''+v4EscapeAttr(e.employeeCode)+'\',{attendance:this.value})"><option value="Registered" '+(e.attendance==='Registered'?'selected':'')+'>ลงทะเบียน</option><option value="Attended" '+(e.attendance==='Attended'?'selected':'')+'>เข้าอบรม</option><option value="Absent" '+(e.attendance==='Absent'?'selected':'')+'>ไม่เข้าอบรม</option></select></td><td><select onchange="updateEnrollment(\''+v4EscapeAttr(c.id)+'\',\''+v4EscapeAttr(e.employeeCode)+'\',{result:this.value})"><option '+(e.result==='รอผล'?'selected':'')+'>รอผล</option><option '+(e.result==='ผ่าน'?'selected':'')+'>ผ่าน</option><option '+(e.result==='ไม่ผ่าน'?'selected':'')+'>ไม่ผ่าน</option><option '+(e.result==='เข้าร่วม'?'selected':'')+'>เข้าร่วม</option></select></td><td><input type="number" value="'+v4EscapeAttr(e.score||'')+'" onchange="updateEnrollment(\''+v4EscapeAttr(c.id)+'\',\''+v4EscapeAttr(e.employeeCode)+'\',{score:this.value})" style="width:80px"></td><td><input value="'+v4EscapeAttr(e.certificate||'')+'" onchange="updateEnrollment(\''+v4EscapeAttr(c.id)+'\',\''+v4EscapeAttr(e.employeeCode)+'\',{certificate:this.value})"></td><td><input type="date" style="'+(certificateExpiringSoon(e.certificateExpiryDate)?'border-color:var(--danger)!important':'')+'" value="'+v4EscapeAttr(e.certificateExpiryDate||'')+'" onchange="updateEnrollment(\''+v4EscapeAttr(c.id)+'\',\''+v4EscapeAttr(e.employeeCode)+'\',{certificateExpiryDate:this.value})"></td><td><input value="'+v4EscapeAttr(e.note||'')+'" onchange="updateEnrollment(\''+v4EscapeAttr(c.id)+'\',\''+v4EscapeAttr(e.employeeCode)+'\',{note:this.value})"></td><td><button class="btn-danger btn-sm" onclick="removeEnrollment(\''+v4EscapeAttr(c.id)+'\',\''+v4EscapeAttr(e.employeeCode)+'\')">ลบ</button></td></tr>';}).join('')||'<tr><td colspan="8" class="empty">ยังไม่มีรายชื่อพนักงาน</td></tr>';renderTrainingParticipantPicker();}
 function showTrainingSubtab(name){
   document.getElementById('training-sub-manage').classList.toggle('active', name==='manage');
@@ -3695,6 +3749,37 @@ body[data-module="performance-tracking"]{--module-accent:#84CC16;--module-accent
 #assetFormPrintArea .pos-print-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px;text-align:center;font-size:9.5px;}
 #assetFormPrintArea .pos-print-sign div{border-top:1px solid #0F172A;padding-top:5px;}
 #assetFormPrintArea .asset-print-stage{transform-origin:top left;}
+#trainingApprovalPrintArea{display:none}
+#trainingApprovalPrintArea{font-family:'IBM Plex Sans Thai','Inter',system-ui,sans-serif;color:#0F172A;background:#fff;font-size:10px;}
+#trainingApprovalPrintArea .asset-print-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding-bottom:12px;border-bottom:2px solid #1E3151;margin-bottom:12px;}
+#trainingApprovalPrintArea .asset-print-brand{display:flex;align-items:center;gap:14px;}
+#trainingApprovalPrintArea .pos-print-mark{width:38px;height:38px;border-radius:10px;background:#1E3151;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;}
+#trainingApprovalPrintArea .pos-print-title{font-size:16px;font-weight:700;margin:0;}
+#trainingApprovalPrintArea .pos-print-subtitle{font-size:10.5px;color:#5b6579;margin-top:2px;}
+#trainingApprovalPrintArea .asset-print-doc-ctrl{text-align:right;font-size:9px;color:#5b6579;line-height:1.6;}
+#trainingApprovalPrintArea .pos-print-infobar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;}
+#trainingApprovalPrintArea .pos-print-infobox{border:1px solid #cbd3e1;border-radius:7px;padding:6px 10px;}
+#trainingApprovalPrintArea .pos-print-infobox label{display:block;font-size:8.5px;color:#5b6579;margin-bottom:2px;}
+#trainingApprovalPrintArea .pos-print-infobox strong{font-size:11.5px;}
+#trainingApprovalPrintArea .pos-print-twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;}
+#trainingApprovalPrintArea .pos-print-twocol label{display:block;font-size:9px;color:#5b6579;margin-bottom:3px;}
+#trainingApprovalPrintArea .asset-print-cat-title{background:#eaf1ff;color:#1E3151;font-weight:700;padding:5px 10px;border-radius:6px;margin:12px 0 8px;font-size:11.5px;}
+#trainingApprovalPrintArea table{width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:2px;border:1.5px solid #1E3151;}
+#trainingApprovalPrintArea th{background:#1E3151;color:#fff;text-align:center;vertical-align:middle;padding:6px 5px;font-size:9px;font-weight:600;border:1px solid #3a4f78;}
+#trainingApprovalPrintArea td{border:1px solid #cbd3e1;padding:6px 6px;vertical-align:top;height:18px;}
+#trainingApprovalPrintArea td:first-child{text-align:center;color:#5b6579;}
+#trainingApprovalPrintArea tr:nth-child(even) td{background:#f7f9fc;}
+#trainingApprovalPrintArea .asset-item-cell{text-align:left;}
+#trainingApprovalPrintArea .asset-print-note{font-size:9.5px;margin:6px 0 4px;}
+#trainingApprovalPrintArea .pos-print-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:26px;text-align:center;font-size:10px;}
+#trainingApprovalPrintArea .pos-print-sign div{border-top:1px solid #0F172A;padding-top:6px;}
+@media print{
+  #trainingApprovalPrintArea{position:static!important;padding:14mm 12mm!important;box-sizing:border-box!important;}
+  #trainingApprovalPrintArea table{break-inside:auto;}
+  #trainingApprovalPrintArea tr{break-inside:avoid;}
+  #trainingApprovalPrintArea .asset-print-cat-title{break-after:avoid;break-inside:avoid;}
+  #trainingApprovalPrintArea .pos-print-sign{break-inside:avoid;}
+}
 @media print{
   #assetFormPrintArea{position:absolute!important;inset:0!important;background:white!important;overflow:hidden!important;}
   #assetFormPrintArea table{break-inside:auto;}
@@ -4081,14 +4166,14 @@ el('competencyDictionaryPopover').addEventListener('mouseenter',function(){clear
 function buildPrintTreeV42(company){var children=orgChildrenMapV42(company),roots=children.__root__||[];return '<ul class="org-tree-v4">'+roots.map(function(root){return orgRenderNodeV42(root,children,'',company,true);}).join('')+'</ul>';}
 window.prepareOrgPrintV42 = function(size){
   size=size==='A3'?'A3':'A4';var company=(el('orgCompanySelect')||{}).value||'CMN';var old=el('orgPrintArea');if(old)old.remove();var area=document.createElement('section');area.id='orgPrintArea';area.className='hr-print-area';area.dataset.paper=size;area.innerHTML='<h1 class="org-print-title">ผังองค์กร / Organization Chart — '+escapeHtml(company)+'</h1><div class="org-print-subtitle">พิมพ์เมื่อ '+escapeHtml(new Date().toLocaleString('th-TH'))+' · กระดาษ '+size+' แนวนอน</div><div class="org-print-stage">'+buildPrintTreeV42(company)+'</div>';document.body.appendChild(area);
-  ['positionPrintPageStyle','assetFormPrintPageStyle'].forEach(function(id){var s=el(id);if(s)s.remove();});
+  ['positionPrintPageStyle','assetFormPrintPageStyle','trainingApprovalPrintPageStyle'].forEach(function(id){var s=el(id);if(s)s.remove();});
   var pageStyle=el('orgPrintPageStyle');if(pageStyle)pageStyle.remove();pageStyle=document.createElement('style');pageStyle.id='orgPrintPageStyle';pageStyle.textContent='@page{size:'+size+' landscape;margin:8mm;}';document.head.appendChild(pageStyle);
   area.style.display='block';area.style.position='fixed';area.style.left='-100000px';area.style.top='0';area.style.background='white';var stage=area.querySelector('.org-print-stage');stage.style.transform='scale(1)';var contentWidth=Math.max(stage.scrollWidth,stage.getBoundingClientRect().width,1),contentHeight=Math.max(stage.scrollHeight,stage.getBoundingClientRect().height,1);var target=size==='A3'?{w:1520,h:1000}:{w:1050,h:700};var scale=Math.min(1,target.w/contentWidth,target.h/contentHeight);stage.style.width=contentWidth+'px';stage.style.transform='scale('+scale+')';area.dataset.scale=String(scale);area.style.display='';area.style.position='';area.style.left='';area.style.top='';return {size:size,scale:scale,nodeCount:ensureOrgEmployeeLinksV42(company).positions.length};
 };
 window.printOrgChartV42 = function(size){prepareOrgPrintV42(size);setTimeout(function(){window.print();},80);};
 window.addEventListener('afterprint',function(){
   document.querySelectorAll('.hr-print-area').forEach(function(area){area.remove();});
-  ['orgPrintPageStyle','positionPrintPageStyle','assetFormPrintPageStyle'].forEach(function(id){var s=document.getElementById(id);if(s)s.remove();});
+  ['orgPrintPageStyle','positionPrintPageStyle','assetFormPrintPageStyle','trainingApprovalPrintPageStyle'].forEach(function(id){var s=document.getElementById(id);if(s)s.remove();});
 });
 
 /* ---------- Position JD/KPI/Competency print document ---------- */
@@ -4153,7 +4238,7 @@ function renderPositionPrintArea(html){
   area.className = 'hr-print-area';
   area.innerHTML = html;
   document.body.appendChild(area);
-  ['orgPrintPageStyle','assetFormPrintPageStyle'].forEach(function(id){var s=document.getElementById(id); if(s) s.remove();});
+  ['orgPrintPageStyle','assetFormPrintPageStyle','trainingApprovalPrintPageStyle'].forEach(function(id){var s=document.getElementById(id); if(s) s.remove();});
   var pageStyle = document.getElementById('positionPrintPageStyle'); if(pageStyle) pageStyle.remove();
   pageStyle = document.createElement('style');
   pageStyle.id = 'positionPrintPageStyle';
@@ -4169,7 +4254,7 @@ function renderAssetFormPrintArea(html, orientation){
   area.className = 'hr-print-area';
   area.innerHTML = '<div class="asset-print-stage">'+html+'</div>';
   document.body.appendChild(area);
-  ['orgPrintPageStyle','positionPrintPageStyle'].forEach(function(id){var s=document.getElementById(id); if(s) s.remove();});
+  ['orgPrintPageStyle','positionPrintPageStyle','trainingApprovalPrintPageStyle'].forEach(function(id){var s=document.getElementById(id); if(s) s.remove();});
   var pageStyle = document.getElementById('assetFormPrintPageStyle'); if(pageStyle) pageStyle.remove();
   pageStyle = document.createElement('style');
   pageStyle.id = 'assetFormPrintPageStyle';
