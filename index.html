@@ -5029,6 +5029,9 @@ window.renderDocumentAutomationDetail = function(){
   panel.innerHTML = '<div class="toolbar"><div><h2>'+escapeHtml(emp.fullName)+'</h2><div class="sub">'+escapeHtml(emp.empCode)+' · '+escapeHtml(emp.position||'-')+' · '+escapeHtml(emp.department||'-')+'</div></div></div>'
     + '<div class="detail-section"><h3>เอกสารที่พร้อมสร้าง</h3>'
     + '<div class="job-row" style="cursor:default"><div><div class="job-name">📄 แบบฟอร์มยืม-คืนทรัพย์สินบริษัท</div><div class="job-meta">FM-HRXXX · Asset Borrow-Return Form</div></div><div style="display:flex;gap:6px"><button class="btn-primary btn-sm" onclick="printAssetBorrowReturnForm(\''+v4EscapeAttr(emp.empCode)+'\',\'landscape\')">🖨️ แนวนอน</button><button class="btn-ghost btn-sm" onclick="printAssetBorrowReturnForm(\''+v4EscapeAttr(emp.empCode)+'\',\'portrait\')">🖨️ แนวตั้ง</button></div></div>'
+    + STANDALONE_FORM_TEMPLATES.filter(function(t){return !!t.employeeFieldMap;}).map(function(t){
+        return '<div class="job-row" style="cursor:default"><div><div class="job-name">📄 '+escapeHtml(t.title)+'</div><div class="job-meta">'+escapeHtml(t.code)+' · ดึงข้อมูลพนักงานให้อัตโนมัติ</div></div><div><button class="btn-ghost btn-sm" onclick="openStandaloneForm(\''+v4EscapeAttr(t.code)+'\',\''+v4EscapeAttr(emp.empCode)+'\')">เปิดฟอร์ม</button></div></div>';
+      }).join('')
     + '</div>';
 }
 /* ======================================================================
@@ -5092,7 +5095,8 @@ var STANDALONE_FORM_TEMPLATES = [
     tables:[{title:'หัวข้อการปฐมนิเทศ',rows:5,columns:[
       {id:'topic',label:'หัวข้อการปฐมนิเทศ'},{id:'by',label:'ผู้ทำหน้าที่ปฐมนิเทศ'},{id:'when',label:'วัน/เวลา'},{id:'sign',label:'ลายเซ็นผู้ปฐมนิเทศ'}
     ]}],
-    signatures:['พนักงานใหม่ (รับทราบ)','ผู้บังคับบัญชา','ผู้จัดการฝ่ายทรัพยากรบุคคล']},
+    signatures:['พนักงานใหม่ (รับทราบ)','ผู้บังคับบัญชา','ผู้จัดการฝ่ายทรัพยากรบุคคล'],
+    employeeFieldMap:{name:'fullName',empCode:'empCode',position:'position',div:'department'}},
   {code:'FM-HR 015', title:'แบบฟอร์มแจ้งเปลี่ยนแปลงสถานะพนักงาน',
     fields:[{id:'name',label:'ชื่อ-สกุล'},{id:'empCode',label:'รหัสพนักงาน'}],
     checkboxGroups:[{id:'reason',label:'เหตุผลการเปลี่ยนแปลง',options:['โยกย้าย','ปรับระดับ','รักษาการณ์','เปลี่ยนตำแหน่ง','ขึ้นค่าจ้าง','แต่งตั้ง','อื่นๆ']}],
@@ -5101,7 +5105,8 @@ var STANDALONE_FORM_TEMPLATES = [
       {id:'note',label:'เงื่อนไขเพิ่มเติม',type:'textarea',span:2},{id:'effectiveDate',label:'ให้มีผลตั้งแต่วันที่',type:'date'},
       {id:'oldSupervisor',label:'ผู้บังคับบัญชาเดิม'},{id:'newSupervisor',label:'ผู้บังคับบัญชาใหม่'}
     ],
-    signatures:['ผู้บังคับบัญชาเดิม','ผู้บังคับบัญชาใหม่','ผู้จัดการฝ่ายทรัพยากรบุคคล','กรรมการผู้จัดการ']},
+    signatures:['ผู้บังคับบัญชาเดิม','ผู้บังคับบัญชาใหม่','ผู้จัดการฝ่ายทรัพยากรบุคคล','กรรมการผู้จัดการ'],
+    employeeFieldMap:{name:'fullName',empCode:'empCode'}},
   {code:'FM-HR 016', title:'แบบฟอร์มสอบสวนข้อเท็จจริงกรณีพนักงานกระทำความผิด',
     fields:[
       {id:'name',label:'ชื่อพนักงานที่ถูกสอบสวน'},{id:'position',label:'ตำแหน่ง'},{id:'dept',label:'แผนก'},{id:'div',label:'ฝ่าย'},
@@ -5116,7 +5121,8 @@ var STANDALONE_FORM_TEMPLATES = [
     ],
     checkboxGroups:[{id:'penalty',label:'เสนอมาตรการลงโทษทางวินัย',options:['เตือนด้วยวาจาและบันทึกไว้','เตือนเป็นลายลักษณ์อักษร','พักงานโดยไม่จ่ายค่าจ้าง','เลิกจ้างโดยไม่จ่ายค่าชดเชย']}],
     fields2:[{id:'moreComment',label:'ข้อความ/ความเห็นอื่นๆ',type:'textarea',span:2}],
-    signatures:['ผู้สอบสวน']},
+    signatures:['ผู้สอบสวน'],
+    employeeFieldMap:{name:'fullName',position:'position',dept:'department'}},
   {code:'FM-HR 017', title:'แบบฟอร์มหนังสือเตือนและแจ้งโทษทางวินัย',
     fields:[
       {id:'name',label:'ถึง นาย/นาง/นางสาว'},{id:'empCode',label:'รหัสพนักงาน'},{id:'position',label:'ตำแหน่ง'},{id:'dept',label:'แผนก'},{id:'div',label:'ฝ่าย'},
@@ -5126,7 +5132,8 @@ var STANDALONE_FORM_TEMPLATES = [
     ],
     checkboxGroups:[{id:'penalty',label:'พิจารณาโทษทางวินัยครั้งนี้โดย',options:['เตือนด้วยวาจาและบันทึกไว้','เตือนเป็นลายลักษณ์อักษร','พักงานโดยไม่จ่ายค่าจ้าง','เลิกจ้างโดยไม่จ่ายค่าชดเชย']}],
     fields2:[{id:'moreComment',label:'ข้อความเพิ่มเติม',type:'textarea',span:2}],
-    signatures:['พนักงาน (ยอมรับ)','ผู้จัดการฝ่าย/ผู้อำนวยการ','ผู้จัดการฝ่ายทรัพยากรบุคคล']},
+    signatures:['พนักงาน (ยอมรับ)','ผู้จัดการฝ่าย/ผู้อำนวยการ','ผู้จัดการฝ่ายทรัพยากรบุคคล'],
+    employeeFieldMap:{name:'fullName',empCode:'empCode',position:'position',dept:'department'}},
   {code:'FM-HR 019', title:'ใบส่งมอบงาน',
     fields:[
       {id:'name',label:'ชื่อพนักงาน'},{id:'empCode',label:'รหัสพนักงาน'},{id:'div',label:'แผนก/ฝ่าย'},{id:'lastDay',label:'ปฏิบัติงานวันสุดท้ายวันที่',type:'date'},
@@ -5135,7 +5142,8 @@ var STANDALONE_FORM_TEMPLATES = [
     tables:[{title:'รายการงานที่ส่งมอบ',rows:6,columns:[
       {id:'no',label:'ลำดับ'},{id:'job',label:'งาน'},{id:'detail',label:'รายละเอียดงาน'},{id:'todo',label:'สิ่งที่ต้องดำเนินการ'},{id:'method',label:'วิธีปฏิบัติงาน'}
     ]}],
-    signatures:['ผู้ส่งมอบ','ผู้บังคับบัญชา','ผู้รับมอบงาน']},
+    signatures:['ผู้ส่งมอบ','ผู้บังคับบัญชา','ผู้รับมอบงาน'],
+    employeeFieldMap:{name:'fullName',empCode:'empCode',div:'department'}},
   {code:'FM-HR 022', title:'แบบประเมินผลการปฏิบัติงานประจำปี',
     fields:[
       {id:'name',label:'ชื่อ'},{id:'empCode',label:'รหัสพนักงาน'},{id:'position',label:'ตำแหน่ง'},
@@ -5147,7 +5155,8 @@ var STANDALONE_FORM_TEMPLATES = [
       {id:'topic',label:'หัวข้อประเมิน (Core/Functional/Managerial Competency)'},{id:'maxScore',label:'คะแนนเต็ม'},{id:'score',label:'ได้คะแนน'}
     ]}],
     fields2:[{id:'totalScore',label:'คะแนนรวม'},{id:'grade',label:'เกรดที่ได้ (A/B/C/D/E)'}],
-    signatures:['ผู้ได้รับการประเมิน','ผู้ประเมิน','แผนกทรัพยากรบุคคล (คำนวณโดย)']},
+    signatures:['ผู้ได้รับการประเมิน','ผู้ประเมิน','แผนกทรัพยากรบุคคล (คำนวณโดย)'],
+    employeeFieldMap:{name:'fullName',empCode:'empCode',position:'position',div:'department',startDate:'startDate'}},
   {code:'FM-HR 024', title:'แบบสำรวจ/ประเมินความจำเป็นในการฝึกอบรม',
     fields:[
       {id:'q1',label:'1. การทำงานของหน่วยงานท่านมีปัญหาเรื่องใดบ้าง',type:'textarea',span:2},
@@ -5161,7 +5170,8 @@ var STANDALONE_FORM_TEMPLATES = [
     tables:[{title:'Competency Gap รายบุคคล',rows:15,columns:[
       {id:'skill',label:'ทักษะ/ความรู้ที่จำเป็นต้องมีในตำแหน่ง'},{id:'expected',label:'ระดับที่คาดหวัง'},{id:'actual',label:'ทำได้จริง'},{id:'gap',label:'Competency Gap'},{id:'note',label:'หมายเหตุ'}
     ]}],
-    signatures:['ผู้จัดการฝ่าย/ผู้อำนวยการฝ่าย','ผู้จัดการฝ่ายทรัพยากรบุคคล']},
+    signatures:['ผู้จัดการฝ่าย/ผู้อำนวยการฝ่าย','ผู้จัดการฝ่ายทรัพยากรบุคคล'],
+    employeeFieldMap:{name:'fullName',empCode:'empCode',position:'position',div:'department',startDate:'startDate'}},
   {code:'FM-HR 025', title:'แบบสรุปความจำเป็นในการฝึกอบรม',
     fields:[{id:'div',label:'ฝ่าย'},{id:'position',label:'ตำแหน่ง'},{id:'level',label:'ระดับ'}],
     checkboxGroups:[{id:'need',label:'ความจำเป็นที่เกิดขึ้น',options:['ผลงานไม่ได้มาตรฐาน','จุดอ่อน/ข้อบกพร่อง','ความรู้/ทักษะไม่เพียงพอ','มีศักยภาพเติบโต','พัฒนารองรับแผนอนาคต','อื่นๆ']}],
@@ -5179,13 +5189,15 @@ var STANDALONE_FORM_TEMPLATES = [
       {id:'q3',label:'3. หลังอบรมไปแล้ว 3 เดือน พนักงานมีพัฒนาการด้านการทำงานหรือไม่ อย่างไร',type:'textarea',span:2},
       {id:'q4',label:'4. สิ่งที่พนักงานยังต้องปรับปรุง และวิธีการพัฒนา',type:'textarea',span:2}
     ],
-    signatures:['ผู้จัดการฝ่าย/ผู้อำนวยการฝ่าย','ผู้จัดการฝ่ายทรัพยากรบุคคล']},
+    signatures:['ผู้จัดการฝ่าย/ผู้อำนวยการฝ่าย','ผู้จัดการฝ่ายทรัพยากรบุคคล'],
+    employeeFieldMap:{name:'fullName',position:'position',div:'department'}},
   {code:'FM-HR 028', title:'แบบบันทึกประวัติการฝึกอบรมของพนักงาน',
     fields:[{id:'name',label:'ชื่อ-สกุล'},{id:'position',label:'ตำแหน่ง'},{id:'div',label:'ฝ่าย'},{id:'startDate',label:'วันเริ่มงาน',type:'date'}],
     tables:[{title:'ประวัติการฝึกอบรม',rows:8,columns:[
       {id:'no',label:'ลำดับ'},{id:'course',label:'หลักสูตร'},{id:'date',label:'วันที่'},{id:'hours',label:'ชั่วโมง'},{id:'result',label:'ผล'},{id:'note',label:'หมายเหตุ'}
     ]}],
-    signatures:['ผู้สรุป (ฝ่ายทรัพยากรบุคคล)','ผู้จัดการฝ่าย']}
+    signatures:['ผู้สรุป (ฝ่ายทรัพยากรบุคคล)','ผู้จัดการฝ่าย'],
+    employeeFieldMap:{name:'fullName',position:'position',div:'department',startDate:'startDate'}}
 ];
 window.STANDALONE_FORM_TEMPLATES = STANDALONE_FORM_TEMPLATES;
 var docStandaloneFormTemplate = null;
@@ -5231,11 +5243,19 @@ function renderStandaloneFormHtml(tpl){
   html += '<div class="actions" style="justify-content:flex-end;margin-top:16px"><button class="btn-ghost" onclick="closeSharedModal()">ปิด</button><button class="btn-primary" onclick="printStandaloneForm()">🖨️ พิมพ์</button></div>';
   return html;
 }
-window.openStandaloneForm = function(code){
+window.openStandaloneForm = function(code, empCode){
   var tpl = STANDALONE_FORM_TEMPLATES.find(function(t){return t.code===code;});
   if(!tpl) return;
   docStandaloneFormTemplate = tpl;
   docStandaloneFormValues = {};
+  if(empCode && tpl.employeeFieldMap){
+    var emp = getEmployeeByCode(empCode);
+    if(emp){
+      Object.keys(tpl.employeeFieldMap).forEach(function(fieldId){
+        docStandaloneFormValues[fieldId] = emp[tpl.employeeFieldMap[fieldId]] || '';
+      });
+    }
+  }
   openSharedModal(tpl.code+' — '+tpl.title, renderStandaloneFormHtml(tpl), true);
 };
 window.updateStandaloneFormValue = function(id, value){ docStandaloneFormValues[id]=value; };
