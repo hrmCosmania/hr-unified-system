@@ -5164,9 +5164,65 @@ function probationResultBadgeV43(action){if(!action)return '';if(action.result==
 window.renderProbationTable=function(){
   var search=((elV43('probSearch')||{}).value||'').trim().toLowerCase();var status=(elV43('probStatusFilter')||{}).value||'';var showCompleted=!!((elV43('probShowCompleted')||{}).checked);
   var rows=probationVisibleEmployees().filter(function(emp){var action=probationAction(emp.empCode);var completed=!!action;if(completed&&!showCompleted)return false;if(search&&![emp.empCode,emp.fullName,emp.department,emp.position].join(' ').toLowerCase().includes(search))return false;if(status==='completed'&&!completed)return false;if(status==='passed'&&(!action||action.result!=='PASS'))return false;if(status==='failed'&&(!action||action.result!=='FAIL'))return false;if(status&&!['completed','passed','failed'].includes(status)&&completed)return false;if(status&&!['completed','passed','failed'].includes(status)&&probationStatusKey(emp)!==status)return false;return true;}).sort(function(a,b){return (probationDaysRemaining(a)??9999)-(probationDaysRemaining(b)??9999);});
-  elV43('probTbody').innerHTML=rows.map(function(emp){var action=probationAction(emp.empCode);var actionMeta=action?'<div class="small">'+formatThaiDate(action.assessedAt||action.completedAt)+' · '+escapeHtml(action.completedBy||'HR')+'</div>':'';return '<tr data-code="'+escAttrV43(emp.empCode)+'"><td>'+escapeHtml(emp.empCode)+'</td><td>'+escapeHtml(emp.fullName)+'</td><td>'+escapeHtml(emp.department||'-')+'</td><td>'+escapeHtml(emp.position||'-')+'</td><td>'+formatThaiDate(emp.startDate)+'</td><td>'+formatThaiDate(probationDueDate(emp))+'</td><td>'+(action?probationResultBadgeV43(action)+actionMeta:probationStatusBadge(emp))+'</td><td>'+formatThaiDate(nextWorkAnniversary(emp))+'</td><td>'+escapeHtml(getEmployeeName(emp.parentId)||'-')+'</td><td><div class="act-group"><div class="act-row">'+probationMilestoneChips(emp)+'<a class="chip cal" href="'+escapeHtml(buildProbationGoogleCalendarUrl(emp))+'" target="_blank" rel="noopener">ครบกำหนด</a><button class="chip" onclick="downloadEmployeeProbationICS(\''+escAttrV43(emp.empCode)+'\')">.ics</button></div><div class="act-row">'+(action?'<button class="btn-ghost btn-sm" onclick="reopenProbation(\''+escAttrV43(emp.empCode)+'\')">นำกลับมาติดตาม</button>':'<button class="btn-primary btn-sm" onclick="completeProbation(\''+escAttrV43(emp.empCode)+'\')">ประเมินผลทดลองงาน</button> <button class="btn-ghost btn-sm" onclick="markProbationDoneQuick(\''+escAttrV43(emp.empCode)+'\')">ดำเนินการแล้ว</button>')+'</div></div></td></tr>';}).join('');
+  elV43('probTbody').innerHTML=rows.map(function(emp){var action=probationAction(emp.empCode);var actionMeta=action?'<div class="small">'+formatThaiDate(action.assessedAt||action.completedAt)+' · '+escapeHtml(action.completedBy||'HR')+'</div>':'';return '<tr data-code="'+escAttrV43(emp.empCode)+'"><td>'+escapeHtml(emp.empCode)+'</td><td>'+escapeHtml(emp.fullName)+'</td><td>'+escapeHtml(emp.department||'-')+'</td><td>'+escapeHtml(emp.position||'-')+'</td><td>'+formatThaiDate(emp.startDate)+'</td><td>'+formatThaiDate(probationDueDate(emp))+'</td><td>'+(action?probationResultBadgeV43(action)+actionMeta:probationStatusBadge(emp))+'</td><td>'+formatThaiDate(nextWorkAnniversary(emp))+'</td><td>'+escapeHtml(getEmployeeName(emp.parentId)||'-')+'</td><td><div class="act-group"><div class="act-row">'+probationMilestoneChips(emp)+'<a class="chip cal" href="'+escapeHtml(buildProbationGoogleCalendarUrl(emp))+'" target="_blank" rel="noopener">ครบกำหนด</a><button class="chip" onclick="downloadEmployeeProbationICS(\''+escAttrV43(emp.empCode)+'\')">.ics</button><button class="chip" onclick="printProbationEvaluationForm(\''+escAttrV43(emp.empCode)+'\')">🖨️ แบบประเมิน</button></div><div class="act-row">'+(action?'<button class="btn-ghost btn-sm" onclick="reopenProbation(\''+escAttrV43(emp.empCode)+'\')">นำกลับมาติดตาม</button>':'<button class="btn-primary btn-sm" onclick="completeProbation(\''+escAttrV43(emp.empCode)+'\')">ประเมินผลทดลองงาน</button> <button class="btn-ghost btn-sm" onclick="markProbationDoneQuick(\''+escAttrV43(emp.empCode)+'\')">ดำเนินการแล้ว</button>')+'</div></div></td></tr>';}).join('');
   elV43('probEmpty').classList.toggle('hidden',rows.length>0);
 };renderProbationTable=window.renderProbationTable;
+var PROBATION_CRITERIA_LIST=[
+  'ความรู้ความสามารถในการปฏิบัติงาน และความสามารถในการเรียนรู้สิ่งใหม่ๆเกี่ยวกับงาน',
+  'ประสิทธิภาพในการทำงาน',
+  'ความรับผิดชอบและความกระตือรือร้นในการทำงาน',
+  'ความละเอียดรอบคอบในการทำงานและความสามารถในการแก้ปัญหาเฉพาะหน้า',
+  'การวิเคราะห์ปัญหาอย่างละเอียด สุขุม ไตร่ตรองอย่างมีเหตุผล',
+  'การวางแผนหรือเตรียมการก่อนทำงานและความมีระเบียบแบบแผนในการทำงาน',
+  'ความสามารถ / ทักษะในการใช้คอมพิวเตอร์ , ภาษาอังกฤษ / อุปกรณ์สำนักงาน',
+  'ความคิดริเริ่มสร้างสรรค์ในการทำงาน',
+  'ความเชื่อมั่นในตัวเอง และความสามารถในการตัดสินใจ',
+  'ความเป็นผู้นำ',
+  'ความซื่อสัตย์',
+  'การตรงต่อเวลา',
+  'ความขยันหมั่นเพียร และความอดทนสม่ำเสมอ',
+  'การปฏิบัติตามระเบียบและข้อบังคับของหน่วยงาน',
+  'การปรับตัวให้เข้ากับระบบการทำงานของบริษัท',
+  'การรับฟังความคิดเห็นของผู้อื่น ความเชื่อถือและยอมรับจากผู้ร่วมงาน',
+  'ความสามารถในการทำงานเป็นกลุ่ม',
+  'การเสียสละเพื่อส่วนรวม',
+  'มนุษย์สัมพันธ์ในการเข้าร่วมกิจกรรมกับบริษัทฯ',
+  'ความสัมพันธ์กับผู้ร่วมงาน และกับผู้ใต้บังคับบัญชา'
+];
+function buildProbationEvaluationFormHtml(emp){
+  var action=probationAction(emp.empCode);
+  var criteriaRows=PROBATION_CRITERIA_LIST.map(function(c,i){
+    return '<tr><td>'+(i+1)+'</td><td class="asset-item-cell">'+escapeHtml(c)+'</td><td></td><td></td><td></td><td></td></tr>';
+  }).join('');
+  var resultChecks=[
+    ['PASS','ผ่านทดลองงาน / ปรับบรรจุเป็นพนักงานประจำ'],
+    ['FAIL','ไม่ผ่านทดลองงาน']
+  ].map(function(r){
+    var marked=action&&action.result===r[0];
+    return '<div>'+(marked?'☑':'☐')+' '+escapeHtml(r[1])+'</div>';
+  }).join('');
+  return '<div class="asset-print-header">'
+    + '<div class="asset-print-brand"><div class="pos-print-mark">HR</div><div><h1 class="pos-print-title">แบบประเมินพนักงานทดลองงาน</h1><div class="pos-print-subtitle">Probation Performance Appraisal Form</div></div></div>'
+    + '<div class="asset-print-doc-ctrl">รหัสเอกสาร: FM-HR 021</div>'
+    + '</div>'
+    + '<div class="pos-print-infobar"><div class="pos-print-infobox"><label>ชื่อ-สกุล</label><strong>'+escapeHtml(emp.fullName)+'</strong></div><div class="pos-print-infobox"><label>รหัสพนักงาน</label><strong>'+escapeHtml(emp.empCode)+'</strong></div><div class="pos-print-infobox"><label>ตำแหน่ง</label><strong>'+escapeHtml(emp.position||'-')+'</strong></div></div>'
+    + '<div class="pos-print-infobar"><div class="pos-print-infobox"><label>แผนก</label><strong>'+escapeHtml(emp.department||'-')+'</strong></div><div class="pos-print-infobox"><label>วันที่เริ่มงาน</label><strong>'+escapeHtml(formatThaiDate(emp.startDate))+'</strong></div><div class="pos-print-infobox"><label>วันที่ครบระยะทดลองงาน</label><strong>'+escapeHtml(formatThaiDate(probationDueDate(emp)))+'</strong></div></div>'
+    + '<div class="pos-print-infobar"><div class="pos-print-infobox"><label>หัวหน้าแผนก</label><strong>'+escapeHtml(getEmployeeName(emp.parentId)||'-')+'</strong></div><div></div><div></div></div>'
+    + '<div class="asset-print-cat-title">การประเมินผลทดลองงาน (Probation Performance Evaluation) — เกณฑ์ (5) ดีมาก / (4) ดี / (3) ปานกลาง / (2) น้อย / (1) ต้องปรับปรุง</div>'
+    + '<table><thead><tr><th>ข้อ</th><th>หัวข้อการประเมิน</th><th>30 วัน</th><th>60 วัน</th><th>90 วัน</th><th>120 วัน</th></tr></thead><tbody>'+criteriaRows+'<tr><td colspan="2" style="text-align:right;font-weight:700">รวมคะแนน</td><td></td><td></td><td></td><td></td></tr></tbody></table>'
+    + '<div class="asset-print-cat-title">สถิติการปฏิบัติงาน</div>'
+    + '<table><thead><tr><th></th><th>30 วัน</th><th>60 วัน</th><th>90 วัน</th><th>120 วัน</th></tr></thead><tbody>'
+    + ['ลาป่วย (วัน)','ลากิจ (วัน)','ขาดงาน (วัน)','มาสาย (ครั้ง)'].map(function(l){return '<tr><td class="asset-item-cell">'+l+'</td><td></td><td></td><td></td><td></td></tr>';}).join('')
+    + '</tbody></table>'
+    + '<div class="asset-print-cat-title">สรุปผลการประเมิน (สำหรับแผนกทรัพยากรบุคคล)</div>'
+    + '<div class="asset-print-note">'+resultChecks+(action&&action.assessedAt?'<div>ประเมินเมื่อ '+escapeHtml(formatThaiDate(action.assessedAt))+'</div>':'')+'</div>'
+    + '<div class="pos-print-sign"><div>ผู้จัดการแผนก/ผู้ประเมิน<br>วันที่ ____________</div><div>พนักงาน<br>วันที่ ____________</div><div>แผนกทรัพยากรบุคคล<br>วันที่ ____________</div></div>';
+}
+window.printProbationEvaluationForm=function(empCode){
+  var emp=getEmployeeByCode(empCode);
+  if(!emp){toast('ไม่พบข้อมูลพนักงาน');return;}
+  renderTrainingApprovalPrintArea(buildProbationEvaluationFormHtml(emp));
+};
 function initV43(){installProbationOutcomeFieldsV43();renderProbationSummary();renderProbationTable();window.HR_V43_READY=true;}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initV43);else initV43();
 })();
