@@ -431,7 +431,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <section class="card">
 <h3 class="section-title">สร้างนามบัตรอิเล็กทรอนิกส์ (QR Code)</h3>
 <div class="sub" style="margin-bottom:12px">เลือกพนักงาน ระบบจะดึงชื่อ ตำแหน่ง แผนก เบอร์โทร และอีเมลจากฐานข้อมูลมาเติมให้ — แก้ไขได้ก่อนสร้าง QR</div>
-<div class="form-grid"><div class="field"><label>พนักงาน</label><select id="ncEmpCode" onchange="loadNamecardEmployee()"><option value="">— เลือกพนักงาน —</option></select></div></div>
+<div class="form-grid"><div class="field combo-field"><label>พนักงาน</label><input id="ncEmpCode" type="hidden"/><div class="combo-input-wrap"><input autocomplete="off" id="ncEmpSearch" onfocus="ncEmpComboSearch(this.value)" oninput="ncEmpComboSearch(this.value)" placeholder="พิมพ์ชื่อ รหัส หรือชื่อเล่นเพื่อค้นหาพนักงาน"/><button class="btn-ghost btn-sm" onclick="clearNcEmployeeSelection()" type="button">ล้าง</button></div><div class="combo-options hidden" id="ncEmpOptions" role="listbox"></div></div></div>
 <div class="small" id="nc_templateLabel" style="margin-top:8px;color:var(--v4-accent,#4b5563)"></div>
 <div class="form-grid two" style="margin-top:12px">
 <div class="field"><label>ชื่อ - นามสกุล *</label><input id="nc_fullname"/></div>
@@ -2629,8 +2629,7 @@ function openOnboardingChecklistFor(empCode){
 }
 function openNamecardFor(empCode){
   showOnboardingSubtab('namecard');
-  const select = document.getElementById('ncEmpCode');
-  if(select){ select.value = empCode; loadNamecardEmployee(); }
+  selectNcEmployee(empCode);
   const section = document.getElementById('onboarding-sub-namecard');
   if(section) section.scrollIntoView({behavior:'smooth', block:'start'});
 }
@@ -2703,12 +2702,34 @@ function ncTemplateForEmployee(emp){
   return (emp && emp.company === 'CMN') ? NC_TEMPLATE_COSMANIA : NC_TEMPLATE_GODMAMI;
 }
 function renderNamecardModule(){
-  const select = document.getElementById('ncEmpCode');
-  if(!select) return;
-  const current = select.value;
-  const rows = onbActiveEmployees().slice().sort((a,b) => (a.fullName||'').localeCompare(b.fullName||'', 'th'));
-  select.innerHTML = '<option value="">— เลือกพนักงาน —</option>' + rows.map(e => `<option value="${escapeHtml(e.empCode)}">${escapeHtml(e.fullName)} (${escapeHtml(e.empCode)})</option>`).join('');
-  if([...select.options].some(o => o.value===current)) select.value = current;
+  // employee list is searched on demand via ncEmpComboSearch; nothing to pre-populate.
+}
+function ncEmpComboSearch(query){
+  const box = document.getElementById('ncEmpOptions');
+  if(!box) return;
+  const q = String(query||'').trim().toLowerCase();
+  const rows = onbActiveEmployees().filter(function(e){
+    if(!q) return true;
+    return [e.empCode, e.fullName, e.nickname, e.department, e.position].join(' ').toLowerCase().includes(q);
+  }).slice(0,40);
+  box.innerHTML = rows.map(function(e){
+    return '<div class="combo-option" role="option" tabindex="0" onclick="selectNcEmployee(\''+v4EscapeAttr(e.empCode)+'\')"><div class="combo-title">'+escapeHtml(e.fullName)+(e.nickname?' ('+escapeHtml(e.nickname)+')':'')+'</div><div class="combo-meta">'+escapeHtml(e.empCode)+' · '+escapeHtml(e.position||'-')+' · '+escapeHtml(e.department||'-')+'</div></div>';
+  }).join('') || '<div class="combo-option"><div class="combo-meta">ไม่พบพนักงานที่ตรงกับคำค้น</div></div>';
+  box.classList.remove('hidden');
+}
+function selectNcEmployee(code){
+  const emp = getEmployeeByCode(code);
+  if(!emp) return;
+  document.getElementById('ncEmpCode').value = code;
+  document.getElementById('ncEmpSearch').value = emp.fullName + (emp.nickname ? ' (' + emp.nickname + ')' : '') + ' — ' + emp.empCode;
+  document.getElementById('ncEmpOptions').classList.add('hidden');
+  loadNamecardEmployee();
+}
+function clearNcEmployeeSelection(){
+  document.getElementById('ncEmpCode').value = '';
+  document.getElementById('ncEmpSearch').value = '';
+  document.getElementById('ncEmpOptions').classList.add('hidden');
+  loadNamecardEmployee();
 }
 function loadNamecardEmployee(){
   const empCode = document.getElementById('ncEmpCode').value;
@@ -3962,7 +3983,7 @@ function initV4(){
   document.querySelectorAll('.tab-btn').forEach(function(b){b.dataset.module=b.dataset.tab;});
   refreshEmployeeFilters();refreshParentSelect(null);renderEmployeesTable();renderEmployeeSummary();
   refreshJobFilters();refreshTrainingParticipantFilters();refreshReportFilters();renderSettingsTab();
-  document.addEventListener('click',function(ev){var box=document.getElementById('empSupervisorOptions');if(box&&!ev.target.closest('.combo-field'))box.classList.add('hidden');var posBox=document.getElementById('empPositionOptions');if(posBox&&!ev.target.closest('.combo-field'))posBox.classList.add('hidden');var dottedBox=document.getElementById('empDottedOptions');if(dottedBox&&!ev.target.closest('.combo-field'))dottedBox.classList.add('hidden');var divBox=document.getElementById('empDivisionOptions');if(divBox&&!ev.target.closest('.combo-field'))divBox.classList.add('hidden');var depBox=document.getElementById('empDepartmentOptions');if(depBox&&!ev.target.closest('.combo-field'))depBox.classList.add('hidden');});
+  document.addEventListener('click',function(ev){var box=document.getElementById('empSupervisorOptions');if(box&&!ev.target.closest('.combo-field'))box.classList.add('hidden');var posBox=document.getElementById('empPositionOptions');if(posBox&&!ev.target.closest('.combo-field'))posBox.classList.add('hidden');var dottedBox=document.getElementById('empDottedOptions');if(dottedBox&&!ev.target.closest('.combo-field'))dottedBox.classList.add('hidden');var divBox=document.getElementById('empDivisionOptions');if(divBox&&!ev.target.closest('.combo-field'))divBox.classList.add('hidden');var depBox=document.getElementById('empDepartmentOptions');if(depBox&&!ev.target.closest('.combo-field'))depBox.classList.add('hidden');var ncBox=document.getElementById('ncEmpOptions');if(ncBox&&!ev.target.closest('.combo-field'))ncBox.classList.add('hidden');});
   window.HR_V4_READY=true;
 }
 initV4();
