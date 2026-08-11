@@ -12,6 +12,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/namecard-assets/qrgen.js"></script>
 <script src="/namecard-assets/cardbg.js"></script>
+<script src="/namecard-assets/cardbg-cosmania.js"></script>
 <script>
   var SUPABASE_URL = 'https://zkqewnwulnugbhndtnkr.supabase.co';
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcWV3bnd1bG51Z2JobmR0bmtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MTM5MjEsImV4cCI6MjEwMTQ4OTkyMX0.Rfo2492G7DtkhQuPfHCXCPX0jRIHUceRpDDd8AlHJh0';
@@ -431,6 +432,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <h3 class="section-title">สร้างนามบัตรอิเล็กทรอนิกส์ (QR Code)</h3>
 <div class="sub" style="margin-bottom:12px">เลือกพนักงาน ระบบจะดึงชื่อ ตำแหน่ง แผนก เบอร์โทร และอีเมลจากฐานข้อมูลมาเติมให้ — แก้ไขได้ก่อนสร้าง QR</div>
 <div class="form-grid"><div class="field"><label>พนักงาน</label><select id="ncEmpCode" onchange="loadNamecardEmployee()"><option value="">— เลือกพนักงาน —</option></select></div></div>
+<div class="small" id="nc_templateLabel" style="margin-top:8px;color:var(--v4-accent,#4b5563)"></div>
 <div class="form-grid two" style="margin-top:12px">
 <div class="field"><label>ชื่อ - นามสกุล *</label><input id="nc_fullname"/></div>
 <div class="field"><label>ตำแหน่ง</label><input id="nc_title"/></div>
@@ -450,7 +452,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <div class="actions">
 <button class="btn-ghost btn-sm" onclick="downloadNamecardQR()">ดาวน์โหลด QR (PNG)</button>
 <button class="btn-ghost btn-sm" onclick="downloadNamecardVCF()">ดาวน์โหลด .vcf</button>
-<button class="btn-green btn-sm" onclick="downloadNamecardCard()">ดาวน์โหลดนามบัตร Godmami (PNG)</button>
+<button class="btn-green btn-sm" onclick="downloadNamecardCard()">ดาวน์โหลดนามบัตร (PNG)</button>
 </div>
 </div>
 </section>
@@ -2640,16 +2642,66 @@ if(typeof qrcode !== 'undefined'){
 }
 let ncLastVCard = '';
 let ncLastQrDataURL = '';
-const NC_CARD_LAYOUT = {
+let ncActiveTemplateKey = 'godmami';
+const NC_TEMPLATE_GODMAMI = {
+  key: 'godmami',
+  label: 'Godmami',
+  bgDataUrlVar: 'CARD_BG_DATAURL',
+  filename: 'godmami-namecard.png',
   bgColor: '#fcf9f8',
+  combineOrgIntoTitle: true,
   qrBox: { x: 1148, y: 636, w: 183, h: 214 },
   name:    { x: 749, baseline: 296, maxRight: 1150, font: 60, weight: 'bold', color: '#0d2350' },
   title:   { x: 748, baseline: 339, maxRight: 1150, font: 32, weight: '600',  color: '#36a28f' },
   phone:   { x: 793, baseline: 433, maxRight: 1150, font: 28, weight: 'normal', color: '#16294f' },
   email:   { x: 793, baseline: 482, maxRight: 1150, font: 28, weight: 'normal', color: '#16294f' },
   website: { x: 793, baseline: 531, maxRight: 1150, font: 28, weight: 'normal', color: '#16294f' },
-  addr:    { x: 793, top: 552, bottom: 648, maxRight: 1150, font: 27, lineHeight: 34, weight: 'normal', color: '#16294f' }
+  addr:    { x: 793, top: 552, bottom: 648, maxRight: 1150, font: 27, lineHeight: 34, weight: 'normal', color: '#16294f' },
+  clearRects: [
+    [745, 250, 420, 52],
+    [744, 313, 420, 32],
+    [789, 402, 380, 42],
+    [789, 450, 380, 43],
+    [789, 499, 380, 43],
+    [789, 548, 380, 108]
+  ],
+  defaultWebsite: 'www.godmamiorganic.com',
+  defaultAddress: '47 Soi Sukhumvit 60/1, Phra Khanong Tai, Phra Khanong, Bangkok 10260'
 };
+const NC_TEMPLATE_COSMANIA = {
+  key: 'cosmania',
+  label: 'Cosmania Laboratories',
+  bgDataUrlVar: 'CARD_BG_COSMANIA_DATAURL',
+  filename: 'cosmania-namecard.png',
+  bgColor: '#fdfdfd',
+  combineOrgIntoTitle: false,
+  qrBox: { x: 1131, y: 675, w: 227, h: 216 },
+  name:    { x: 78, baseline: 267, maxRight: 560, font: 50, weight: 'bold', color: '#0a0a0a' },
+  title:   { x: 78, baseline: 309, maxRight: 560, font: 28, weight: '500', color: '#4b5563' },
+  phone:   { x: 134, baseline: 388, maxRight: 560, font: 26, weight: 'normal', color: '#1f2937' },
+  email:   { x: 134, baseline: 440, maxRight: 560, font: 26, weight: 'normal', color: '#1f2937' },
+  website: { x: 134, baseline: 492, maxRight: 560, font: 26, weight: 'normal', color: '#1f2937' },
+  addr:    { x: 134, top: 515, bottom: 599, maxRight: 560, font: 24, lineHeight: 28, weight: 'normal', color: '#1f2937' },
+  clearRects: [
+    [74, 228, 490, 47],
+    [74, 284, 460, 32],
+    [70, 359, 500, 39],
+    [70, 410, 500, 40],
+    [70, 463, 500, 39],
+    [70, 511, 500, 92]
+  ],
+  defaultWebsite: 'www.cosmanialabs.com',
+  defaultAddress: 'Cosmania Laboratories Co., Ltd., 123 Innovation Road, Beauty District, Bangkok 10110, Thailand'
+};
+const NC_TEMPLATES = { godmami: NC_TEMPLATE_GODMAMI, cosmania: NC_TEMPLATE_COSMANIA };
+// top-level const/let bg data-URLs from cardbg*.js don't attach to window, so index by key here instead.
+const NC_BG_DATAURLS = {
+  godmami: (typeof CARD_BG_DATAURL !== 'undefined') ? CARD_BG_DATAURL : undefined,
+  cosmania: (typeof CARD_BG_COSMANIA_DATAURL !== 'undefined') ? CARD_BG_COSMANIA_DATAURL : undefined
+};
+function ncTemplateForEmployee(emp){
+  return (emp && emp.company === 'CMN') ? NC_TEMPLATE_COSMANIA : NC_TEMPLATE_GODMAMI;
+}
 function renderNamecardModule(){
   const select = document.getElementById('ncEmpCode');
   if(!select) return;
@@ -2661,11 +2713,17 @@ function renderNamecardModule(){
 function loadNamecardEmployee(){
   const empCode = document.getElementById('ncEmpCode').value;
   const emp = empCode ? getEmployeeByCode(empCode) : null;
+  const tpl = ncTemplateForEmployee(emp);
+  ncActiveTemplateKey = tpl.key;
   document.getElementById('nc_fullname').value = emp ? (emp.fullName||'') : '';
   document.getElementById('nc_title').value = emp ? (emp.position||'') : '';
   document.getElementById('nc_org').value = emp ? (emp.department||'') : '';
   document.getElementById('nc_phone').value = emp ? (emp.phone||'') : '';
   document.getElementById('nc_email').value = emp ? (emp.email||'') : '';
+  document.getElementById('nc_website').value = tpl.defaultWebsite;
+  document.getElementById('nc_address').value = tpl.defaultAddress;
+  const label = document.getElementById('nc_templateLabel');
+  if(label) label.textContent = emp ? ('เทมเพลตนามบัตร: ' + tpl.label + (emp.company ? ' (บริษัท ' + emp.company + ')' : '')) : '';
   document.getElementById('nc_resultCard').classList.add('hidden');
 }
 function ncBuildVCard(){
@@ -2765,7 +2823,9 @@ function downloadNamecardCard(){
     document.getElementById('nc_error').textContent = 'กรุณาสร้าง QR Code ก่อน';
     return;
   }
-  if(typeof CARD_BG_DATAURL === 'undefined'){
+  const tpl = NC_TEMPLATES[ncActiveTemplateKey] || NC_TEMPLATE_GODMAMI;
+  const bgDataUrl = NC_BG_DATAURLS[tpl.key];
+  if(typeof bgDataUrl === 'undefined'){
     document.getElementById('nc_error').textContent = 'ไม่พบไฟล์เทมเพลตนามบัตร';
     return;
   }
@@ -2783,21 +2843,16 @@ function downloadNamecardCard(){
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(bg, 0, 0, W, H);
-    ctx.fillStyle = NC_CARD_LAYOUT.bgColor;
-    ctx.fillRect(NC_CARD_LAYOUT.name.x - 4, 250, 420, 52);
-    ctx.fillRect(NC_CARD_LAYOUT.title.x - 4, 313, 420, 32);
-    ctx.fillRect(NC_CARD_LAYOUT.phone.x - 4, 402, 380, 42);
-    ctx.fillRect(NC_CARD_LAYOUT.email.x - 4, 450, 380, 43);
-    ctx.fillRect(NC_CARD_LAYOUT.website.x - 4, 499, 380, 43);
-    ctx.fillRect(NC_CARD_LAYOUT.addr.x - 4, NC_CARD_LAYOUT.addr.top - 4, 380, NC_CARD_LAYOUT.addr.bottom - NC_CARD_LAYOUT.addr.top + 8);
-    ncDrawField(ctx, NC_CARD_LAYOUT.name, name);
-    const subtitle = [title, org].filter(Boolean).join('  •  ');
-    ncDrawField(ctx, NC_CARD_LAYOUT.title, subtitle);
-    ncDrawField(ctx, NC_CARD_LAYOUT.phone, phone);
-    ncDrawField(ctx, NC_CARD_LAYOUT.email, email);
-    ncDrawField(ctx, NC_CARD_LAYOUT.website, website);
+    ctx.fillStyle = tpl.bgColor;
+    tpl.clearRects.forEach(function(r){ ctx.fillRect(r[0], r[1], r[2], r[3]); });
+    ncDrawField(ctx, tpl.name, name);
+    const subtitle = tpl.combineOrgIntoTitle ? [title, org].filter(Boolean).join('  •  ') : title;
+    ncDrawField(ctx, tpl.title, subtitle);
+    ncDrawField(ctx, tpl.phone, phone);
+    ncDrawField(ctx, tpl.email, email);
+    ncDrawField(ctx, tpl.website, website);
     if(address){
-      const a = NC_CARD_LAYOUT.addr;
+      const a = tpl.addr;
       ctx.font = a.weight + ' ' + a.font + 'px "Segoe UI", Tahoma, sans-serif';
       ctx.fillStyle = a.color;
       ctx.textBaseline = 'alphabetic';
@@ -2805,7 +2860,7 @@ function downloadNamecardCard(){
       let y = a.top + a.font * 0.78;
       for(const line of lines){ ctx.fillText(line, a.x, y); y += a.lineHeight; }
     }
-    const qb = NC_CARD_LAYOUT.qrBox;
+    const qb = tpl.qrBox;
     const qrImg = new Image();
     qrImg.onload = function(){
       const size = Math.min(qb.w, qb.h);
@@ -2813,13 +2868,13 @@ function downloadNamecardCard(){
       const qy = qb.y + (qb.h - size) / 2;
       ctx.drawImage(qrImg, qx, qy, size, size);
       const link = document.createElement('a');
-      link.download = 'godmami-namecard.png';
+      link.download = tpl.filename;
       link.href = canvas.toDataURL('image/png');
       link.click();
     };
     qrImg.src = ncLastQrDataURL;
   };
-  bg.src = CARD_BG_DATAURL;
+  bg.src = bgDataUrl;
 }
 function renderOnboardingChecklistTab(){
   const empSelect = document.getElementById('onb_empCode');
