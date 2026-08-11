@@ -2575,7 +2575,7 @@ function renderOnboardingNewHireTable(){
     const buddy = record && record.buddyEmpCode ? getEmployeeByCode(record.buddyEmpCode) : null;
     const posInfo = [e.position, e.department, employeeDivision(e)].filter(Boolean).join(' · ');
     const progressLabel = `${progress.done}/${progress.total}` + (record && record.closed ? ' <span class="badge">ปิดงานแล้ว</span>' : '');
-    return `<tr><td><strong>${escapeHtml(e.fullName)}</strong><div class="small">${escapeHtml(e.empCode)}${posInfo?' · '+escapeHtml(posInfo):''}</div></td><td>${escapeHtml(formatThaiDate(e.startDate))}</td><td>${buddy?escapeHtml(buddy.fullName):'-'}</td><td>${progressLabel}</td><td><button class="btn-ghost btn-sm" onclick="openOnboardingChecklistFor('${escapeHtml(e.empCode)}')">เปิด Checklist</button></td></tr>`;
+    return `<tr><td><strong>${escapeHtml(e.fullName)}</strong><div class="small">${escapeHtml(e.empCode)}${posInfo?' · '+escapeHtml(posInfo):''}</div></td><td>${escapeHtml(formatThaiDate(e.startDate))}</td><td>${buddy?escapeHtml(buddy.fullName):'-'}</td><td>${progressLabel}</td><td><button class="btn-ghost btn-sm" onclick="openOnboardingChecklistFor('${escapeHtml(e.empCode)}')">เปิด Checklist</button> <button class="btn-ghost btn-sm" onclick="openNamecardFor('${escapeHtml(e.empCode)}')">🪪 นามบัตร QR</button></td></tr>`;
   }).join('');
   const empty = document.getElementById('onbNewHireEmpty');
   if(empty){
@@ -2590,6 +2590,18 @@ function openOnboardingChecklistFor(empCode){
   loadOnboardingChecklist();
   const section = document.getElementById('onb_empCode');
   if(section) section.closest('section').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function openNamecardFor(empCode){
+  const emp = getEmployeeByCode(empCode);
+  if(!emp) return;
+  const params = new URLSearchParams({
+    name: emp.fullName || '',
+    title: emp.position || '',
+    org: emp.department || '',
+    phone: emp.phone || '',
+    email: emp.email || ''
+  });
+  window.open('/namecard.html?' + params.toString(), '_blank', 'noopener');
 }
 function renderOnboardingChecklistTab(){
   const empSelect = document.getElementById('onb_empCode');

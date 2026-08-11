@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สร้าง QR Code นามบัตร — Godmami</title>
+<script src="namecard-assets/qrgen.js"></script>
+<script src="namecard-assets/cardbg.js"></script>
+<style>
+  :root{
+    --primary:#2563eb;
+    --primary-dark:#1d4ed8;
+    --bg:#f4f6fb;
+    --card:#ffffff;
+    --text:#1f2937;
+    --muted:#6b7280;
+    --border:#e5e7eb;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI',Tahoma,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding:24px;
+  }
+  .wrap{
+    max-width:960px;
+    margin:0 auto;
+  }
+  h1{
+    font-size:22px;
+    margin-bottom:4px;
+  }
+  p.sub{
+    color:var(--muted);
+    margin-top:0;
+    margin-bottom:24px;
+    font-size:14px;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+  }
+  @media (max-width:720px){
+    .grid{grid-template-columns:1fr;}
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:20px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.05);
+  }
+  .card h2{
+    font-size:15px;
+    margin:0 0 16px 0;
+    color:var(--primary-dark);
+  }
+  label{
+    display:block;
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:4px;
+    margin-top:12px;
+  }
+  label:first-of-type{margin-top:0;}
+  input, select{
+    width:100%;
+    padding:9px 10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:14px;
+    background:#fff;
+    color:var(--text);
+  }
+  input:focus{
+    outline:none;
+    border-color:var(--primary);
+    box-shadow:0 0 0 3px rgba(37,99,235,0.15);
+  }
+  .row2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+  button{
+    margin-top:18px;
+    width:100%;
+    background:var(--primary);
+    color:#fff;
+    border:none;
+    padding:11px;
+    border-radius:8px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  button:hover{background:var(--primary-dark);}
+  .qr-box{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:320px;
+  }
+  #qrcanvas{
+    border:1px solid var(--border);
+    border-radius:8px;
+    max-width:100%;
+  }
+  .placeholder{
+    color:var(--muted);
+    font-size:13px;
+    text-align:center;
+    padding:40px 20px;
+  }
+  .actions{
+    display:flex;
+    gap:10px;
+    width:100%;
+    margin-top:16px;
+  }
+  .actions button{
+    margin-top:0;
+    background:#fff;
+    color:var(--primary-dark);
+    border:1px solid var(--primary);
+  }
+  .actions button:hover{
+    background:#eff6ff;
+  }
+  #cardBtn{
+    background:#059669;
+    width:100%;
+  }
+  #cardBtn:hover{background:#047857;}
+  .note{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:14px;
+    line-height:1.5;
+  }
+  .badge{
+    display:inline-block;
+    background:#ecfdf5;
+    color:#047857;
+    font-size:11px;
+    padding:3px 8px;
+    border-radius:999px;
+    margin-bottom:14px;
+    font-weight:600;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="badge">DEMO — ฟรี ไม่มีค่าใช้จ่าย</span>
+  <h1>สร้าง QR Code จากข้อมูลติดต่อ</h1>
+  <p class="sub">กรอกข้อมูล แล้วสแกน QR เพื่อบันทึกเป็นรายชื่อผู้ติดต่อในมือถือได้ทันที (รูปแบบ vCard) — ทำงานทั้งหมดในเบราว์เซอร์ ไม่ส่งข้อมูลไปที่เซิร์ฟเวอร์ใดๆ</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>ข้อมูลติดต่อ</h2>
+
+      <label>ชื่อ - นามสกุล *</label>
+      <input id="fullname" type="text" placeholder="เช่น ณัฐพล พลเยี่ยม">
+
+      <div class="row2">
+        <div>
+          <label>ตำแหน่ง</label>
+          <input id="title" type="text" placeholder="เช่น HR Officer">
+        </div>
+        <div>
+          <label>บริษัท / หน่วยงาน</label>
+          <input id="org" type="text" placeholder="เช่น CM&CIL">
+        </div>
+      </div>
+
+      <label>เบอร์โทรศัพท์</label>
+      <input id="phone" type="tel" placeholder="เช่น 081-234-5678">
+
+      <label>อีเมล</label>
+      <input id="email" type="email" placeholder="เช่น name@example.com">
+
+      <label>เว็บไซต์</label>
+      <input id="website" type="text" placeholder="เช่น https://example.com">
+
+      <label>ที่อยู่</label>
+      <input id="address" type="text" placeholder="ที่อยู่ที่ทำงาน">
+
+      <button onclick="generateQR()">สร้าง QR Code</button>
+      <div class="note">
+        * ข้อมูลจะถูกเข้ารหัสเป็นรูปแบบมาตรฐาน vCard (VCF) ลงใน QR Code โดยตรง — สแกนแล้วมือถือส่วนใหญ่จะเสนอบันทึกเป็นผู้ติดต่อให้อัตโนมัติ
+      </div>
+    </div>
+
+    <div class="card qr-box" id="qrCard">
+      <h2 style="align-self:flex-start;">ผลลัพธ์ QR Code</h2>
+      <div id="qrPlaceholder" class="placeholder">กรอกข้อมูลด้านซ้าย แล้วกด "สร้าง QR Code"<br>เพื่อดูตัวอย่างที่นี่</div>
+      <img id="qrimg" style="display:none;" alt="QR Code นามบัตร">
+      <canvas id="qrcanvas" style="display:none;"></canvas>
+      <div class="actions" id="qrActions" style="display:none;">
+        <button onclick="downloadQR()">ดาวน์โหลด QR (PNG)</button>
+        <button onclick="downloadVCF()">ดาวน์โหลด .vcf</button>
+      </div>
+      <button id="cardBtn" style="display:none;" onclick="downloadCard()">ดาวน์โหลดนามบัตรอิเล็กทรอนิกส์ Godmami (PNG)</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// The bundled qrcode-generator library defaults to truncating each character to its
+// low byte, which mangles Thai (and any non-Latin1) text into mojibake once scanned.
+// Force proper UTF-8 byte encoding instead.
+qrcode.stringToBytes = function(s){ return Array.from(new TextEncoder().encode(s)); };
+
+// Pre-fill from query string so the HR system's onboarding page can link in with
+// an employee's info already in place (e.g. namecard.html?name=...&title=...).
+(function prefillFromQuery(){
+  const params = new URLSearchParams(location.search);
+  const map = { name: 'fullname', title: 'title', org: 'org', phone: 'phone', email: 'email', website: 'website', address: 'address' };
+  Object.keys(map).forEach(function(key){
+    const value = params.get(key);
+    if(value) document.getElementById(map[key]).value = value;
+  });
+})();
+
+let lastVCard = "";
+
+function buildVCard(){
+  const name = document.getElementById('fullname').value.trim();
+  const title = document.getElementById('title').value.trim();
+  const org = document.getElementById('org').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const website = document.getElementById('website').value.trim();
+  const address = document.getElementById('address').value.trim();
+
+  let lines = ["BEGIN:VCARD", "VERSION:3.0"];
+  lines.push("N:" + name + ";;;;");
+  lines.push("FN:" + name);
+  if(org) lines.push("ORG:" + org);
+  if(title) lines.push("TITLE:" + title);
+  if(phone) lines.push("TEL;TYPE=CELL:" + phone);
+  if(email) lines.push("EMAIL:" + email);
+  if(website) lines.push("URL:" + website);
+  if(address) lines.push("ADR;TYPE=WORK:;;" + address + ";;;;");
+  lines.push("END:VCARD");
+  return lines.join("\n");
+}
+
+let lastDataURL = "";
+
+function generateQR(){
+  const name = document.getElementById('fullname').value.trim();
+  if(!name){
+    alert("กรุณากรอกชื่อ-นามสกุลอย่างน้อย");
+    return;
+  }
+  lastVCard = buildVCard();
+  try{
+    const qr = qrcode(0, 'M');
+    qr.addData(lastVCard);
+    qr.make();
+    lastDataURL = qr.createDataURL(8, 8);
+
+    const img = document.getElementById('qrimg');
+    img.src = lastDataURL;
+    document.getElementById('qrPlaceholder').style.display = 'none';
+    img.style.display = 'block';
+    document.getElementById('qrActions').style.display = 'flex';
+    document.getElementById('cardBtn').style.display = 'block';
+  }catch(error){
+    console.error(error);
+    alert("เกิดข้อผิดพลาดในการสร้าง QR Code");
+  }
+}
+
+function downloadQR(){
+  if(!lastDataURL) return;
+  const link = document.createElement('a');
+  link.download = 'contact-qr.png';
+  link.href = lastDataURL;
+  link.click();
+}
+
+// Layout measured from the Godmami template artwork (1448x1086 native size).
+const CARD_LAYOUT = {
+  bgColor: '#fcf9f8',
+  qrBox: { x: 1148, y: 636, w: 183, h: 214 },
+  name:    { x: 749, baseline: 296, maxRight: 1150, font: 60, weight: 'bold', color: '#0d2350' },
+  title:   { x: 748, baseline: 339, maxRight: 1150, font: 32, weight: '600',  color: '#36a28f' },
+  phone:   { x: 793, baseline: 433, maxRight: 1150, font: 28, weight: 'normal', color: '#16294f' },
+  email:   { x: 793, baseline: 482, maxRight: 1150, font: 28, weight: 'normal', color: '#16294f' },
+  website: { x: 793, baseline: 531, maxRight: 1150, font: 28, weight: 'normal', color: '#16294f' },
+  addr:    { x: 793, top: 552, bottom: 648, maxRight: 1150, font: 27, lineHeight: 34, weight: 'normal', color: '#16294f' }
+};
+
+function fitFontSize(ctx, text, maxWidth, baseSize, weight, minSize){
+  let size = baseSize;
+  while(size > minSize){
+    ctx.font = weight + ' ' + size + 'px "Segoe UI", Tahoma, sans-serif';
+    if(ctx.measureText(text).width <= maxWidth) break;
+    size -= 2;
+  }
+  return size;
+}
+
+function wrapLines(ctx, text, maxWidth, font, maxLines){
+  ctx.font = font;
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines = [];
+  let current = '';
+  for(const word of words){
+    const trial = current ? current + ' ' + word : word;
+    if(ctx.measureText(trial).width <= maxWidth || !current){
+      current = trial;
+    } else {
+      lines.push(current);
+      current = word;
+      if(lines.length === maxLines - 1) break;
+    }
+  }
+  if(current) lines.push(current);
+  if(lines.length > maxLines) lines.length = maxLines;
+  return lines;
+}
+
+function drawField(ctx, field, text){
+  if(!text) return;
+  const maxWidth = field.maxRight - field.x;
+  const size = fitFontSize(ctx, text, maxWidth, field.font, field.weight, Math.max(14, field.font - 14));
+  ctx.font = field.weight + ' ' + size + 'px "Segoe UI", Tahoma, sans-serif';
+  ctx.fillStyle = field.color;
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(text, field.x, field.baseline);
+}
+
+function downloadCard(){
+  if(!lastDataURL){
+    alert("กรุณาสร้าง QR Code ก่อน");
+    return;
+  }
+  if(typeof CARD_BG_DATAURL === 'undefined'){
+    alert("ไม่พบไฟล์เทมเพลตนามบัตร (cardbg.js)");
+    return;
+  }
+
+  const name = document.getElementById('fullname').value.trim();
+  const title = document.getElementById('title').value.trim();
+  const org = document.getElementById('org').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const website = document.getElementById('website').value.trim();
+  const address = document.getElementById('address').value.trim();
+
+  const bg = new Image();
+  bg.onload = function(){
+    const W = bg.naturalWidth, H = bg.naturalHeight;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    ctx.drawImage(bg, 0, 0, W, H);
+
+    // clear placeholder label text areas with the card's background color
+    ctx.fillStyle = CARD_LAYOUT.bgColor;
+    ctx.fillRect(CARD_LAYOUT.name.x - 4, 250, 420, 52);
+    ctx.fillRect(CARD_LAYOUT.title.x - 4, 313, 420, 32);
+    ctx.fillRect(CARD_LAYOUT.phone.x - 4, 402, 380, 42);
+    ctx.fillRect(CARD_LAYOUT.email.x - 4, 450, 380, 43);
+    ctx.fillRect(CARD_LAYOUT.website.x - 4, 499, 380, 43);
+    ctx.fillRect(CARD_LAYOUT.addr.x - 4, CARD_LAYOUT.addr.top - 4, 380, CARD_LAYOUT.addr.bottom - CARD_LAYOUT.addr.top + 8);
+
+    drawField(ctx, CARD_LAYOUT.name, name);
+    const subtitle = [title, org].filter(Boolean).join('  •  ');
+    drawField(ctx, CARD_LAYOUT.title, subtitle);
+    drawField(ctx, CARD_LAYOUT.phone, phone);
+    drawField(ctx, CARD_LAYOUT.email, email);
+    drawField(ctx, CARD_LAYOUT.website, website);
+
+    if(address){
+      const a = CARD_LAYOUT.addr;
+      ctx.font = a.weight + ' ' + a.font + 'px "Segoe UI", Tahoma, sans-serif';
+      ctx.fillStyle = a.color;
+      ctx.textBaseline = 'alphabetic';
+      const lines = wrapLines(ctx, address, a.maxRight - a.x, ctx.font, 3);
+      let y = a.top + a.font * 0.78;
+      for(const line of lines){
+        ctx.fillText(line, a.x, y);
+        y += a.lineHeight;
+      }
+    }
+
+    // QR code into the dashed placeholder box
+    const qb = CARD_LAYOUT.qrBox;
+    const qrImg = new Image();
+    qrImg.onload = function(){
+      const size = Math.min(qb.w, qb.h);
+      const qx = qb.x + (qb.w - size) / 2;
+      const qy = qb.y + (qb.h - size) / 2;
+      ctx.drawImage(qrImg, qx, qy, size, size);
+
+      const link = document.createElement('a');
+      link.download = 'godmami-namecard.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    };
+    qrImg.src = lastDataURL;
+  };
+  bg.src = CARD_BG_DATAURL;
+}
+
+function downloadVCF(){
+  if(!lastVCard) return;
+  const blob = new Blob([lastVCard], { type: 'text/vcard' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = 'contact.vcf';
+  link.href = url;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
