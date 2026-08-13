@@ -401,7 +401,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <div class="view" id="view-onboarding">
 <section class="card">
 <h2>🧭 Tracking Onboarding</h2><div class="sub">Checklist การเริ่มงานใหม่ ติดตามวันเกิด และกำหนดทดลองงาน</div>
-<div class="subnav"><button class="subnav-btn active" id="onboardSubBtnChecklist" onclick="showOnboardingSubtab('checklist')">✅ Checklist เริ่มงานใหม่<span id="onbChecklistNotifBadge" class="onb-notif-badge hidden">0</span></button><button class="subnav-btn" id="onboardSubBtnBirthday" onclick="showOnboardingSubtab('birthday')">🎂 วันเกิด</button><button class="subnav-btn" id="onboardSubBtnProbation" onclick="showOnboardingSubtab('probation')">📋 ทดลองงาน</button></div>
+<div class="subnav"><button class="subnav-btn active" id="onboardSubBtnChecklist" onclick="showOnboardingSubtab('checklist')">✅ Checklist เริ่มงานใหม่<span id="onbChecklistNotifBadge" class="onb-notif-badge hidden">0</span></button><button class="subnav-btn" id="onboardSubBtnBirthday" onclick="showOnboardingSubtab('birthday')">🎂 วันเกิด</button><button class="subnav-btn" id="onboardSubBtnAnniversary" onclick="showOnboardingSubtab('anniversary')">🎉 ครบรอบการทำงาน</button><button class="subnav-btn" id="onboardSubBtnProbation" onclick="showOnboardingSubtab('probation')">📋 ทดลองงาน</button></div>
 </section>
 <div class="subview" id="onboarding-sub-checklist">
 <section class="summary-grid" id="onbChecklistSummaryGrid"></section>
@@ -422,6 +422,10 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <div class="subview" id="onboarding-sub-birthday">
 <section class="summary-grid" id="bdaySummaryGrid"></section>
 <section class="card"><div class="toolbar"><div class="toolbar-left"><input class="search-input" id="bdaySearch" oninput="renderBirthdayTable()" placeholder="ค้นหา ชื่อ / รหัส / แผนก / ตำแหน่ง"/><select id="bdayMonthFilter" onchange="renderBirthdayTable()"><option value="">ทุกเดือน</option><option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option><option value="4">เมษายน</option><option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option><option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option><option value="9">กันยายน</option><option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option></select></div><div class="toolbar-right"><button class="btn-ghost" onclick="downloadAllBirthdayICS()">📅 ดาวน์โหลด .ics ทั้งหมด</button></div></div><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>แผนก</th><th>ตำแหน่ง</th><th>วันเกิด</th><th>วันเกิดรอบถัดไป</th><th>อายุที่จะครบ</th><th>เหลืออีก</th><th>Email</th><th>การดำเนินการ</th></tr></thead><tbody id="bdayTbody"></tbody></table></div><div class="empty hidden" id="bdayEmpty">ไม่พบพนักงานที่มีข้อมูลวันเกิด</div></section>
+</div>
+<div class="subview" id="onboarding-sub-anniversary">
+<section class="summary-grid" id="anniversarySummaryGrid"></section>
+<section class="card"><div class="toolbar"><div class="toolbar-left"><input class="search-input" id="anniversarySearch" oninput="renderWorkAnniversaryTable()" placeholder="ค้นหา ชื่อ / รหัส / แผนก / ตำแหน่ง"/><select id="anniversaryYearFilter" onchange="renderWorkAnniversaryTable()"><option value="">ทุกรอบ (1/3/5 ปี)</option><option value="1">ครบ 1 ปี</option><option value="3">ครบ 3 ปี</option><option value="5">ครบ 5 ปี</option></select></div></div><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>แผนก</th><th>ตำแหน่ง</th><th>วันเริ่มงาน</th><th>ครบรอบ</th><th>วันครบรอบถัดไป</th><th>เหลืออีก</th></tr></thead><tbody id="anniversaryTbody"></tbody></table></div><div class="empty hidden" id="anniversaryEmpty">ไม่พบพนักงานที่ใกล้ครบรอบอายุงาน 1/3/5 ปี</div></section>
 </div>
 <div class="subview" id="onboarding-sub-probation"><section class="summary-grid" id="probSummaryGrid"></section><section class="card"><div class="toolbar"><div class="toolbar-left"><input class="search-input" id="probSearch" oninput="renderProbationTable()" placeholder="ค้นหา ชื่อ / รหัส / แผนก / ตำแหน่ง"/><select id="probStatusFilter" onchange="renderProbationTable()"><option value="">ทุกสถานะ</option><option value="overdue">เลยกำหนดแล้ว</option><option value="soon">ใกล้ครบกำหนด</option><option value="ok">ยังไม่ถึงกำหนด</option><option value="completed">ดำเนินการแล้ว</option></select><label class="btn-ghost" style="padding:9px 12px"><input id="probShowCompleted" onchange="renderProbationTable()" type="checkbox"/> แสดงรายการดำเนินการแล้ว</label></div><div class="toolbar-right"><button class="btn-green" onclick="addAllProbationToGoogleCalendar()">📅 เพิ่มเข้า Google Calendar</button><button class="btn-ghost" onclick="downloadAllProbationICS()">ดาวน์โหลด .ics</button></div></div><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>แผนก</th><th>ตำแหน่ง</th><th>วันเริ่มงาน</th><th>ครบทดลองงาน</th><th>สถานะ</th><th>ครบรอบอายุงาน</th><th>หัวหน้างาน</th><th>การดำเนินการ</th></tr></thead><tbody id="probTbody"></tbody></table></div><div class="empty hidden" id="probEmpty">ไม่พบพนักงานที่มีวันเริ่มงาน</div></section></div>
 </div>
@@ -2409,12 +2413,15 @@ function showEmployeeSubtab(name){
 function showOnboardingSubtab(name){
   document.getElementById('onboarding-sub-checklist').classList.toggle('active', name==='checklist');
   document.getElementById('onboarding-sub-birthday').classList.toggle('active', name==='birthday');
+  document.getElementById('onboarding-sub-anniversary').classList.toggle('active', name==='anniversary');
   document.getElementById('onboarding-sub-probation').classList.toggle('active', name==='probation');
   document.getElementById('onboardSubBtnChecklist').classList.toggle('active', name==='checklist');
   document.getElementById('onboardSubBtnBirthday').classList.toggle('active', name==='birthday');
+  document.getElementById('onboardSubBtnAnniversary').classList.toggle('active', name==='anniversary');
   document.getElementById('onboardSubBtnProbation').classList.toggle('active', name==='probation');
   if(name==='checklist'){ renderOnboardingChecklistTab(); }
   else if(name==='birthday'){ renderBirthdaySummary(); renderBirthdayTable(); }
+  else if(name==='anniversary'){ renderWorkAnniversarySummary(); renderWorkAnniversaryTable(); }
   else { renderProbationSummary(); renderProbationTable(); }
 }
 /* ---------- Onboarding checklist (new hire) ---------- */
@@ -3663,7 +3670,61 @@ function exportReportWorkbook(){var sheets=reportSheetData();if(typeof XLSX!=='u
 function renderSettingsTab(){initBirthdaySettingsForm();initProbationSettingsForm();var bytes=new Blob([JSON.stringify(DB)]).size;var last=DB.orgChartSnapshots.slice().sort(function(a,b){return String(b.importedAt).localeCompare(String(a.importedAt));})[0];var exportInfo=lastDbExportInfo();document.getElementById('settingsStatus').innerHTML='ฐานข้อมูล: <strong>'+DB.employees.length+'</strong> พนักงาน · <strong>'+DB.jd.length+'</strong> JD · <strong>'+DB.trainingCourses.length+'</strong> หลักสูตร · <strong>'+DB.trainingEnrollments.length+'</strong> รายการเข้าอบรม · ขนาดประมาณ <strong>'+(bytes/1024/1024).toFixed(2)+' MB</strong><br>Snapshot ผังองค์กรล่าสุด: '+(last?escapeHtml(last.company+' · '+last.sourceFilename+' · '+formatThaiDate(last.importedAt)):'ยังไม่มี')+'<br><span style="color:'+(exportInfo.warn?'var(--danger)':'inherit')+'">'+escapeHtml(exportInfo.text)+'</span>';var company=(document.getElementById('orgImportCompanySetting')||{}).value||'CMN';var btn=document.getElementById('restoreOrgSnapshotBtn');if(btn)btn.disabled=!DB.orgChartSnapshots.some(function(s){return s.company===company;});renderDbBackupList();}
 function onSettingOrgCompanyChange(){renderSettingsTab();}
 
-function renderOnboardingModule(){renderOnboardingChecklistTab();renderBirthdaySummary();renderBirthdayTable();renderProbationSummary();renderProbationTable();}
+function renderOnboardingModule(){renderOnboardingChecklistTab();renderBirthdaySummary();renderBirthdayTable();renderWorkAnniversarySummary();renderWorkAnniversaryTable();renderProbationSummary();renderProbationTable();}
+function anniversaryVisibleEmployees(){
+  const base = companyFilter === 'ALL' ? DB.employees : DB.employees.filter(e => e.company === companyFilter);
+  return base.filter(e => e.status!=='Inactive' && !!e.startDate);
+}
+function workAnniversaryYear(emp){
+  const start = parseDate(emp.startDate);
+  const next = nextWorkAnniversary(emp);
+  if(!start || !next) return null;
+  return next.getFullYear() - start.getFullYear();
+}
+function daysUntilWorkAnniversary(emp){
+  const next = nextWorkAnniversary(emp);
+  if(!next) return null;
+  return Math.round((next - todayStart()) / 86400000);
+}
+function trackedWorkAnniversaryEmployees(){
+  return anniversaryVisibleEmployees().filter(e => [1,3,5].indexOf(workAnniversaryYear(e)) >= 0);
+}
+function renderWorkAnniversarySummary(){
+  const rows = trackedWorkAnniversaryEmployees();
+  let today=0, week=0, month=0;
+  rows.forEach(e => {
+    const d = daysUntilWorkAnniversary(e);
+    if(d===null) return;
+    if(d===0) today++;
+    if(d<=7) week++;
+    if(d<=30) month++;
+  });
+  document.getElementById('anniversarySummaryGrid').innerHTML = `
+    <div class="summary-card"><div class="num">${rows.length}</div><div class="label">ใกล้ครบรอบ 1/3/5 ปี</div></div>
+    <div class="summary-card"><div class="num">${today}</div><div class="label">ครบรอบวันนี้</div></div>
+    <div class="summary-card"><div class="num">${week}</div><div class="label">ภายใน 7 วัน</div></div>
+    <div class="summary-card"><div class="num">${month}</div><div class="label">ภายใน 30 วัน</div></div>`;
+}
+function renderWorkAnniversaryTable(){
+  const search = ((document.getElementById('anniversarySearch')||{}).value||'').trim().toLowerCase();
+  const yearFilter = (document.getElementById('anniversaryYearFilter')||{}).value;
+  let rows = trackedWorkAnniversaryEmployees();
+  if(search){
+    rows = rows.filter(e => (e.empCode||'').toLowerCase().includes(search) || (e.fullName||'').toLowerCase().includes(search) ||
+      (e.department||'').toLowerCase().includes(search) || (e.position||'').toLowerCase().includes(search));
+  }
+  if(yearFilter){ rows = rows.filter(e => workAnniversaryYear(e) === Number(yearFilter)); }
+  rows = rows.slice().sort((a,b) => { const da=daysUntilWorkAnniversary(a), db=daysUntilWorkAnniversary(b); return (da??999)-(db??999); });
+  document.getElementById('anniversaryTbody').innerHTML = rows.map(e => {
+    const next = nextWorkAnniversary(e), days = daysUntilWorkAnniversary(e), year = workAnniversaryYear(e);
+    return `<tr>
+      <td>${escapeHtml(e.empCode)}</td><td>${escapeHtml(e.fullName)}</td><td>${escapeHtml(e.department||'-')}</td>
+      <td>${escapeHtml(e.position||'-')}</td><td>${formatThaiDate(e.startDate)}</td>
+      <td><span class="badge">ครบ ${year} ปี</span></td><td>${next?formatThaiDate(next):'-'}</td><td>${daysBadge(days)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('anniversaryEmpty').classList.toggle('hidden', rows.length > 0);
+}
 TAB_RENDERERS.employees=function(){refreshEmployeeFilters();renderEmployeesTable();renderEmployeeSummary();};
 TAB_RENDERERS.orgchart=renderOrgChartV4;
 TAB_RENDERERS.onboarding=renderOnboardingModule;
