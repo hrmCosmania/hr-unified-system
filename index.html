@@ -10,6 +10,9 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/namecard-assets/qrgen.js"></script>
+<script src="/namecard-assets/cardbg.js"></script>
+<script src="/namecard-assets/cardbg-cosmania.js"></script>
 <script>
   var SUPABASE_URL = 'https://zkqewnwulnugbhndtnkr.supabase.co';
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprcWV3bnd1bG51Z2JobmR0bmtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MTM5MjEsImV4cCI6MjEwMTQ4OTkyMX0.Rfo2492G7DtkhQuPfHCXCPX0jRIHUceRpDDd8AlHJh0';
@@ -401,7 +404,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <div class="view" id="view-onboarding">
 <section class="card">
 <h2>🧭 Tracking Onboarding</h2><div class="sub">Checklist การเริ่มงานใหม่ ติดตามวันเกิด และกำหนดทดลองงาน</div>
-<div class="subnav"><button class="subnav-btn active" id="onboardSubBtnChecklist" onclick="showOnboardingSubtab('checklist')">✅ Checklist เริ่มงานใหม่<span id="onbChecklistNotifBadge" class="onb-notif-badge hidden">0</span></button><button class="subnav-btn" id="onboardSubBtnBirthday" onclick="showOnboardingSubtab('birthday')">🎂 วันเกิด</button><button class="subnav-btn" id="onboardSubBtnAnniversary" onclick="showOnboardingSubtab('anniversary')">🎉 ครบรอบการทำงาน</button><button class="subnav-btn" id="onboardSubBtnProbation" onclick="showOnboardingSubtab('probation')">📋 ทดลองงาน</button></div>
+<div class="subnav"><button class="subnav-btn active" id="onboardSubBtnChecklist" onclick="showOnboardingSubtab('checklist')">✅ Checklist เริ่มงานใหม่<span id="onbChecklistNotifBadge" class="onb-notif-badge hidden">0</span></button><button class="subnav-btn" id="onboardSubBtnBirthday" onclick="showOnboardingSubtab('birthday')">🎂 วันเกิด</button><button class="subnav-btn" id="onboardSubBtnAnniversary" onclick="showOnboardingSubtab('anniversary')">🎉 ครบรอบการทำงาน</button><button class="subnav-btn" id="onboardSubBtnProbation" onclick="showOnboardingSubtab('probation')">📋 ทดลองงาน</button><button class="subnav-btn" id="onboardSubBtnNamecard" onclick="showOnboardingSubtab('namecard')">🪪 นามบัตร QR</button></div>
 </section>
 <div class="subview" id="onboarding-sub-checklist">
 <section class="summary-grid" id="onbChecklistSummaryGrid"></section>
@@ -428,6 +431,36 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <section class="card"><div class="toolbar"><div class="toolbar-left"><input class="search-input" id="anniversarySearch" oninput="renderWorkAnniversaryTable()" placeholder="ค้นหา ชื่อ / รหัส / แผนก / ตำแหน่ง"/><select id="anniversaryYearFilter" onchange="renderWorkAnniversaryTable()"><option value="">ทุกรอบ (1/3/5 ปี)</option><option value="1">ครบ 1 ปี</option><option value="3">ครบ 3 ปี</option><option value="5">ครบ 5 ปี</option></select></div></div><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>แผนก</th><th>ตำแหน่ง</th><th>วันเริ่มงาน</th><th>ครบรอบ</th><th>วันครบรอบถัดไป</th><th>เหลืออีก</th></tr></thead><tbody id="anniversaryTbody"></tbody></table></div><div class="empty hidden" id="anniversaryEmpty">ไม่พบพนักงานที่ใกล้ครบรอบอายุงาน 1/3/5 ปี</div></section>
 </div>
 <div class="subview" id="onboarding-sub-probation"><section class="summary-grid" id="probSummaryGrid"></section><section class="card"><div class="toolbar"><div class="toolbar-left"><input class="search-input" id="probSearch" oninput="renderProbationTable()" placeholder="ค้นหา ชื่อ / รหัส / แผนก / ตำแหน่ง"/><select id="probStatusFilter" onchange="renderProbationTable()"><option value="">ทุกสถานะ</option><option value="overdue">เลยกำหนดแล้ว</option><option value="soon">ใกล้ครบกำหนด</option><option value="ok">ยังไม่ถึงกำหนด</option><option value="completed">ดำเนินการแล้ว</option></select><label class="btn-ghost" style="padding:9px 12px"><input id="probShowCompleted" onchange="renderProbationTable()" type="checkbox"/> แสดงรายการดำเนินการแล้ว</label></div><div class="toolbar-right"><button class="btn-green" onclick="addAllProbationToGoogleCalendar()">📅 เพิ่มเข้า Google Calendar</button><button class="btn-ghost" onclick="downloadAllProbationICS()">ดาวน์โหลด .ics</button></div></div><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>แผนก</th><th>ตำแหน่ง</th><th>วันเริ่มงาน</th><th>ครบทดลองงาน</th><th>สถานะ</th><th>ครบรอบอายุงาน</th><th>หัวหน้างาน</th><th>การดำเนินการ</th></tr></thead><tbody id="probTbody"></tbody></table></div><div class="empty hidden" id="probEmpty">ไม่พบพนักงานที่มีวันเริ่มงาน</div></section></div>
+<div class="subview" id="onboarding-sub-namecard">
+<section class="card">
+<h3 class="section-title">สร้างนามบัตรอิเล็กทรอนิกส์ (QR Code)</h3>
+<div class="sub" style="margin-bottom:12px">เลือกพนักงาน ระบบจะดึงชื่อ ตำแหน่ง แผนก เบอร์โทร และอีเมลจากฐานข้อมูลมาเติมให้ — แก้ไขได้ก่อนสร้าง QR</div>
+<div class="form-grid"><div class="field combo-field"><label>พนักงาน</label><input id="ncEmpCode" type="hidden"/><div class="combo-input-wrap"><input autocomplete="off" id="ncEmpSearch" onfocus="ncEmpComboSearch(this.value)" oninput="ncEmpComboSearch(this.value)" placeholder="พิมพ์ชื่อ รหัส หรือชื่อเล่นเพื่อค้นหาพนักงาน"/><button class="btn-ghost btn-sm" onclick="clearNcEmployeeSelection()" type="button">ล้าง</button></div><div class="combo-options hidden" id="ncEmpOptions" role="listbox"></div></div></div>
+<div class="small" id="nc_templateLabel" style="margin-top:8px;color:var(--v4-accent,#4b5563)"></div>
+<div class="form-grid two" style="margin-top:12px">
+<div class="field"><label>ชื่อ - นามสกุล *</label><input id="nc_fullname"/></div>
+<div class="field"><label>ตำแหน่ง</label><input id="nc_title"/></div>
+<div class="field"><label>แผนก / หน่วยงาน</label><input id="nc_org"/></div>
+<div class="field"><label>เบอร์โทรศัพท์</label><input id="nc_phone"/></div>
+<div class="field"><label>อีเมล</label><input id="nc_email"/></div>
+<div class="field"><label>เว็บไซต์</label><input id="nc_website" value="www.godmamiorganic.com"/></div>
+<div class="field span2"><label>ที่อยู่</label><input id="nc_address" value="47 Soi Sukhumvit 60/1, Phra Khanong Tai, Phra Khanong, Bangkok 10260"/></div>
+</div>
+<div class="actions" style="margin-top:14px"><button class="btn-primary" onclick="generateNamecardQR()">สร้าง QR Code</button></div>
+<div class="inline-error" id="nc_error"></div>
+</section>
+<section class="card hidden" id="nc_resultCard">
+<h3 class="section-title">ผลลัพธ์</h3>
+<div style="display:flex;flex-direction:column;align-items:center;gap:14px">
+<img id="nc_qrimg" alt="QR Code นามบัตร" style="max-width:260px;width:100%;border:1px solid var(--v4-border);border-radius:8px"/>
+<div class="actions">
+<button class="btn-ghost btn-sm" onclick="downloadNamecardQR()">ดาวน์โหลด QR (PNG)</button>
+<button class="btn-ghost btn-sm" onclick="downloadNamecardVCF()">ดาวน์โหลด .vcf</button>
+<button class="btn-green btn-sm" onclick="downloadNamecardCard()">ดาวน์โหลดนามบัตร (PNG)</button>
+</div>
+</div>
+</section>
+</div>
 </div>
 <!-- ============ JOB POSITION MANAGEMENT ============ -->
 <div class="view" id="view-jobpositions"><section class="summary-grid" id="jobPositionSummaryGrid"></section><section class="card"><div class="module-intro"><div><h2>จัดการตำแหน่งงาน</h2><div class="sub">เลือกตำแหน่งด้านซ้ายเพื่อดู JD, KPI, Competency และพนักงานที่ใช้งานด้านขวา</div></div></div></section><div class="job-master-detail"><section class="card job-master"><div class="field"><label>ค้นหาตำแหน่ง</label><input id="jobPositionSearch" oninput="renderJobPositionModule()" placeholder="ตำแหน่ง Job Code หรือแผนก"/></div><div class="form-grid two" style="margin-top:10px"><div class="field"><label>แผนก</label><select id="jobDepartmentFilter" onchange="renderJobPositionModule()"><option value="">ทุกแผนก</option></select></div></div><div class="position-list" id="jobPositionListV4" style="margin-top:14px"></div></section><section class="card job-detail" id="jobPositionDetailV4"><div class="position-detail-empty">เลือกตำแหน่งงานจากรายการด้านซ้าย</div></section></div></div>
@@ -2415,14 +2448,17 @@ function showOnboardingSubtab(name){
   document.getElementById('onboarding-sub-birthday').classList.toggle('active', name==='birthday');
   document.getElementById('onboarding-sub-anniversary').classList.toggle('active', name==='anniversary');
   document.getElementById('onboarding-sub-probation').classList.toggle('active', name==='probation');
+  document.getElementById('onboarding-sub-namecard').classList.toggle('active', name==='namecard');
   document.getElementById('onboardSubBtnChecklist').classList.toggle('active', name==='checklist');
   document.getElementById('onboardSubBtnBirthday').classList.toggle('active', name==='birthday');
   document.getElementById('onboardSubBtnAnniversary').classList.toggle('active', name==='anniversary');
   document.getElementById('onboardSubBtnProbation').classList.toggle('active', name==='probation');
+  document.getElementById('onboardSubBtnNamecard').classList.toggle('active', name==='namecard');
   if(name==='checklist'){ renderOnboardingChecklistTab(); }
   else if(name==='birthday'){ renderBirthdaySummary(); renderBirthdayTable(); }
   else if(name==='anniversary'){ renderWorkAnniversarySummary(); renderWorkAnniversaryTable(); }
-  else { renderProbationSummary(); renderProbationTable(); }
+  else if(name==='probation'){ renderProbationSummary(); renderProbationTable(); }
+  else { renderNamecardModule(); }
 }
 /* ---------- Onboarding checklist (new hire) ---------- */
 const ONBOARDING_TASK_TEMPLATE = [
@@ -2582,7 +2618,7 @@ function renderOnboardingNewHireTable(){
     const buddy = record && record.buddyEmpCode ? getEmployeeByCode(record.buddyEmpCode) : null;
     const posInfo = [e.position, e.department, employeeDivision(e)].filter(Boolean).join(' · ');
     const progressLabel = `${progress.done}/${progress.total}` + (record && record.closed ? ' <span class="badge">ปิดงานแล้ว</span>' : '');
-    return `<tr><td><strong>${escapeHtml(e.fullName)}</strong><div class="small">${escapeHtml(e.empCode)}${posInfo?' · '+escapeHtml(posInfo):''}</div></td><td>${escapeHtml(formatThaiDate(e.startDate))}</td><td>${buddy?escapeHtml(buddy.fullName):'-'}</td><td>${progressLabel}</td><td><button class="btn-ghost btn-sm" onclick="openOnboardingChecklistFor('${escapeHtml(e.empCode)}')">เปิด Checklist</button></td></tr>`;
+    return `<tr><td><strong>${escapeHtml(e.fullName)}</strong><div class="small">${escapeHtml(e.empCode)}${posInfo?' · '+escapeHtml(posInfo):''}</div></td><td>${escapeHtml(formatThaiDate(e.startDate))}</td><td>${buddy?escapeHtml(buddy.fullName):'-'}</td><td>${progressLabel}</td><td><button class="btn-ghost btn-sm" onclick="openOnboardingChecklistFor('${escapeHtml(e.empCode)}')">เปิด Checklist</button> <button class="btn-ghost btn-sm" onclick="openNamecardFor('${escapeHtml(e.empCode)}')">🪪 นามบัตร QR</button></td></tr>`;
   }).join('');
   const empty = document.getElementById('onbNewHireEmpty');
   if(empty){
@@ -2597,6 +2633,276 @@ function openOnboardingChecklistFor(empCode){
   loadOnboardingChecklist();
   const section = document.getElementById('onb_empCode');
   if(section) section.closest('section').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function openNamecardFor(empCode){
+  showOnboardingSubtab('namecard');
+  selectNcEmployee(empCode);
+  const section = document.getElementById('onboarding-sub-namecard');
+  if(section) section.scrollIntoView({behavior:'smooth', block:'start'});
+}
+/* ---------- Namecard QR module (embedded, uses namecard-assets/qrgen.js + cardbg.js) ---------- */
+if(typeof qrcode !== 'undefined'){
+  // The bundled qrcode-generator library defaults to truncating each character to its low
+  // byte, which mangles Thai (and any non-Latin1) text into mojibake once scanned.
+  qrcode.stringToBytes = function(s){ return Array.from(new TextEncoder().encode(s)); };
+}
+let ncLastVCard = '';
+let ncLastQrDataURL = '';
+let ncActiveTemplateKey = 'godmami';
+const NC_TEMPLATE_GODMAMI = {
+  key: 'godmami',
+  label: 'Godmami',
+  bgDataUrlVar: 'CARD_BG_DATAURL',
+  filename: 'godmami-namecard.png',
+  bgColor: '#fcf9f8',
+  combineOrgIntoTitle: true,
+  qrBox: { x: 1148, y: 636, w: 183, h: 214 },
+  name:    { x: 749, baseline: 296, maxRight: 1150, font: 60, weight: 'bold', color: '#0d2350' },
+  title:   { x: 748, baseline: 339, maxRight: 1150, font: 32, weight: '600',  color: '#36a28f' },
+  phone:   { x: 793, baseline: 433, maxRight: 1150, font: 28, weight: 'normal', color: '#16294f' },
+  email:   { x: 793, baseline: 482, maxRight: 1150, font: 28, weight: 'normal', color: '#16294f' },
+  website: { x: 793, baseline: 531, maxRight: 1150, font: 28, weight: 'normal', color: '#16294f' },
+  addr:    { x: 793, top: 552, bottom: 648, maxRight: 1150, font: 27, lineHeight: 34, weight: 'normal', color: '#16294f' },
+  clearRects: [
+    [745, 250, 420, 52],
+    [744, 313, 420, 32],
+    [789, 402, 380, 42],
+    [789, 450, 380, 43],
+    [789, 499, 380, 43],
+    [789, 548, 380, 108]
+  ],
+  defaultWebsite: 'www.godmamiorganic.com',
+  defaultAddress: '47 Soi Sukhumvit 60/1, Phra Khanong Tai, Phra Khanong, Bangkok 10260'
+};
+const NC_TEMPLATE_COSMANIA = {
+  key: 'cosmania',
+  label: 'Cosmania Laboratories',
+  bgDataUrlVar: 'CARD_BG_COSMANIA_DATAURL',
+  filename: 'cosmania-namecard.png',
+  bgColor: '#fdfdfd',
+  combineOrgIntoTitle: false,
+  qrBox: { x: 1131, y: 675, w: 227, h: 216 },
+  name:    { x: 78, baseline: 267, maxRight: 560, font: 50, weight: 'bold', color: '#0a0a0a' },
+  title:   { x: 78, baseline: 309, maxRight: 560, font: 28, weight: '500', color: '#4b5563' },
+  phone:   { x: 134, baseline: 388, maxRight: 560, font: 26, weight: 'normal', color: '#1f2937' },
+  email:   { x: 134, baseline: 440, maxRight: 560, font: 26, weight: 'normal', color: '#1f2937' },
+  website: { x: 134, baseline: 492, maxRight: 560, font: 26, weight: 'normal', color: '#1f2937' },
+  addr:    { x: 134, top: 515, bottom: 599, maxRight: 560, font: 24, lineHeight: 28, weight: 'normal', color: '#1f2937' },
+  clearRects: [
+    [74, 228, 490, 47],
+    [74, 284, 460, 32],
+    [70, 359, 500, 39],
+    [70, 410, 500, 40],
+    [70, 463, 500, 39],
+    [70, 511, 500, 92]
+  ],
+  defaultWebsite: 'www.cosmanialabs.com',
+  defaultAddress: '143/3 ตำบล บ้านยาง อำเภอเมืองนครปฐม นครปฐม 73000'
+};
+const NC_TEMPLATES = { godmami: NC_TEMPLATE_GODMAMI, cosmania: NC_TEMPLATE_COSMANIA };
+// top-level const/let bg data-URLs from cardbg*.js don't attach to window, so index by key here instead.
+const NC_BG_DATAURLS = {
+  godmami: (typeof CARD_BG_DATAURL !== 'undefined') ? CARD_BG_DATAURL : undefined,
+  cosmania: (typeof CARD_BG_COSMANIA_DATAURL !== 'undefined') ? CARD_BG_COSMANIA_DATAURL : undefined
+};
+function ncTemplateForEmployee(emp){
+  return (emp && emp.company === 'CMN') ? NC_TEMPLATE_COSMANIA : NC_TEMPLATE_GODMAMI;
+}
+function renderNamecardModule(){
+  // employee list is searched on demand via ncEmpComboSearch; nothing to pre-populate.
+}
+function ncEmpComboSearch(query){
+  const box = document.getElementById('ncEmpOptions');
+  if(!box) return;
+  const q = String(query||'').trim().toLowerCase();
+  const rows = onbActiveEmployees().filter(function(e){
+    if(!q) return true;
+    return [e.empCode, e.fullName, e.nickname, e.department, e.position].join(' ').toLowerCase().includes(q);
+  }).slice(0,40);
+  box.innerHTML = rows.map(function(e){
+    return '<div class="combo-option" role="option" tabindex="0" onclick="selectNcEmployee(\''+v4EscapeAttr(e.empCode)+'\')"><div class="combo-title">'+escapeHtml(e.fullName)+(e.nickname?' ('+escapeHtml(e.nickname)+')':'')+'</div><div class="combo-meta">'+escapeHtml(e.empCode)+' · '+escapeHtml(e.position||'-')+' · '+escapeHtml(e.department||'-')+'</div></div>';
+  }).join('') || '<div class="combo-option"><div class="combo-meta">ไม่พบพนักงานที่ตรงกับคำค้น</div></div>';
+  box.classList.remove('hidden');
+}
+function selectNcEmployee(code){
+  const emp = getEmployeeByCode(code);
+  if(!emp) return;
+  document.getElementById('ncEmpCode').value = code;
+  document.getElementById('ncEmpSearch').value = emp.fullName + (emp.nickname ? ' (' + emp.nickname + ')' : '') + ' — ' + emp.empCode;
+  document.getElementById('ncEmpOptions').classList.add('hidden');
+  loadNamecardEmployee();
+}
+function clearNcEmployeeSelection(){
+  document.getElementById('ncEmpCode').value = '';
+  document.getElementById('ncEmpSearch').value = '';
+  document.getElementById('ncEmpOptions').classList.add('hidden');
+  loadNamecardEmployee();
+}
+function loadNamecardEmployee(){
+  const empCode = document.getElementById('ncEmpCode').value;
+  const emp = empCode ? getEmployeeByCode(empCode) : null;
+  const tpl = ncTemplateForEmployee(emp);
+  ncActiveTemplateKey = tpl.key;
+  document.getElementById('nc_fullname').value = emp ? (emp.fullName||'') : '';
+  document.getElementById('nc_title').value = emp ? (emp.position||'') : '';
+  document.getElementById('nc_org').value = emp ? (emp.department||'') : '';
+  document.getElementById('nc_phone').value = emp ? (emp.phone||'') : '';
+  document.getElementById('nc_email').value = emp ? (emp.email||'') : '';
+  document.getElementById('nc_website').value = tpl.defaultWebsite;
+  document.getElementById('nc_address').value = tpl.defaultAddress;
+  const label = document.getElementById('nc_templateLabel');
+  if(label) label.textContent = emp ? ('เทมเพลตนามบัตร: ' + tpl.label + (emp.company ? ' (บริษัท ' + emp.company + ')' : '')) : '';
+  document.getElementById('nc_resultCard').classList.add('hidden');
+}
+function ncBuildVCard(){
+  const name = document.getElementById('nc_fullname').value.trim();
+  const title = document.getElementById('nc_title').value.trim();
+  const org = document.getElementById('nc_org').value.trim();
+  const phone = document.getElementById('nc_phone').value.trim();
+  const email = document.getElementById('nc_email').value.trim();
+  const website = document.getElementById('nc_website').value.trim();
+  const address = document.getElementById('nc_address').value.trim();
+  let lines = ['BEGIN:VCARD', 'VERSION:3.0'];
+  lines.push('N:' + name + ';;;;');
+  lines.push('FN:' + name);
+  if(org) lines.push('ORG:' + org);
+  if(title) lines.push('TITLE:' + title);
+  if(phone) lines.push('TEL;TYPE=CELL:' + phone);
+  if(email) lines.push('EMAIL:' + email);
+  if(website) lines.push('URL:' + website);
+  if(address) lines.push('ADR;TYPE=WORK:;;' + address + ';;;;');
+  lines.push('END:VCARD');
+  return lines.join('\n');
+}
+function generateNamecardQR(){
+  const name = document.getElementById('nc_fullname').value.trim();
+  const errEl = document.getElementById('nc_error');
+  errEl.textContent = '';
+  if(!name){ errEl.textContent = 'กรุณากรอกชื่อ-นามสกุลอย่างน้อย'; return; }
+  ncLastVCard = ncBuildVCard();
+  try{
+    const qr = qrcode(0, 'M');
+    qr.addData(ncLastVCard);
+    qr.make();
+    ncLastQrDataURL = qr.createDataURL(8, 8);
+    document.getElementById('nc_qrimg').src = ncLastQrDataURL;
+    document.getElementById('nc_resultCard').classList.remove('hidden');
+  }catch(error){
+    console.error(error);
+    errEl.textContent = 'เกิดข้อผิดพลาดในการสร้าง QR Code';
+  }
+}
+function downloadNamecardQR(){
+  if(!ncLastQrDataURL) return;
+  const link = document.createElement('a');
+  link.download = 'contact-qr.png';
+  link.href = ncLastQrDataURL;
+  link.click();
+}
+function downloadNamecardVCF(){
+  if(!ncLastVCard) return;
+  const blob = new Blob([ncLastVCard], { type: 'text/vcard' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = 'contact.vcf';
+  link.href = url;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+function ncFitFontSize(ctx, text, maxWidth, baseSize, weight, minSize){
+  let size = baseSize;
+  while(size > minSize){
+    ctx.font = weight + ' ' + size + 'px "Segoe UI", Tahoma, sans-serif';
+    if(ctx.measureText(text).width <= maxWidth) break;
+    size -= 2;
+  }
+  return size;
+}
+function ncWrapLines(ctx, text, maxWidth, font, maxLines){
+  ctx.font = font;
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines = [];
+  let current = '';
+  for(const word of words){
+    const trial = current ? current + ' ' + word : word;
+    if(ctx.measureText(trial).width <= maxWidth || !current){
+      current = trial;
+    } else {
+      lines.push(current);
+      current = word;
+      if(lines.length === maxLines - 1) break;
+    }
+  }
+  if(current) lines.push(current);
+  if(lines.length > maxLines) lines.length = maxLines;
+  return lines;
+}
+function ncDrawField(ctx, field, text){
+  if(!text) return;
+  const maxWidth = field.maxRight - field.x;
+  const size = ncFitFontSize(ctx, text, maxWidth, field.font, field.weight, Math.max(14, field.font - 14));
+  ctx.font = field.weight + ' ' + size + 'px "Segoe UI", Tahoma, sans-serif';
+  ctx.fillStyle = field.color;
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(text, field.x, field.baseline);
+}
+function downloadNamecardCard(){
+  if(!ncLastQrDataURL){
+    document.getElementById('nc_error').textContent = 'กรุณาสร้าง QR Code ก่อน';
+    return;
+  }
+  const tpl = NC_TEMPLATES[ncActiveTemplateKey] || NC_TEMPLATE_GODMAMI;
+  const bgDataUrl = NC_BG_DATAURLS[tpl.key];
+  if(typeof bgDataUrl === 'undefined'){
+    document.getElementById('nc_error').textContent = 'ไม่พบไฟล์เทมเพลตนามบัตร';
+    return;
+  }
+  const name = document.getElementById('nc_fullname').value.trim();
+  const title = document.getElementById('nc_title').value.trim();
+  const org = document.getElementById('nc_org').value.trim();
+  const phone = document.getElementById('nc_phone').value.trim();
+  const email = document.getElementById('nc_email').value.trim();
+  const website = document.getElementById('nc_website').value.trim();
+  const address = document.getElementById('nc_address').value.trim();
+  const bg = new Image();
+  bg.onload = function(){
+    const W = bg.naturalWidth, H = bg.naturalHeight;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bg, 0, 0, W, H);
+    ctx.fillStyle = tpl.bgColor;
+    tpl.clearRects.forEach(function(r){ ctx.fillRect(r[0], r[1], r[2], r[3]); });
+    ncDrawField(ctx, tpl.name, name);
+    const subtitle = tpl.combineOrgIntoTitle ? [title, org].filter(Boolean).join('  •  ') : title;
+    ncDrawField(ctx, tpl.title, subtitle);
+    ncDrawField(ctx, tpl.phone, phone);
+    ncDrawField(ctx, tpl.email, email);
+    ncDrawField(ctx, tpl.website, website);
+    if(address){
+      const a = tpl.addr;
+      ctx.font = a.weight + ' ' + a.font + 'px "Segoe UI", Tahoma, sans-serif';
+      ctx.fillStyle = a.color;
+      ctx.textBaseline = 'alphabetic';
+      const lines = ncWrapLines(ctx, address, a.maxRight - a.x, ctx.font, 3);
+      let y = a.top + a.font * 0.78;
+      for(const line of lines){ ctx.fillText(line, a.x, y); y += a.lineHeight; }
+    }
+    const qb = tpl.qrBox;
+    const qrImg = new Image();
+    qrImg.onload = function(){
+      const size = Math.min(qb.w, qb.h);
+      const qx = qb.x + (qb.w - size) / 2;
+      const qy = qb.y + (qb.h - size) / 2;
+      ctx.drawImage(qrImg, qx, qy, size, size);
+      const link = document.createElement('a');
+      link.download = tpl.filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    };
+    qrImg.src = ncLastQrDataURL;
+  };
+  bg.src = bgDataUrl;
 }
 function renderOnboardingChecklistTab(){
   const empSelect = document.getElementById('onb_empCode');
@@ -3738,7 +4044,7 @@ function initV4(){
   document.querySelectorAll('.tab-btn').forEach(function(b){b.dataset.module=b.dataset.tab;});
   refreshEmployeeFilters();refreshParentSelect(null);renderEmployeesTable();renderEmployeeSummary();
   refreshJobFilters();refreshTrainingParticipantFilters();refreshReportFilters();renderSettingsTab();
-  document.addEventListener('click',function(ev){var box=document.getElementById('empSupervisorOptions');if(box&&!ev.target.closest('.combo-field'))box.classList.add('hidden');var posBox=document.getElementById('empPositionOptions');if(posBox&&!ev.target.closest('.combo-field'))posBox.classList.add('hidden');var dottedBox=document.getElementById('empDottedOptions');if(dottedBox&&!ev.target.closest('.combo-field'))dottedBox.classList.add('hidden');var divBox=document.getElementById('empDivisionOptions');if(divBox&&!ev.target.closest('.combo-field'))divBox.classList.add('hidden');var depBox=document.getElementById('empDepartmentOptions');if(depBox&&!ev.target.closest('.combo-field'))depBox.classList.add('hidden');});
+  document.addEventListener('click',function(ev){var box=document.getElementById('empSupervisorOptions');if(box&&!ev.target.closest('.combo-field'))box.classList.add('hidden');var posBox=document.getElementById('empPositionOptions');if(posBox&&!ev.target.closest('.combo-field'))posBox.classList.add('hidden');var dottedBox=document.getElementById('empDottedOptions');if(dottedBox&&!ev.target.closest('.combo-field'))dottedBox.classList.add('hidden');var divBox=document.getElementById('empDivisionOptions');if(divBox&&!ev.target.closest('.combo-field'))divBox.classList.add('hidden');var depBox=document.getElementById('empDepartmentOptions');if(depBox&&!ev.target.closest('.combo-field'))depBox.classList.add('hidden');var ncBox=document.getElementById('ncEmpOptions');if(ncBox&&!ev.target.closest('.combo-field'))ncBox.classList.add('hidden');});
   window.HR_V4_READY=true;
 }
 initV4();
