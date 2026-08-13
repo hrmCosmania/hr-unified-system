@@ -428,7 +428,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 </div>
 <div class="subview" id="onboarding-sub-anniversary">
 <section class="summary-grid" id="anniversarySummaryGrid"></section>
-<section class="card"><div class="toolbar"><div class="toolbar-left"><input class="search-input" id="anniversarySearch" oninput="renderWorkAnniversaryTable()" placeholder="ค้นหา ชื่อ / รหัส / แผนก / ตำแหน่ง"/><select id="anniversaryYearFilter" onchange="renderWorkAnniversaryTable()"><option value="">ทุกรอบ (1/3/5 ปี)</option><option value="1">ครบ 1 ปี</option><option value="3">ครบ 3 ปี</option><option value="5">ครบ 5 ปี</option></select></div></div><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>แผนก</th><th>ตำแหน่ง</th><th>วันเริ่มงาน</th><th>ครบรอบ</th><th>วันครบรอบถัดไป</th><th>เหลืออีก</th></tr></thead><tbody id="anniversaryTbody"></tbody></table></div><div class="empty hidden" id="anniversaryEmpty">ไม่พบพนักงานที่ใกล้ครบรอบอายุงาน 1/3/5 ปี</div></section>
+<section class="card"><div class="toolbar"><div class="toolbar-left"><input class="search-input" id="anniversarySearch" oninput="renderWorkAnniversaryTable()" placeholder="ค้นหา ชื่อ / รหัส / แผนก / ตำแหน่ง"/><select id="anniversaryYearFilter" onchange="renderWorkAnniversaryTable()"><option value="">ทุกรอบ (1/3/5 ปี)</option><option value="1">ครบ 1 ปี</option><option value="3">ครบ 3 ปี</option><option value="5">ครบ 5 ปี</option></select></div><div class="toolbar-right"><button class="btn-ghost" onclick="downloadAllAnniversaryICS()">📅 ดาวน์โหลด .ics ทั้งหมด</button></div></div><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>แผนก</th><th>ตำแหน่ง</th><th>วันเริ่มงาน</th><th>ครบรอบ</th><th>วันครบรอบถัดไป</th><th>เหลืออีก</th><th>การดำเนินการ</th></tr></thead><tbody id="anniversaryTbody"></tbody></table></div><div class="empty hidden" id="anniversaryEmpty">ไม่พบพนักงานที่ใกล้ครบรอบอายุงาน 1/3/5 ปี</div></section>
 </div>
 <div class="subview" id="onboarding-sub-probation"><section class="summary-grid" id="probSummaryGrid"></section><section class="card"><div class="toolbar"><div class="toolbar-left"><input class="search-input" id="probSearch" oninput="renderProbationTable()" placeholder="ค้นหา ชื่อ / รหัส / แผนก / ตำแหน่ง"/><select id="probStatusFilter" onchange="renderProbationTable()"><option value="">ทุกสถานะ</option><option value="overdue">เลยกำหนดแล้ว</option><option value="soon">ใกล้ครบกำหนด</option><option value="ok">ยังไม่ถึงกำหนด</option><option value="completed">ดำเนินการแล้ว</option></select><label class="btn-ghost" style="padding:9px 12px"><input id="probShowCompleted" onchange="renderProbationTable()" type="checkbox"/> แสดงรายการดำเนินการแล้ว</label></div><div class="toolbar-right"><button class="btn-green" onclick="addAllProbationToGoogleCalendar()">📅 เพิ่มเข้า Google Calendar</button><button class="btn-ghost" onclick="downloadAllProbationICS()">ดาวน์โหลด .ics</button></div></div><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>แผนก</th><th>ตำแหน่ง</th><th>วันเริ่มงาน</th><th>ครบทดลองงาน</th><th>สถานะ</th><th>ครบรอบอายุงาน</th><th>หัวหน้างาน</th><th>การดำเนินการ</th></tr></thead><tbody id="probTbody"></tbody></table></div><div class="empty hidden" id="probEmpty">ไม่พบพนักงานที่มีวันเริ่มงาน</div></section></div>
 <div class="subview" id="onboarding-sub-namecard">
@@ -1690,6 +1690,43 @@ function downloadAllBirthdayICS(){
   const events = bdayVisibleEmployees().map(makeBirthdayVEVENT).filter(Boolean);
   if(!events.length){ toast('ยังไม่มีข้อมูลวันเกิดพนักงานให้สร้างไฟล์ .ics'); return; }
   downloadFile('birthdays_all.ics', wrapCalendar(events.join('\r\n')), 'text/calendar;charset=utf-8');
+}
+
+function buildAnniversaryGoogleCalendarUrl(emp){
+  const next = nextWorkAnniversary(emp);
+  const year = workAnniversaryYear(emp);
+  if(!next) return '#';
+  const end = addDays(next, 1);
+  const title = `🎉 ครบรอบการทำงาน ${year} ปี: ${emp.fullName||''}${emp.nickname?' ('+emp.nickname+')':''}`;
+  const details = `รหัสพนักงาน: ${emp.empCode||''}\nชื่อ: ${emp.fullName||''}\nแผนก: ${emp.department||''}\nตำแหน่ง: ${emp.position||''}\nวันเริ่มงาน: ${formatThaiDate(emp.startDate)}\nครบรอบ: ${year} ปี`;
+  const params = new URLSearchParams({action:'TEMPLATE', text:title, dates:`${calendarDateUTC(next)}/${calendarDateUTC(end)}`, details, ctz:'Asia/Bangkok'});
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+function makeAnniversaryVEVENT(emp){
+  const next = nextWorkAnniversary(emp);
+  const year = workAnniversaryYear(emp);
+  if(!next) return '';
+  const dt = calendarDateUTC(next), dtEnd = calendarDateUTC(addDays(next,1));
+  const stamp = new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+  const title = `🎉 ครบรอบการทำงาน ${year} ปี: ${emp.fullName||''}${emp.nickname?' ('+emp.nickname+')':''}`;
+  const desc = `รหัสพนักงาน: ${emp.empCode||''}\nชื่อ: ${emp.fullName||''}\nแผนก: ${emp.department||''}\nตำแหน่ง: ${emp.position||''}\nวันเริ่มงาน: ${formatThaiDate(emp.startDate)}\nครบรอบ: ${year} ปี`;
+  const lines = ['BEGIN:VEVENT', `UID:anniversary-${emp.empCode}-${next.getFullYear()}@hr-unified`, `DTSTAMP:${stamp}`,
+    `DTSTART;VALUE=DATE:${dt}`, `DTEND;VALUE=DATE:${dtEnd}`, `SUMMARY:${icsEscape(title)}`, `DESCRIPTION:${icsEscape(desc)}`,
+    'BEGIN:VALARM', 'TRIGGER:-PT0M', 'ACTION:DISPLAY', `DESCRIPTION:${icsEscape(title)}`, 'END:VALARM',
+    'END:VEVENT'];
+  return lines.join('\r\n');
+}
+function downloadEmployeeAnniversaryICS(code){
+  const emp = getEmployeeByCode(code);
+  if(!emp) return;
+  const vevent = makeAnniversaryVEVENT(emp);
+  if(!vevent){ toast('พนักงานคนนี้ยังไม่มีข้อมูลวันเริ่มงาน'); return; }
+  downloadFile(`anniversary_${emp.empCode}.ics`, wrapCalendar(vevent), 'text/calendar;charset=utf-8');
+}
+function downloadAllAnniversaryICS(){
+  const events = trackedWorkAnniversaryEmployees().map(makeAnniversaryVEVENT).filter(Boolean);
+  if(!events.length){ toast('ยังไม่มีพนักงานที่ใกล้ครบรอบ 1/3/5 ปีให้สร้างไฟล์ .ics'); return; }
+  downloadFile('work_anniversaries_all.ics', wrapCalendar(events.join('\r\n')), 'text/calendar;charset=utf-8');
 }
 
 function renderBirthdayTable(){
@@ -4023,10 +4060,15 @@ function renderWorkAnniversaryTable(){
   rows = rows.slice().sort((a,b) => { const da=daysUntilWorkAnniversary(a), db=daysUntilWorkAnniversary(b); return (da??999)-(db??999); });
   document.getElementById('anniversaryTbody').innerHTML = rows.map(e => {
     const next = nextWorkAnniversary(e), days = daysUntilWorkAnniversary(e), year = workAnniversaryYear(e);
+    const gcal = buildAnniversaryGoogleCalendarUrl(e);
     return `<tr>
       <td>${escapeHtml(e.empCode)}</td><td>${escapeHtml(e.fullName)}</td><td>${escapeHtml(e.department||'-')}</td>
       <td>${escapeHtml(e.position||'-')}</td><td>${formatThaiDate(e.startDate)}</td>
       <td><span class="badge">ครบ ${year} ปี</span></td><td>${next?formatThaiDate(next):'-'}</td><td>${daysBadge(days)}</td>
+      <td><div class="row-actions">
+        <a class="btn btn-green btn-sm" href="${escapeHtml(gcal)}" target="_blank" rel="noopener" title="เพิ่มใน Google Calendar">📅</a>
+        <button class="btn-ghost btn-sm" onclick="downloadEmployeeAnniversaryICS('${e.empCode}')" title="ดาวน์โหลด .ics">⬇️ ics</button>
+      </div></td>
     </tr>`;
   }).join('');
   document.getElementById('anniversaryEmpty').classList.toggle('hidden', rows.length > 0);
