@@ -53,24 +53,24 @@
   .tab-btn:hover:not(.active){border-color:var(--navy-700);}
 
   /* ===== Sidebar shell (left nav instead of horizontal tabs) ===== */
-  .sidebar-toggle-btn{display:none; background:rgba(255,255,255,.12); border:1.5px solid rgba(255,255,255,.28); color:#fff; border-radius:9px; width:40px; height:40px; align-items:center; justify-content:center; font-size:18px; cursor:pointer; flex-shrink:0;}
-  .app-shell{display:flex; align-items:flex-start; max-width:1600px; margin:0 auto;}
+  .sidebar-toggle-btn{display:none!important; background:rgba(255,255,255,.12); border:1.5px solid rgba(255,255,255,.28); color:#fff; border-radius:9px; width:40px; height:40px; align-items:center; justify-content:center; font-size:18px; cursor:pointer; flex-shrink:0;}
+  .app-shell{display:flex!important; align-items:flex-start; max-width:1600px; margin:0 auto;}
   .app-shell > .tabbar{
-    position:sticky; top:0; align-self:flex-start; height:100vh; overflow-y:auto;
-    width:232px; flex:0 0 232px; max-width:none; margin:0; padding:20px 12px;
-    display:flex; flex-direction:column; gap:4px; flex-wrap:nowrap;
-    background:linear-gradient(180deg,var(--navy-950),var(--navy-800)); z-index:40;
+    position:sticky!important; top:0!important; align-self:flex-start; height:100vh!important; overflow-y:auto!important;
+    width:232px!important; flex:0 0 232px!important; max-width:none!important; margin:0!important; padding:20px 12px!important;
+    display:flex!important; flex-direction:column!important; gap:4px!important; flex-wrap:nowrap!important;
+    background:linear-gradient(180deg,var(--navy-950),var(--navy-800))!important; z-index:40!important; transform:none!important; left:auto!important; bottom:auto!important;
   }
-  .app-shell > .tabbar .tab-btn{width:100%; justify-content:flex-start; text-align:left; background:transparent; border-color:rgba(255,255,255,.14); color:var(--slate-300);}
-  .app-shell > .tabbar .tab-btn.active{background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.3); color:#fff;}
-  .app-shell > .tabbar .tab-btn:hover:not(.active){border-color:rgba(255,255,255,.35); color:#fff;}
-  .app-shell > .wrap{flex:1; min-width:0; max-width:none;}
+  .app-shell > .tabbar .tab-btn{width:100%!important; justify-content:flex-start!important; text-align:left; background:transparent!important; border-color:rgba(255,255,255,.14)!important; color:var(--slate-300)!important;}
+  .app-shell > .tabbar .tab-btn.active{background:rgba(255,255,255,.14)!important; border-color:rgba(255,255,255,.3)!important; color:#fff!important;}
+  .app-shell > .tabbar .tab-btn:hover:not(.active){border-color:rgba(255,255,255,.35)!important; color:#fff!important;}
+  .app-shell > .wrap{flex:1; min-width:0; max-width:none!important; margin:0!important;}
   .sidebar-backdrop{display:none;}
   @media(max-width:900px){
-    .sidebar-toggle-btn{display:inline-flex;}
-    .app-shell > .tabbar{position:fixed; left:0; top:0; bottom:0; z-index:210; transform:translateX(-100%); transition:transform .22s ease; box-shadow:0 0 40px rgba(0,0,0,.4);}
-    .app-shell > .tabbar.open{transform:translateX(0);}
-    .sidebar-backdrop.show{display:block; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200;}
+    .sidebar-toggle-btn{display:inline-flex!important;}
+    .app-shell > .tabbar{position:fixed!important; left:0!important; top:0!important; bottom:0!important; z-index:210!important; transform:translateX(-100%)!important; transition:transform .22s ease!important; box-shadow:0 0 40px rgba(0,0,0,.4)!important;}
+    .app-shell > .tabbar.open{transform:translateX(0)!important;}
+    .sidebar-backdrop.show{display:block!important; position:fixed!important; inset:0!important; background:rgba(0,0,0,.45)!important; z-index:200!important;}
   }
 
   .wrap{max-width:1400px; margin:0 auto; padding:18px 20px 60px;}
