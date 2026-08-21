@@ -52,6 +52,27 @@
   .tab-btn.active{background:var(--navy-900); border-color:var(--navy-900); color:#fff;}
   .tab-btn:hover:not(.active){border-color:var(--navy-700);}
 
+  /* ===== Sidebar shell (left nav instead of horizontal tabs) ===== */
+  .sidebar-toggle-btn{display:none; background:rgba(255,255,255,.12); border:1.5px solid rgba(255,255,255,.28); color:#fff; border-radius:9px; width:40px; height:40px; align-items:center; justify-content:center; font-size:18px; cursor:pointer; flex-shrink:0;}
+  .app-shell{display:flex; align-items:flex-start; max-width:1600px; margin:0 auto;}
+  .app-shell > .tabbar{
+    position:sticky; top:0; align-self:flex-start; height:100vh; overflow-y:auto;
+    width:232px; flex:0 0 232px; max-width:none; margin:0; padding:20px 12px;
+    display:flex; flex-direction:column; gap:4px; flex-wrap:nowrap;
+    background:linear-gradient(180deg,var(--navy-950),var(--navy-800)); z-index:40;
+  }
+  .app-shell > .tabbar .tab-btn{width:100%; justify-content:flex-start; text-align:left; background:transparent; border-color:rgba(255,255,255,.14); color:var(--slate-300);}
+  .app-shell > .tabbar .tab-btn.active{background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.3); color:#fff;}
+  .app-shell > .tabbar .tab-btn:hover:not(.active){border-color:rgba(255,255,255,.35); color:#fff;}
+  .app-shell > .wrap{flex:1; min-width:0; max-width:none;}
+  .sidebar-backdrop{display:none;}
+  @media(max-width:900px){
+    .sidebar-toggle-btn{display:inline-flex;}
+    .app-shell > .tabbar{position:fixed; left:0; top:0; bottom:0; z-index:210; transform:translateX(-100%); transition:transform .22s ease; box-shadow:0 0 40px rgba(0,0,0,.4);}
+    .app-shell > .tabbar.open{transform:translateX(0);}
+    .sidebar-backdrop.show{display:block; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200;}
+  }
+
   .wrap{max-width:1400px; margin:0 auto; padding:18px 20px 60px;}
   .view{display:none;}
   .view.active{display:block; animation:fade .2s ease;}
@@ -336,7 +357,10 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <span id="cloudSyncLabel">-</span>
 <button class="btn-ghost btn-sm" onclick="authGateLogout()">ออกจากระบบ</button>
 </div>
+<button class="sidebar-toggle-btn" id="sidebarToggleBtn" onclick="toggleAppSidebar()" aria-label="เปิด/ปิดเมนู">☰</button>
 </div>
+<div class="app-shell">
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleAppSidebar(false)"></div>
 <div class="tabbar" id="tabbar">
 <button class="tab-btn active" data-tab="employees" onclick="showTab('employees')">👥 ฐานข้อมูลพนักงาน</button>
 <button class="tab-btn" data-tab="orgchart" onclick="showTab('orgchart')">🏢 ผังองค์กร</button>
@@ -470,6 +494,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <div class="view" id="view-reports"><section class="summary-grid" id="reportSummaryGrid"></section><section class="card"><div class="module-intro"><div><h2>รายงานและ Artifact</h2><div class="sub">สร้างรายงานจากฐานข้อมูลจริง พร้อมตารางอ่านค่าและ Export Excel</div></div><button class="btn-primary" id="reportExportExcel" onclick="exportReportWorkbook()">Export Excel</button></div><div class="report-filter-grid" style="margin-top:16px"><div class="field"><label>วันที่เริ่ม</label><input id="reportDateFrom" onchange="renderReportWorkspace()" type="date"/></div><div class="field"><label>วันที่สิ้นสุด</label><input id="reportDateTo" onchange="renderReportWorkspace()" type="date"/></div><div class="field"><label>บริษัท</label><select id="reportCompanyFilter" onchange="renderReportWorkspace()"><option value="ALL">ทุกบริษัท</option><option value="CMN">CMN</option><option value="CIL">CIL</option></select></div><div class="field"><label>ฝ่าย</label><select id="reportDivisionFilter" onchange="renderReportWorkspace()"><option value="">ทุกฝ่าย</option></select></div><div class="field"><label>แผนก</label><select id="reportDepartmentFilter" onchange="renderReportWorkspace()"><option value="">ทุกแผนก</option></select></div><div class="filter-actions"><button class="btn-ghost" onclick="['reportDateFrom','reportDateTo','reportDivisionFilter','reportDepartmentFilter'].forEach(id=&gt;document.getElementById(id).value='');document.getElementById('reportCompanyFilter').value='ALL';renderReportWorkspace()">ล้างตัวกรอง</button></div></div></section><div class="report-layout"><section class="card report-menu"><button class="btn-ghost report-topic-btn active" data-report="headcount" onclick="showReportTopic('headcount')">อัตรากำลัง</button><button class="btn-ghost report-topic-btn" data-report="tenure" onclick="showReportTopic('tenure')">อายุงาน/อายุคน</button><button class="btn-ghost report-topic-btn" data-report="lifecycle" onclick="showReportTopic('lifecycle')">สถานะพนักงาน</button><button class="btn-ghost report-topic-btn" data-report="turnover" onclick="showReportTopic('turnover')">การลาออก (Turnover)</button><button class="btn-ghost report-topic-btn" data-report="onboarding" onclick="showReportTopic('onboarding')">Onboarding</button><button class="btn-ghost report-topic-btn" data-report="positions" onclick="showReportTopic('positions')">ตำแหน่งงาน</button><button class="btn-ghost report-topic-btn" data-report="training" onclick="showReportTopic('training')">การฝึกอบรม</button><button class="btn-ghost report-topic-btn" data-report="orgquality" onclick="showReportTopic('orgquality')">ผังองค์กรและ Data Quality</button></section><section class="card report-panel" id="reportContent"></section></div></div>
 <!-- ============ SETTINGS ============ -->
 <div class="view" id="view-settings"><section class="card"><h2>Setting</h2><div class="sub">รวมเครื่องมือนำเข้า ส่งออก สำรองข้อมูล และการตั้งค่าระบบ</div><div class="clean-note" id="settingsStatus"></div></section><div class="setting-grid"><section class="card"><h2>ฐานข้อมูลและ Framework</h2><div class="actions"><label class="btn btn-gold" for="importFile">นำเข้าพนักงาน Excel</label><input accept=".xlsx,.xls" class="hidden" id="importFile" onchange="importEmployeesExcel(event)" type="file"/><label class="btn btn-purple" for="importFrameworkFile">นำเข้า JD/KPI/Competency</label><input accept=".xlsx,.xls" class="hidden" id="importFrameworkFile" onchange="importFrameworkExcel(event)" type="file"/><button class="btn-ghost" onclick="downloadEmployeeTemplate()">Template พนักงาน</button><button class="btn-green" onclick="exportDbExcel()">Export Excel ทั้งระบบ</button><button class="btn-green" onclick="exportDbJson()">Export JSON ทั้งระบบ</button><label class="btn btn-purple" for="importDbFile">Import JSON ทั้งระบบ</label><input accept=".json" class="hidden" id="importDbFile" onchange="importDbJson(event)" type="file"/></div></section><section class="card"><h2>นำเข้าคำร้องพนักงาน (จากพอร์ทัลพนักงาน)</h2><div class="clean-note">อนุมัติคำร้องที่หน้า Admin ของพอร์ทัลพนักงานก่อน แล้วส่งออกเป็นไฟล์ JSON มานำเข้าที่นี่ — ระบบจะแสดงรายการให้ตรวจก่อนบันทึกทุกครั้ง</div><div class="actions" style="margin-top:10px"><label class="btn btn-purple" for="importRequestsFile">เลือกไฟล์คำร้อง (.json)</label><input accept=".json" class="hidden" id="importRequestsFile" onchange="loadEmployeeRequestsFile(event)" type="file"/></div><div id="employeeRequestsPreview" style="margin-top:12px"></div></section><section class="card"><h2>ผังองค์กร JSON</h2><div class="field"><label>บริษัท</label><select id="orgImportCompanySetting" onchange="onSettingOrgCompanyChange()"><option value="CMN">CMN</option><option value="CIL">CIL</option></select></div><div class="actions"><button class="btn-green" onclick="exportOrgJson()">Export JSON</button><label class="btn btn-purple" for="importOrgFile">Import และตรวจสอบ</label><input accept=".json,application/json" class="hidden" id="importOrgFile" onchange="importOrgJson(event)" type="file"/><button class="btn-ghost" id="restoreOrgSnapshotBtn" onclick="restoreLatestOrgSnapshot()">Restore Snapshot ล่าสุด</button></div><div class="inline-error" id="orgImportError"></div><div class="clean-note" style="margin-top:12px">ระบบจะแสดงรายการเพิ่มใหม่ แก้ไข ย้าย Parent และลบออกก่อนยืนยันทุกครั้ง</div></section><section class="card"><h2>ตั้งค่าอวยพรวันเกิด</h2><div class="form-grid two"><div class="field span2"><label>หัวข้ออีเมล</label><input id="bday_subject"/></div><div class="field span2"><label>เนื้อหาอีเมล</label><textarea id="bday_body" style="min-height:110px"></textarea></div><div class="field span2"><label>แจ้งเตือนล่วงหน้า</label><input id="bday_reminderDays"/></div></div><div class="actions"><button class="btn-primary" onclick="saveBirthdaySettings()">บันทึก</button><button class="btn-ghost" onclick="resetBirthdaySettingsToDefault()">คืนค่าเริ่มต้น</button></div></section><section class="card"><h2>ตั้งค่าทดลองงาน</h2><div class="field"><label>URL แบบประเมิน</label><input id="prob_assessmentUrl" placeholder="https://..."/></div><div class="actions"><button class="btn-primary" onclick="saveProbationSettings()">บันทึก</button></div></section><section class="card"><h2>สีประจำ Module</h2><div class="theme-legend"><div class="theme-swatch" style="--swatch:#7C3AED"><span class="theme-dot"></span>ฐานข้อมูลพนักงาน</div><div class="theme-swatch" style="--swatch:#3B82F6"><span class="theme-dot"></span>ผังองค์กร</div><div class="theme-swatch" style="--swatch:#10B981"><span class="theme-dot"></span>Tracking Onboarding</div><div class="theme-swatch" style="--swatch:#22D3EE"><span class="theme-dot"></span>จัดการตำแหน่งงาน</div><div class="theme-swatch" style="--swatch:#F43F5E"><span class="theme-dot"></span>ประวัติการฝึกอบรม</div><div class="theme-swatch" style="--swatch:#F59E0B"><span class="theme-dot"></span>รายงาน</div><div class="theme-swatch" style="--swatch:#6366F1"><span class="theme-dot"></span>Setting</div></div></section><section class="card"><h2>ประวัติสำรองข้อมูลอัตโนมัติ (ในเบราว์เซอร์นี้)</h2><div class="clean-note">ระบบบันทึกสำรองให้อัตโนมัติทุกครั้งที่มีการแก้ไข (สูงสุด 8 เวอร์ชันล่าสุด) และก่อนการล้าง/นำเข้า/ย้อนข้อมูลทุกครั้ง ใช้กู้คืนกรณีแก้พลาดหรือ import ผิดไฟล์ — <strong>ไม่ใช่ตัวแทนการ Export JSON ออกไปเก็บนอกเบราว์เซอร์</strong> เพราะถ้าเบราว์เซอร์ล้างข้อมูลเอง ประวัตินี้จะหายไปพร้อมกัน</div><div id="dbBackupList" style="margin-top:10px"></div></section><section class="card"><h2>การจัดการข้อมูลขั้นสูง</h2><div class="actions"><button class="btn-danger" onclick="clearAllEmployees()">ล้างข้อมูลพนักงานทั้งหมด</button></div><div class="notice">ควร Export JSON ทั้งระบบก่อนล้างข้อมูล (ระบบจะสำรองอัตโนมัติให้ด้วย แต่ไฟล์ JSON ที่ Export ออกไปเก็บนอกเบราว์เซอร์ยังปลอดภัยกว่า)</div></section></div></div>
+</div>
 </div>
 <!-- Modal ใช้ร่วมกันหลายโมดูล -->
 <div class="modal-bg" id="sharedModal" onclick="closeSharedModal(event)"><div class="modal" onclick="event.stopPropagation()"><h3 id="sharedModalTitle"></h3><div id="sharedModalBody"></div><div class="actions" style="justify-content:flex-end;"><button class="btn-ghost" onclick="closeSharedModal()">ปิด</button></div></div></div>
@@ -6287,6 +6312,27 @@ body{background:transparent!important}
     if(res.data && res.data.session){ onAuthenticated(); }
     else { setSyncLabel('ยังไม่ได้เข้าสู่ระบบ'); showAuthGate(); }
   });
+})();
+</script>
+
+<script id="sidebar-shell-script">
+(function(){
+  function sidebarEl(){ return document.getElementById('tabbar'); }
+  window.toggleAppSidebar = function(force){
+    var sb = sidebarEl(); var bd = document.getElementById('sidebarBackdrop');
+    if(!sb) return;
+    var open = typeof force === 'boolean' ? force : !sb.classList.contains('open');
+    sb.classList.toggle('open', open);
+    if(bd) bd.classList.toggle('show', open);
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    var sb = sidebarEl();
+    if(sb) sb.addEventListener('click', function(e){ if(e.target.closest('.tab-btn')) toggleAppSidebar(false); });
+  });
+  if(document.readyState !== 'loading'){
+    var sb = sidebarEl();
+    if(sb) sb.addEventListener('click', function(e){ if(e.target.closest('.tab-btn')) toggleAppSidebar(false); });
+  }
 })();
 </script>
 
