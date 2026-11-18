@@ -7561,6 +7561,164 @@ window.refreshPerfEmployeeSelects=function(){
     if(result==='accept'){ moveStage(c,'hired'); after(id,'ผู้สมัครรับข้อเสนอ → ว่าจ้าง/เริ่มงาน'); }
     else { reject(c,'offer','ปฏิเสธข้อเสนอ: '+reason); after(id,'ผู้สมัครไม่รับข้อเสนอ — ปิด pipeline แล้ว'); }
   };
+  /* ---------- ส่ง Job Offer ทางอีเมล (เปิดร่างใน Gmail / mailto / คัดลอก) ----------
+     รูปแบบอีเมลอิงจากจดหมาย Job Offer ที่ HR ส่งจริง: รายละเอียดการจ้าง + สวัสดิการ + เอกสารที่ต้องส่ง + วันตอบรับ
+     ระบบไม่มีเซิร์ฟเวอร์ส่งอีเมล จึงเปิดร่างใน Gmail ของผู้ใช้ให้ตรวจ/แนบไฟล์แล้วกดส่งเอง */
+  var OFFER_COMPANY = { CIL:'Cosceutic Innovation Laboratories Co., Ltd.', CMN:'Cosmania Laboratories Co., Ltd.' };
+  var OFFER_LOCATION = '47 Soi Sukhumvit 60/1 (Closely BTS Bangchak)';
+  var OFFER_HOURS = 'Monday to Friday, 8:30 a.m. – 5:30 p.m.';
+  var OFFER_BENEFITS = [
+    ['Health Benefits', ['Free annual health check-up', 'Social Security']],
+    ['Financial Benefits', ['Annual bonus', 'Annual salary adjustment based on performance', 'Financial assistance in various cases (e.g., childbirth, loss of a family member)', 'Provident Fund (under consideration)']],
+    ['Housing Benefits', ['Free accommodation for employees who live far from the workplace']],
+    ['Leave and Rest Periods', ['Annual vacation leave', 'Weekly days off', 'Public holidays (at least 13 days per year, in accordance with the law)']],
+    ['Family Benefits', ['Educational scholarships for employees’ children']],
+    ['Training and Development', ['Support for education and training to enhance job-related skills, both internally and externally']],
+    ['Employee Well-being', ['Special privileges such as discounts on products or services', 'Participation in recreational and social activities, such as annual company trips, sports day, and annual parties', 'Birthday celebrations for employees']]
+  ];
+  var OFFER_DOCS = ['Copy of National Identification Card', 'Copy of House Registration', 'Educational Certificate(s)', 'One Recent Photograph', 'Copy of SCB (Siam Commercial Bank) Account Book', 'Salary Certificate / Employment Certificate (if available)'];
+  var EN_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  function offerDefaults(){ ensure(); var st = DB.settings.recruitment; if(!st.offerDefaults) st.offerDefaults = {}; return st.offerDefaults; }
+  function enDate(iso){ var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso||''); return m ? Number(m[3])+' '+EN_MONTHS[Number(m[2])-1]+' '+m[1] : ''; }
+  function isEmail(s){ return /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(String(s||'')); }
+  function offerCompany(c){ return OFFER_COMPANY[c.company] || c.company || ''; }
+  function offerSubject(c, f){ var co = offerCompany(c); return (co ? co+' : ' : '')+'Job Offer for the Position of '+(f.position||''); }
+  function offerBody(c, f){
+    var co = offerCompany(c), first = (c.firstName||'').trim() || cname(c), L = [];
+    var pay = f.compensation>0 ? Number(f.compensation).toLocaleString('en-US') : '[amount]';
+    L.push('Dear Khun '+first+',', '');
+    L.push('Congratulations! We are delighted to offer you the position of '+(f.position||'[position]')+(co?' at '+co:'')+(/\.$/.test(co)?' ':'. ')+'We are confident that your skills, experience, and enthusiasm will make a valuable contribution to our team.', '');
+    L.push('Employment Details:', '');
+    L.push('Position: '+(f.position||'[position]'));
+    L.push('Start Date: '+(enDate(f.startDate)||'[start date]'));
+    L.push('Location: '+(f.location||''));
+    L.push('Working Hours: '+(f.hours||''));
+    L.push('Compensation: '+pay+' Baht/Month, payable in accordance with the company’s standard payroll schedule.', '');
+    L.push('Currently, our company provides a wide range of employee benefits as follows:', '');
+    OFFER_BENEFITS.forEach(function(b){ L.push(b[0]); b[1].forEach(function(i){ L.push('- '+i); }); L.push(''); });
+    L.push('This offer is contingent upon the completion of the company’s employment application form and submission of the following required documents:', '');
+    OFFER_DOCS.forEach(function(d, i){ L.push((i+1)+'. '+d); });
+    L.push('', 'Please submit the completed application form together with the above documents to the Human Resources Department before your first working day.', '');
+    L.push('Please confirm your acceptance of this offer by replying to this email by '+(enDate(f.replyBy)||'[date]')+'.', '');
+    L.push('We look forward to welcoming you to '+(co||'our company')+' and working together towards continued success.', '');
+    L.push('Sincerely,');
+    return L.join('\n');
+  }
+  function offerRead(){
+    var el = function(i){ return document.getElementById(i); };
+    return { id:gv('of-id'), to:gv('of-to'), cc:gv('of-cc'), position:gv('of-position'), startDate:gv('of-start'), compensation:Number(gv('of-comp'))||0,
+      location:gv('of-location'), hours:gv('of-hours'), replyBy:gv('of-reply'), subject:gv('of-subject'), body:(el('of-body')||{}).value||'' };
+  }
+  function offerCheck(f){
+    if(!isEmail(f.to)) return 'กรุณาระบุอีเมลผู้สมัครให้ถูกต้อง';
+    var bad = splitList(f.cc).filter(function(x){ return !isEmail(x); });
+    if(bad.length) return 'อีเมล CC ไม่ถูกต้อง: '+bad.join(', ');
+    if(!f.position) return 'กรุณาระบุตำแหน่ง';
+    if(!f.startDate) return 'กรุณาระบุวันเริ่มงาน';
+    if(!(f.compensation>0)) return 'กรุณาระบุค่าตอบแทน (บาท/เดือน)';
+    if(!f.replyBy) return 'กรุณาระบุวันที่ให้ผู้สมัครตอบรับ';
+    if(!f.subject || !f.body.trim()) return 'หัวข้อและเนื้อหาอีเมลต้องไม่ว่าง';
+    return '';
+  }
+  function offerSave(c, f){
+    c.offer = { to:f.to, cc:f.cc, position:f.position, startDate:f.startDate, compensation:f.compensation, location:f.location, hours:f.hours, replyBy:f.replyBy };
+    c.negotiation = Object.assign({}, c.negotiation||{}, { position:f.position, compensation:f.compensation, startDate:f.startDate });
+    var d = offerDefaults(); d.cc = f.cc; d.location = f.location; d.hours = f.hours;
+    saveDB();
+  }
+  function offerStatus(msg){ var s = document.getElementById('of-status'); if(s) s.textContent = msg; }
+  function offerEmailBlock(c){
+    var log = c.offerLog || [], last = log[log.length-1];
+    var info = last
+      ? '<div class="small" style="margin:6px 0">ส่ง Job Offer ล่าสุดเมื่อ '+esc(new Date(last.at).toLocaleString('th-TH',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'}))+' ถึง '+esc(last.to)+' (ส่งแล้ว '+log.length+' ครั้ง)</div>'
+      : '<div class="small" style="margin:6px 0">ยังไม่ได้ส่ง Job Offer ทางอีเมล</div>';
+    return '<div class="rc-block" style="margin:10px 0"><h4>✉️ ส่ง Job Offer ทางอีเมล</h4>'+info
+      +'<button class="btn-primary" onclick="rcOfferOpen(\''+attr(c.id)+'\')">'+(last?'เตรียมส่งอีกครั้ง':'เตรียมอีเมล Job Offer')+'</button></div>';
+  }
+  window.rcOfferOpen = function(id){
+    ensure();
+    var c = candById(id); if(!c) return;
+    var neg = c.negotiation||{}, o = c.offer||{}, d = offerDefaults(), job = reqById(c.requisitionId)||{};
+    var f = {
+      to:o.to||c.email||'', cc:(o.cc!=null ? o.cc : (d.cc||'')), position:o.position||neg.position||job.position||'',
+      startDate:o.startDate||neg.startDate||'', compensation:o.compensation||neg.compensation||'',
+      location:o.location||d.location||OFFER_LOCATION, hours:o.hours||d.hours||OFFER_HOURS,
+      replyBy:o.replyBy||ymd(new Date(Date.now()+3*86400000))
+    };
+    var fld = function(label, idn, val, type, wide){
+      return '<div class="field"'+(wide?' style="grid-column:1/-1"':'')+'><label>'+label+'</label><input id="'+idn+'"'+(type?' type="'+type+'"':'')+' value="'+attr(val)+'" oninput="rcOfferRefresh()"></div>';
+    };
+    var html = '<div class="rc-detail"><input type="hidden" id="of-id" value="'+attr(c.id)+'">'
+      +'<div class="small" style="margin-bottom:8px">ผู้สมัคร: <b>'+esc(cname(c))+'</b> · กด "เปิดร่างใน Gmail" ระบบจะเปิดหน้าเขียนอีเมลที่กรอกข้อความให้แล้ว ให้ตรวจ แนบไฟล์ แล้วกดส่งเองจากบัญชี Gmail ของคุณ</div>'
+      +'<div class="form-grid two">'
+      +fld('อีเมลผู้สมัคร (To) *','of-to',f.to,'email')
+      +fld('CC (คั่นด้วยจุลภาค)','of-cc',f.cc)
+      +fld('ตำแหน่ง *','of-position',f.position)
+      +fld('วันเริ่มงาน *','of-start',f.startDate,'date')
+      +fld('ค่าตอบแทน (บาท/เดือน) *','of-comp',f.compensation,'number')
+      +fld('วันที่ให้ตอบรับภายใน *','of-reply',f.replyBy,'date')
+      +fld('สถานที่ทำงาน','of-location',f.location,'',true)
+      +fld('เวลาทำงาน','of-hours',f.hours,'',true)
+      +'<div class="field" style="grid-column:1/-1"><label>หัวข้ออีเมล</label><input id="of-subject" value="'+attr(offerSubject(c,f))+'" oninput="this.dataset.edited=\'1\'"></div>'
+      +'<div class="field" style="grid-column:1/-1"><label>เนื้อหาอีเมล (แก้ไขได้ — ถ้าแก้เองแล้ว การเปลี่ยนช่องด้านบนจะไม่เขียนทับ ใช้ปุ่ม "สร้างข้อความใหม่" เพื่อเริ่มใหม่)</label>'
+      +'<textarea id="of-body" rows="18" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre-wrap" oninput="this.dataset.edited=\'1\'">'+esc(offerBody(c,f))+'</textarea></div>'
+      +'</div>'
+      +'<div class="small" style="margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(245,158,11,.12)">📎 การเปิดร่างอัตโนมัติแนบไฟล์ไม่ได้ — อย่าลืมแนบใบสมัครงาน (FM-HR-0001) และลายเซ็นท้ายอีเมลใน Gmail ก่อนกดส่ง</div>'
+      +'<div id="of-status" class="small" style="min-height:18px;margin-bottom:8px"></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">'
+      +'<button type="button" class="btn-ghost" onclick="rcOfferRefresh(true)">↻ สร้างข้อความใหม่</button>'
+      +'<button type="button" class="btn-ghost" onclick="rcOfferCopy()">คัดลอกข้อความ</button>'
+      +'<button type="button" class="btn-ghost" onclick="rcOfferMailto()">เปิดด้วยแอปอีเมลในเครื่อง</button>'
+      +'<button type="button" class="btn-primary" onclick="rcOfferGmail()">✉️ เปิดร่างใน Gmail</button>'
+      +'<button type="button" class="btn-green" onclick="rcOfferMarkSent()">✓ บันทึกว่าส่งแล้ว</button>'
+      +'</div></div>';
+    openSharedModal('ส่ง Job Offer: '+cname(c), html, true);
+  };
+  window.rcOfferRefresh = function(force){
+    var c = candById(gv('of-id')); if(!c) return;
+    var f = offerRead(), s = document.getElementById('of-subject'), b = document.getElementById('of-body');
+    if(!s || !b) return;
+    if(force){ s.dataset.edited = ''; b.dataset.edited = ''; }
+    if(s.dataset.edited!=='1') s.value = offerSubject(c, f);
+    if(b.dataset.edited!=='1') b.value = offerBody(c, f);
+  };
+  window.rcOfferGmail = function(){
+    var c = candById(gv('of-id')); if(!c) return;
+    var f = offerRead(), err = offerCheck(f); if(err){ toast(err); return; }
+    var p = { view:'cm', fs:'1', to:f.to, su:f.subject, body:f.body };
+    var cc = splitList(f.cc).join(','); if(cc) p.cc = cc;
+    var url = 'https://mail.google.com/mail/?'+new URLSearchParams(p).toString();
+    if(url.length>8000 && !confirm('เนื้อหายาวมาก Gmail อาจตัดข้อความท้ายอีเมล แนะนำให้ใช้ปุ่ม "คัดลอกข้อความ" แล้ววางเอง\n\nต้องการเปิด Gmail ต่อหรือไม่?')) return;
+    offerSave(c, f);
+    var w = window.open(url, '_blank', 'noopener');
+    offerStatus(w ? 'เปิดร่างใน Gmail แล้ว — ตรวจข้อความ แนบไฟล์ กดส่ง จากนั้นกลับมากด "บันทึกว่าส่งแล้ว"' : 'เบราว์เซอร์บล็อกหน้าต่างใหม่ — อนุญาตป๊อปอัปสำหรับเว็บนี้ หรือใช้ปุ่ม "คัดลอกข้อความ"');
+  };
+  window.rcOfferMailto = function(){
+    var c = candById(gv('of-id')); if(!c) return;
+    var f = offerRead(), err = offerCheck(f); if(err){ toast(err); return; }
+    var q = ['subject='+encodeURIComponent(f.subject), 'body='+encodeURIComponent(f.body)];
+    var cc = splitList(f.cc).join(','); if(cc) q.unshift('cc='+encodeURIComponent(cc));
+    offerSave(c, f);
+    var a = document.createElement('a'); a.href = 'mailto:'+encodeURIComponent(f.to)+'?'+q.join('&'); a.click();
+    offerStatus('ส่งไปยังแอปอีเมลในเครื่องแล้ว — ตรวจ แนบไฟล์ กดส่ง จากนั้นกลับมากด "บันทึกว่าส่งแล้ว"');
+  };
+  window.rcOfferCopy = function(){
+    var f = offerRead();
+    var text = 'To: '+f.to+(f.cc?'\nCC: '+f.cc:'')+'\nSubject: '+f.subject+'\n\n'+f.body;
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){ offerStatus('คัดลอกข้อความอีเมลแล้ว'); }, function(){ offerStatus('คัดลอกไม่สำเร็จ — เลือกข้อความในช่องเนื้อหาแล้วกด Ctrl/Cmd+C'); });
+    else offerStatus('เบราว์เซอร์นี้คัดลอกอัตโนมัติไม่ได้ — เลือกข้อความในช่องเนื้อหาแล้วกด Ctrl/Cmd+C');
+  };
+  window.rcOfferMarkSent = function(){
+    var c = candById(gv('of-id')); if(!c) return;
+    var f = offerRead(), err = offerCheck(f); if(err){ toast(err); return; }
+    if(!confirm('ยืนยันว่าส่ง Job Offer ให้ '+f.to+' ทางอีเมลเรียบร้อยแล้วใช่หรือไม่?\n(ระบบจะบันทึกประวัติการส่งไว้ที่ผู้สมัครคนนี้)')) return;
+    offerSave(c, f);
+    c.offerLog = c.offerLog || [];
+    c.offerLog.push({ at:nowIso(), to:f.to, cc:f.cc, subject:f.subject, position:f.position, compensation:f.compensation, startDate:f.startDate, replyBy:f.replyBy });
+    after(c.id, 'บันทึกการส่ง Job Offer แล้ว');
+  };
+
   window.rcToggleOnb = function(id, key, on){ var c = candById(id); if(!c || c.stage!=='hired') return; c.onboarding = c.onboarding||{}; c.onboarding[key] = !!on; saveDB(); rcOpenDetail(id); };
   window.rcArchive = function(id){ var c = candById(id); if(!c || c.stage!=='hired') return; moveStage(c,'archived'); after(id,'ปิดงานและจัดเก็บถาวรแล้ว'); };
   window.rcReopen = function(id){
@@ -7594,7 +7752,7 @@ window.refreshPerfEmployeeSelects=function(){
         +(c.scheduledDate?'<div class="rc-kv"><span>นัดสัมภาษณ์</span><span>'+esc(fmtSchedule(c))+'</span></div>':'')
         +'<div class="small" style="margin:8px 0">ส่งลิงก์ให้ผู้บริหารที่เกี่ยวข้องพิจารณา จากนั้นกดถัดไปเพื่อเข้าสู่รอบ Final</div><button class="btn-primary" style="width:100%" onclick="rcForward(\''+attr(c.id)+'\')">ถัดไป → สัมภาษณ์รอบ Final</button></div>';
       case 'final': return '<div class="rc-action"><div class="rc-action-title">ผลสัมภาษณ์รอบ Final &amp; เงื่อนไขเบื้องต้น</div><div class="form-grid two"><div class="field"><label>ตำแหน่งที่เสนอ</label><input id="sa-fposition" value="'+attr(neg.position||(job&&job.position)||'')+'"></div><div class="field"><label>ค่าตอบแทน (บาท/เดือน)</label><input type="number" id="sa-fcomp" value="'+attr(neg.compensation||c.expectedSalary||'')+'"></div><div class="field"><label>วันที่คาดว่าจะเริ่มงาน</label><input type="date" id="sa-fstart" value="'+attr(neg.startDate||'')+'"></div></div><div class="rc-seg" style="margin-top:8px"><button class="btn-green" onclick="rcFinalResult(\''+attr(c.id)+'\',\'pass\')">✓ ผ่าน</button><button class="btn-danger" onclick="rcFinalResult(\''+attr(c.id)+'\',\'fail\')">✕ ไม่ผ่าน</button></div></div>';
-      case 'offer': return '<div class="rc-action"><div class="rc-action-title">ข้อเสนอที่ยื่นให้ผู้สมัคร</div><div class="rc-kv"><span>ตำแหน่ง</span><span>'+esc(neg.position||'-')+'</span></div><div class="rc-kv"><span>ค่าตอบแทน</span><span>'+(neg.compensation?'฿'+Number(neg.compensation).toLocaleString('th-TH'):'-')+'</span></div><div class="rc-kv"><span>วันเริ่มงาน</span><span>'+esc(neg.startDate?formatThaiDate(neg.startDate):'-')+'</span></div><div class="field" style="margin-top:8px"><label>หมายเหตุ/เหตุผล (จำเป็นถ้าไม่รับข้อเสนอ)</label><textarea id="sa-offer-reason" rows="2">'+esc(c.offerReason||'')+'</textarea></div><div class="rc-seg"><button class="btn-green" onclick="rcOfferResult(\''+attr(c.id)+'\',\'accept\')">✓ รับข้อเสนอ</button><button class="btn-danger" onclick="rcOfferResult(\''+attr(c.id)+'\',\'decline\')">✕ ไม่รับข้อเสนอ</button></div></div>';
+      case 'offer': return '<div class="rc-action"><div class="rc-action-title">ข้อเสนอที่ยื่นให้ผู้สมัคร</div><div class="rc-kv"><span>ตำแหน่ง</span><span>'+esc(neg.position||'-')+'</span></div><div class="rc-kv"><span>ค่าตอบแทน</span><span>'+(neg.compensation?'฿'+Number(neg.compensation).toLocaleString('th-TH'):'-')+'</span></div><div class="rc-kv"><span>วันเริ่มงาน</span><span>'+esc(neg.startDate?formatThaiDate(neg.startDate):'-')+'</span></div>'+offerEmailBlock(c)+'<div class="field" style="margin-top:8px"><label>หมายเหตุ/เหตุผล (จำเป็นถ้าไม่รับข้อเสนอ)</label><textarea id="sa-offer-reason" rows="2">'+esc(c.offerReason||'')+'</textarea></div><div class="rc-seg"><button class="btn-green" onclick="rcOfferResult(\''+attr(c.id)+'\',\'accept\')">✓ รับข้อเสนอ</button><button class="btn-danger" onclick="rcOfferResult(\''+attr(c.id)+'\',\'decline\')">✕ ไม่รับข้อเสนอ</button></div></div>';
       case 'hired': {
         var done = ONBOARDING_ITEMS.filter(function(i){ return c.onboarding && c.onboarding[i.key]; }).length;
         return '<div class="rc-action"><div class="rc-action-title">Checklist Onboarding (ก่อนเริ่มงาน)</div>'+ONBOARDING_ITEMS.map(function(i){ return '<label class="rc-onb"><input type="checkbox" '+((c.onboarding&&c.onboarding[i.key])?'checked':'')+' onchange="rcToggleOnb(\''+attr(c.id)+'\',\''+i.key+'\',this.checked)"> '+esc(i.label)+'</label>'; }).join('')
