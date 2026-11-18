@@ -7570,7 +7570,7 @@ window.refreshPerfEmployeeSelects=function(){
     var r = reqById(c.requisitionId), m = matchScore(c, r);
     var chips = function(list, cls){ return (list||[]).map(function(s){ return '<span class="rc-chip '+(cls||'')+'">'+esc(s)+'</span>'; }).join('') || '<span class="small">-</span>'; };
     var hist = (c.stageHistory||[]).slice().reverse().map(function(h){ return '<div class="rc-kv"><span>'+stageBadge(h.stage)+'</span><span class="small">'+esc(new Date(h.at).toLocaleString('th-TH',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</span></div>'; }).join('');
-    var resumes = (c.resumes||[]).map(function(f,i){ return '<div class="rc-kv"><span>📎 '+esc(f.filename)+' <span class="small">('+esc(f.ocrStatus||'-')+')</span></span><button class="btn-ghost btn-sm" onclick="rcOpenResume(\''+attr(c.id)+'\','+i+')">เปิดไฟล์</button></div>'; }).join('') || '<div class="small">ยังไม่มีเอกสารแนบ</div>';
+    var resumes = (c.resumes||[]).map(function(f,i){ var where = f.path ? '☁️ เก็บในระบบ' : (f.localKey ? '💾 เก็บในเครื่องนี้เท่านั้น' : '⚠️ ไม่ได้เก็บไฟล์'); return '<div class="rc-kv"><span>📎 '+esc(f.filename)+'<div class="small">'+where+' · '+esc(f.ocrStatus||'-')+'</div></span><span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn-ghost btn-sm" onclick="rcOpenResume(\''+attr(c.id)+'\','+i+')">เปิดไฟล์</button>'+((!f.path&&f.localKey)?'<button class="btn-ghost btn-sm" onclick="rcUploadPending(\''+attr(c.id)+'\','+i+')">☁️ อัปโหลดขึ้นระบบ</button>':'')+'</span></div>'; }).join('') || '<div class="small">ยังไม่มีเอกสารแนบ</div>';
     var html = '<div class="rc-detail">'
       +'<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><div style="font-size:20px;font-weight:700">'+esc(cname(c))+'</div><div class="small">'+esc(r?reqLabel(r):'-')+'</div></div><div>'+stageBadge(c.stage)+'</div></div>'
       +stageAction(c, r)
@@ -7627,7 +7627,7 @@ window.refreshPerfEmployeeSelects=function(){
   };
   window.rcDeleteCandidate = function(id){
     var c = candById(id); if(!c || !confirm('ลบผู้สมัคร "'+cname(c)+'" และประวัติทั้งหมดถาวร?')) return;
-    (c.resumes||[]).forEach(function(f){ try{ supabaseClient.storage.from('resumes').remove([f.path]); }catch(e){} });
+    (c.resumes||[]).forEach(function(f){ if(f.localKey) idbDel(f.localKey); try{ supabaseClient.storage.from('resumes').remove([f.path]); }catch(e){} });
     DB.recruitmentCandidates = DB.recruitmentCandidates.filter(function(x){ return x.id!==id; });
     saveDB(); closeSharedModal(); render();
   };
@@ -7706,7 +7706,7 @@ window.refreshPerfEmployeeSelects=function(){
     var r = reqById(id); if(!r) return;
     var n = DB.recruitmentCandidates.filter(function(c){ return c.requisitionId===id; }).length;
     if(!confirm('ลบตำแหน่ง '+r.code+' ('+r.position+')'+(n?' และผู้สมัครที่เกี่ยวข้อง '+n+' คน (ประวัติและเรซูเม่ทั้งหมดจะหายถาวร)':'')+' ?\n\nทางเลือกที่ปลอดภัยกว่าคือแก้สถานะเป็น "ปิดรับ/ครบอัตรา"')) return;
-    DB.recruitmentCandidates.filter(function(c){ return c.requisitionId===id; }).forEach(function(c){ (c.resumes||[]).forEach(function(f){ try{ supabaseClient.storage.from('resumes').remove([f.path]); }catch(e){} }); });
+    DB.recruitmentCandidates.filter(function(c){ return c.requisitionId===id; }).forEach(function(c){ (c.resumes||[]).forEach(function(f){ if(f.localKey) idbDel(f.localKey); try{ supabaseClient.storage.from('resumes').remove([f.path]); }catch(e){} }); });
     DB.recruitmentRequisitions = DB.recruitmentRequisitions.filter(function(x){ return x.id!==id; });
     DB.recruitmentCandidates = DB.recruitmentCandidates.filter(function(c){ return c.requisitionId!==id; });
     saveDB(); render();
@@ -7854,10 +7854,23 @@ window.refreshPerfEmployeeSelects=function(){
   function session(){ if(typeof supabaseClient==='undefined') return Promise.resolve(null); return supabaseClient.auth.getSession().then(function(r){ return (r&&r.data&&r.data.session)||null; }).catch(function(){ return null; }); }
   function toBase64(file){ return new Promise(function(res,rej){ var fr = new FileReader(); fr.onload = function(){ res(String(fr.result).split(',')[1]); }; fr.onerror = rej; fr.readAsDataURL(file); }); }
 
+  /* local copy of attached resumes (IndexedDB) so files can always be opened on the device that imported them */
+  function idbOpen(){
+    return new Promise(function(res, rej){
+      if(!window.indexedDB){ rej(new Error('no indexedDB')); return; }
+      var rq = indexedDB.open('hr-recruit-files', 1);
+      rq.onupgradeneeded = function(){ rq.result.createObjectStore('files'); };
+      rq.onsuccess = function(){ res(rq.result); }; rq.onerror = function(){ rej(rq.error); };
+    });
+  }
+  function idbPut(key, blob){ return idbOpen().then(function(db){ return new Promise(function(res, rej){ var tx = db.transaction('files','readwrite'); tx.objectStore('files').put(blob, key); tx.oncomplete = res; tx.onerror = function(){ rej(tx.error); }; }); }); }
+  function idbGet(key){ return idbOpen().then(function(db){ return new Promise(function(res, rej){ var rq = db.transaction('files','readonly').objectStore('files').get(key); rq.onsuccess = function(){ res(rq.result||null); }; rq.onerror = function(){ rej(rq.error); }; }); }); }
+  function idbDel(key){ return idbOpen().then(function(db){ var tx = db.transaction('files','readwrite'); tx.objectStore('files').delete(key); }).catch(function(){}); }
   /* store the file (if logged in) and read it; resolves { meta, extracted, method, notes[] } */
   function attachResume(c, file, withRead, onStatus){
     onStatus = onStatus || function(){};
     var meta = { filename:file.name, size:file.size, mime:file.type, uploadedAt:nowIso(), path:'', ocrStatus:'pending' };
+    meta.localKey = c.id+'/'+Date.now()+'_'+Math.random().toString(36).slice(2,7); idbPut(meta.localKey, file).catch(function(){ meta.localKey = ''; });
     c.resumes = c.resumes||[];
     var job = reqById(c.requisitionId), result = { meta:meta, extracted:null, method:'', notes:[] };
     return session().then(function(sess){
@@ -7888,8 +7901,36 @@ window.refreshPerfEmployeeSelects=function(){
     });
   }
   window.rcOpenResume = function(id, idx){
-    var c = candById(id), f = c && c.resumes && c.resumes[idx]; if(!f || !f.path){ toast('ไม่มีไฟล์ที่เก็บไว้ในระบบ (ไฟล์นี้ไม่ได้อัปโหลดตอนนำเข้า)'); return; }
-    supabaseClient.storage.from('resumes').createSignedUrl(f.path, 3600).then(function(r){ if(r.error){ toast('เปิดไฟล์ไม่สำเร็จ: '+r.error.message); } else window.open(r.data.signedUrl,'_blank'); });
+    var c = candById(id), f = c && c.resumes && c.resumes[idx];
+    if(!f){ toast('ไม่พบเอกสารแนบ'); return; }
+    // open a blank tab synchronously (inside the click) so the browser's pop-up blocker allows it
+    var w = window.open('', '_blank');
+    var show = function(url){ if(w){ w.location.href = url; } else { var a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); } };
+    var fail = function(msg){ if(w) w.close(); toast(msg); };
+    var fromCloud = function(){
+      if(!f.path) return fail('ไม่พบไฟล์: ไฟล์นี้เก็บไว้ในเครื่องที่นำเข้าเท่านั้น (ยังไม่ได้อัปโหลดขึ้นระบบ — ต้องรัน recruit_setup.sql ใน Supabase แล้วกด "☁️ อัปโหลดขึ้นระบบ" จากเครื่องที่นำเข้า)');
+      supabaseClient.storage.from('resumes').createSignedUrl(f.path, 3600).then(function(r){ if(r.error) fail('เปิดไฟล์จากระบบไม่สำเร็จ: '+r.error.message); else show(r.data.signedUrl); }).catch(function(e){ fail('เปิดไฟล์ไม่สำเร็จ: '+(e&&e.message||e)); });
+    };
+    if(f.localKey){
+      idbGet(f.localKey).then(function(blob){
+        if(blob){ show(URL.createObjectURL(blob.slice(0, blob.size, f.mime || blob.type || 'application/octet-stream'))); }
+        else fromCloud();
+      }).catch(fromCloud);
+    } else fromCloud();
+  };
+  window.rcUploadPending = function(id, idx){
+    var c = candById(id), f = c && c.resumes && c.resumes[idx]; if(!f || f.path || !f.localKey) return;
+    session().then(function(sess){
+      if(!sess){ toast('ต้องล็อกอินก่อนจึงจะอัปโหลดได้'); return; }
+      idbGet(f.localKey).then(function(blob){
+        if(!blob){ toast('ไม่พบไฟล์ในเครื่องนี้ — ต้องทำจากเครื่องที่นำเข้าไฟล์'); return; }
+        var path = c.id+'/'+Date.now()+'_'+f.filename.replace(/[^\w.\-]+/g,'_');
+        supabaseClient.storage.from('resumes').upload(path, blob, {contentType:f.mime||'application/octet-stream'}).then(function(u){
+          if(u.error){ toast('อัปโหลดไม่สำเร็จ: '+u.error.message+' (ต้องรัน recruit_setup.sql ใน Supabase)'); return; }
+          f.path = path; saveDB(); rcOpenDetail(id); toast('อัปโหลดไฟล์ขึ้นระบบแล้ว');
+        });
+      });
+    });
   };
   function applyExtracted(c, e){
     if(!e) return;
