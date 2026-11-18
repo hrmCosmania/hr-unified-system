@@ -7607,7 +7607,7 @@ window.refreshPerfEmployeeSelects=function(){
       +'<div class="field"><label>ประสบการณ์ (ปี)</label><input id="cd_exp" type="number" min="0" step="0.5" value="'+attr(d.expYears||0)+'"></div>'
       +'<div class="field"><label>เงินเดือนที่ต้องการ (บาท)</label><input id="cd_salary" type="number" min="0" value="'+attr(d.expectedSalary||'')+'"></div>'
       +'<div class="field"><label>วันที่สมัคร</label><input id="cd_applied" type="date" value="'+attr(d.appliedDate||'')+'"></div>'
-      +'<div class="field"><label>แนบเรซูเม่ (PDF/รูป)</label><input id="cd_file" type="file" accept=".pdf,image/*"></div>'
+      +'<div class="field"><label>แนบเรซูเม่ (PDF/รูป) — ระบบอ่านคำในไฟล์เติมช่องที่ว่างให้</label><input id="cd_file" type="file" accept=".pdf,image/*" onchange="rcParseFormFile()"><div id="cd_readstatus" class="small" style="margin-top:4px"></div></div>'
       +'<div class="field" style="grid-column:1/-1"><label>ทักษะ (คั่นด้วยจุลภาค)</label><input id="cd_skills" value="'+attr((d.skills||[]).join(', '))+'" placeholder="เช่น Excel, ภาษาอังกฤษ, การขาย"></div>'
       +'<div class="field" style="grid-column:1/-1"><label>หมายเหตุ</label><textarea id="cd_note" rows="3">'+esc(d.note||'')+'</textarea></div>'
       +'</div><div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn-ghost" onclick="closeSharedModal()">ยกเลิก</button><button type="submit" class="btn-primary">บันทึก</button></div></form>';
@@ -7712,71 +7712,247 @@ window.refreshPerfEmployeeSelects=function(){
     saveDB(); render();
   };
 
-  /* ---------- resume import (storage + OCR via /api/ocr) ---------- */
-  function detectSource(name){ for(var i=0;i<SOURCE_RULES.length;i++){ if(SOURCE_RULES[i][0].test(name)) return SOURCE_RULES[i][1]; } return 'ไม่ระบุแหล่งที่มา'; }
-  function session(){ if(typeof supabaseClient==='undefined') return Promise.resolve(null); return supabaseClient.auth.getSession().then(function(r){ return (r&&r.data&&r.data.session)||null; }).catch(function(){ return null; }); }
-  function toBase64(file){ return new Promise(function(res,rej){ var fr = new FileReader(); fr.onload = function(){ res(String(fr.result).split(',')[1]); }; fr.onerror = rej; fr.readAsDataURL(file); }); }
-  function attachResume(c, file, withOcr){
-    return session().then(function(sess){
-      var meta = { filename:file.name, size:file.size, mime:file.type, uploadedAt:nowIso(), path:'', ocrStatus:'pending' };
-      c.resumes = c.resumes||[];
-      if(!sess){ meta.ocrStatus = 'ไม่ได้อัปโหลด (ยังไม่ได้ล็อกอิน)'; c.resumes.push(meta); saveDB(); return {meta:meta, extracted:null}; }
-      var path = c.id+'/'+Date.now()+'_'+file.name.replace(/[^\w.\-]+/g,'_');
-      return supabaseClient.storage.from('resumes').upload(path, file, {contentType:file.type||'application/octet-stream'}).then(function(up){
-        if(up.error){ meta.ocrStatus = 'อัปโหลดไม่สำเร็จ: '+up.error.message; c.resumes.push(meta); saveDB(); return {meta:meta, extracted:null}; }
-        meta.path = path;
-        if(!withOcr){ meta.ocrStatus = 'แนบแล้ว'; c.resumes.push(meta); saveDB(); return {meta:meta, extracted:null}; }
-        if(file.size > 3*1024*1024){ meta.ocrStatus = 'ไฟล์ใหญ่เกิน 3MB ข้าม OCR'; c.resumes.push(meta); saveDB(); return {meta:meta, extracted:null}; }
-        return toBase64(file).then(function(b64){
-          return fetch('/api/ocr', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+sess.access_token}, body:JSON.stringify({mime:file.type, data:b64}) });
-        }).then(function(resp){ return resp.json().catch(function(){ return {status:'failed'}; }); }).then(function(j){
-          meta.ocrStatus = j.status==='done' ? 'อ่านอัตโนมัติแล้ว' : j.status==='not_configured' ? 'ยังไม่ได้ตั้งค่า OCR' : 'อ่านไม่สำเร็จ';
-          c.resumes.push(meta); saveDB(); return {meta:meta, extracted:(j.status==='done'?j.extracted:null)};
-        }).catch(function(){ meta.ocrStatus = 'อ่านไม่สำเร็จ'; c.resumes.push(meta); saveDB(); return {meta:meta, extracted:null}; });
+  /* ---------- resume import: store file + read words from the resume ----------
+     1) AI reading via /api/ocr when logged in and an API key is configured (best quality)
+     2) otherwise reads in the browser: PDF text (pdf.js), scanned PDF / images (Tesseract OCR, Thai+English), then rule-based parsing */
+  var PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  var PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  var TESS = 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.5/tesseract.min.js';
+  var scriptCache = {};
+  function loadScript(src){
+    if(scriptCache[src]) return scriptCache[src];
+    scriptCache[src] = new Promise(function(res, rej){
+      var s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = function(){ delete scriptCache[src]; rej(new Error('โหลดไลบรารีไม่สำเร็จ (ต้องต่ออินเทอร์เน็ต)')); };
+      document.head.appendChild(s);
+    });
+    return scriptCache[src];
+  }
+  var COMMON_SKILLS = ['Excel','Microsoft Office','Word','PowerPoint','Google Sheets','Photoshop','Illustrator','Canva','Figma','Premiere','After Effects','Lightroom','CorelDRAW','AutoCAD','SAP','Power BI','Python','SQL','JavaScript','HTML','Java','PHP','WordPress','Shopify','SEO','Google Ads','Facebook Ads','TikTok','LINE OA','Content Marketing','Digital Marketing','Marketing','Social Media','E-commerce','Shopee','Lazada','Sales','Customer Service','Negotiation','Presentation','Project Management','Leadership','Communication','Teamwork','Problem Solving','Accounting','Payroll','Tax','Audit','Purchasing','Procurement','Logistics','Warehouse','Inventory','Production','Planning','QC','QA','GMP','ISO','R&D','Formulation','Regulatory','Recruitment','HR','English','Chinese','Japanese','การตลาด','การขาย','บัญชี','การเงิน','ภาษี','การจัดซื้อ','คลังสินค้า','การผลิต','วางแผน','ควบคุมคุณภาพ','ประกันคุณภาพ','ภาษาอังกฤษ','ภาษาจีน','ภาษาญี่ปุ่น','ภาวะผู้นำ','การสื่อสาร','การเจรจาต่อรอง','บริการลูกค้า','ออกแบบกราฟิก','ตัดต่อวิดีโอ','สรรหา','กฎหมายแรงงาน','เงินเดือน','ไลฟ์สด','ถ่ายภาพ','การนำเสนอ'];
+  function thaiClean(t){ return String(t||'').replace(/([฀-๿])[ \t]+(?=[฀-๿])/g,'$1'); }
+
+  function parseResumeText(text, job){
+    text = String(text||'').replace(/\r/g,'').replace(/[​ ]/g,' ');
+    var lines = text.split('\n').map(function(l){ return l.replace(/[ \t]+/g,' ').trim(); }).filter(Boolean);
+    var flat = lines.join('\n');
+    var out = { first_name:'', last_name:'', email:'', phone:'', current_job:'', current_company:'', exp_years:0, skills:[], education:'', summary:'' };
+
+    var em = flat.match(/[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)+/); if(em) out.email = em[0];
+    var ph = flat.match(/(?:\+?66[\s\-]?|0)\d{1,2}[\s\-.]?\d{3}[\s\-.]?\d{3,4}/g);
+    if(ph){ var p = ph.map(function(x){ return x.replace(/[^\d+]/g,''); }).filter(function(x){ return x.length>=9 && x.length<=12; })[0]; if(p) out.phone = p.replace(/^\+?66/,'0'); }
+
+    var stop = /resume|curriculum|vitae|\bcv\b|ประวัติ|เรซูเม่|resumé|profile|ข้อมูลส่วนตัว|contact|ติดต่อ|address|ที่อยู่|objective|เป้าหมาย|education|experience|skills|ประสบการณ์|การศึกษา|ทักษะ/i;
+    var cleanName = function(s){ return String(s||'').replace(/^(นางสาว|นาง|นาย|น\.ส\.|นส\.|ด\.ช\.|ด\.ญ\.|Mr\.?|Mrs\.?|Ms\.?|Miss)\s*/i,'').replace(/[|,;:()\[\]0-9@]/g,' ').replace(/\s+/g,' ').trim(); };
+    var name = '';
+    var lab = flat.match(/(?:ชื่อ\s*[-–]?\s*(?:นามสกุล|สกุล)|ชื่อ|full\s*name|name)\s*(?:\(.*?\))?\s*[:：]\s*([^\n]{3,60})/i);
+    if(lab) name = cleanName(lab[1]);
+    if(!name || name.split(' ').length<2){
+      var t = flat.match(/(?:นางสาว|นาง|นาย|น\.ส\.|Mr\.?|Mrs\.?|Ms\.?|Miss)\s*([^\s\d@,|]{2,30})\s+([^\s\d@,|]{2,30})/i);
+      if(t) name = cleanName(t[1]+' '+t[2]);
+    }
+    if(!name || name.split(' ').length<2){
+      for(var i=0;i<Math.min(lines.length,8);i++){
+        var l = lines[i]; if(stop.test(l) || /@|\d{3}/.test(l) || l.length>45) continue;
+        var w = cleanName(l).split(' ').filter(Boolean);
+        if(w.length>=2 && w.length<=4 && w.every(function(x){ return /^[A-Za-z฀-๿.'\-]+$/.test(x); })){ name = w.join(' '); break; }
+      }
+    }
+    if(name){ var parts = name.split(' '); out.first_name = parts.shift(); out.last_name = parts.join(' '); }
+
+    var cj = flat.match(/(?:ตำแหน่งที่สมัคร|ตำแหน่ง|position|job\s*title)\s*[:：]\s*([^\n]{2,60})/i); if(cj) out.current_job = cj[1].trim();
+    var cc = flat.match(/(?:บริษัท|company|employer|หน่วยงาน)\s*[:：]\s*([^\n]{2,60})/i); if(cc) out.current_company = cc[1].trim();
+
+    var yrNow = new Date().getFullYear(), best = 0, m, re;
+    re = /(\d{1,2}(?:\.\d)?)\s*\+?\s*(?:years?|yrs?|ปี)(?:\s*(?:of)?\s*(?:experience|ประสบการณ์))?/gi;
+    while((m = re.exec(flat))){
+      var ctx = flat.slice(Math.max(0,m.index-30), m.index+m[0].length+30);
+      var v = parseFloat(m[1]); if(v>0 && v<=45 && /experience|ประสบการณ์|exp\b|work/i.test(ctx)) best = Math.max(best, v);
+    }
+    if(!best){
+      var spans = [];
+      re = /((?:19|20)\d{2}|25\d{2})\s*(?:[-–—~]|to|ถึง)\s*((?:19|20)\d{2}|25\d{2}|ปัจจุบัน|present|current|now)/gi;
+      while((m = re.exec(flat))){
+        var a = +m[1]; if(a>2400) a -= 543;
+        var b = /^\d/.test(m[2]) ? +m[2] : yrNow; if(b>2400) b -= 543;
+        if(a>=1980 && b>=a && b<=yrNow+1) spans.push([a,b]);
+      }
+      spans.sort(function(x,y){ return x[0]-y[0]; });
+      var tot = 0, cur = null;
+      spans.forEach(function(s){ if(!cur){ cur = s.slice(); } else if(s[0] <= cur[1]){ cur[1] = Math.max(cur[1], s[1]); } else { tot += cur[1]-cur[0]; cur = s.slice(); } });
+      if(cur) tot += cur[1]-cur[0];
+      if(tot>0 && tot<=45) best = tot;
+    }
+    out.exp_years = best;
+
+    var dict = {}, add = function(s){ s = String(s||'').trim(); if(s && s.length<=40) dict[s.toLowerCase()] = s; };
+    COMMON_SKILLS.forEach(add);
+    (DB.recruitmentRequisitions||[]).forEach(function(r){ (r.requiredSkills||[]).forEach(add); });
+    ((job&&job.requiredSkills)||[]).forEach(add);
+    var low = flat.toLowerCase(), found = [];
+    Object.keys(dict).forEach(function(k){
+      var ascii = /^[a-z0-9 .+#&\-]+$/.test(k);
+      var hit = ascii ? new RegExp('(^|[^a-z0-9])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^a-z0-9]|$)').test(low) : low.indexOf(k)>=0;
+      if(hit) found.push(dict[k]);
+    });
+    var sec = flat.match(/(?:ทักษะ|skills?|ความสามารถ|competenc(?:y|ies))[^\n]*\n((?:[^\n]*\n?){1,8})/i);
+    if(sec){ sec[1].split(/[\n,;•·|●▪•]+/).forEach(function(s){ s = s.replace(/^[\s\-–*]+/,'').trim(); if(s.length>=2 && s.length<=30 && !/\d{4}/.test(s) && !/@/.test(s) && found.length<30 && found.map(function(f){return f.toLowerCase();}).indexOf(s.toLowerCase())<0) found.push(s); }); }
+    out.skills = found.slice(0,30);
+
+    var edu = lines.filter(function(l){ return /ปริญญา|ปวส|ปวช|มหาวิทยาลัย|bachelor|master|diploma|university|college|วิทยาลัย/i.test(l); }).slice(0,2);
+    out.education = edu.join(' / ');
+    return out;
+  }
+
+  function ocrImage(source, onStatus){
+    return loadScript(TESS).then(function(){
+      return Tesseract.createWorker(['tha','eng'], 1, { logger:function(m){ if(m && m.status==='recognizing text' && onStatus) onStatus('OCR '+Math.round((m.progress||0)*100)+'%'); } });
+    }).then(function(worker){
+      return worker.recognize(source).then(function(r){ return worker.terminate().then(function(){ return thaiClean(r.data.text); }); });
+    });
+  }
+  function pdfExtract(file, onStatus){
+    return loadScript(PDFJS).then(function(){
+      pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+      return file.arrayBuffer();
+    }).then(function(buf){ return pdfjsLib.getDocument({data:buf}).promise; }).then(function(pdf){
+      var n = Math.min(pdf.numPages, 5), text = '', chain = Promise.resolve();
+      for(var i=1;i<=n;i++){ (function(p){ chain = chain.then(function(){ return pdf.getPage(p).then(function(page){ return page.getTextContent(); }).then(function(tc){
+        var lastY = null, line = '';
+        tc.items.forEach(function(it){ var y = it.transform ? it.transform[5] : 0; if(lastY!==null && Math.abs(y-lastY)>3){ text += line.trim()+'\n'; line=''; } line += it.str + (it.hasEOL?'\n':' '); lastY = y; });
+        text += line.trim()+'\n';
+      }); }); })(i); }
+      return chain.then(function(){
+        text = thaiClean(text);
+        if(text.replace(/\s/g,'').length >= 60) return { text:text, method:'อ่านข้อความจาก PDF' };
+        if(onStatus) onStatus('PDF เป็นภาพสแกน — กำลังใช้ OCR (ครั้งแรกอาจใช้เวลา 1-2 นาที)');
+        var ocrText = '', c2 = Promise.resolve();
+        for(var k=1;k<=Math.min(pdf.numPages,2);k++){ (function(pn){ c2 = c2.then(function(){ return pdf.getPage(pn).then(function(page){
+          var vp = page.getViewport({scale:2}), cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height;
+          return page.render({canvasContext:cv.getContext('2d'), viewport:vp}).promise.then(function(){ return ocrImage(cv, onStatus); });
+        }).then(function(t){ ocrText += t+'\n'; }); }); })(k); }
+        return c2.then(function(){ return { text:ocrText, method:'OCR จากภาพสแกน' }; });
       });
     });
   }
+  function localExtract(file, job, onStatus){
+    var isPdf = file.type==='application/pdf' || /\.pdf$/i.test(file.name);
+    var p = isPdf ? pdfExtract(file, onStatus) : ((/^image\//.test(file.type)) ? (onStatus&&onStatus('กำลัง OCR รูปภาพ (ครั้งแรกอาจใช้เวลา 1-2 นาที)'), ocrImage(file, onStatus).then(function(t){ return {text:t, method:'OCR จากรูปภาพ'}; })) : Promise.reject(new Error('รองรับเฉพาะ PDF หรือรูปภาพ')));
+    return p.then(function(r){
+      var ex = parseResumeText(r.text, job);
+      if(!r.text || r.text.replace(/\s/g,'').length<30) return { extracted:null, method:r.method, error:'อ่านข้อความจากไฟล์ไม่ได้ (ไฟล์อาจเป็นภาพคุณภาพต่ำ)' };
+      return { extracted:ex, method:r.method, text:r.text };
+    }).catch(function(e){ return { extracted:null, method:'', error:'อ่านเรซูเม่ไม่สำเร็จ: '+(e && e.message || e) }; });
+  }
+  window.rcParseResumeText = parseResumeText;
+
+  function detectSource(name){ for(var i=0;i<SOURCE_RULES.length;i++){ if(SOURCE_RULES[i][0].test(name)) return SOURCE_RULES[i][1]; } return 'ไม่ระบุแหล่งที่มา'; }
+  function session(){ if(typeof supabaseClient==='undefined') return Promise.resolve(null); return supabaseClient.auth.getSession().then(function(r){ return (r&&r.data&&r.data.session)||null; }).catch(function(){ return null; }); }
+  function toBase64(file){ return new Promise(function(res,rej){ var fr = new FileReader(); fr.onload = function(){ res(String(fr.result).split(',')[1]); }; fr.onerror = rej; fr.readAsDataURL(file); }); }
+
+  /* store the file (if logged in) and read it; resolves { meta, extracted, method, notes[] } */
+  function attachResume(c, file, withRead, onStatus){
+    onStatus = onStatus || function(){};
+    var meta = { filename:file.name, size:file.size, mime:file.type, uploadedAt:nowIso(), path:'', ocrStatus:'pending' };
+    c.resumes = c.resumes||[];
+    var job = reqById(c.requisitionId), result = { meta:meta, extracted:null, method:'', notes:[] };
+    return session().then(function(sess){
+      var stored = Promise.resolve();
+      if(sess){
+        var path = c.id+'/'+Date.now()+'_'+file.name.replace(/[^\w.\-]+/g,'_');
+        stored = supabaseClient.storage.from('resumes').upload(path, file, {contentType:file.type||'application/octet-stream'}).then(function(u){
+          if(u.error) result.notes.push('เก็บไฟล์ไม่สำเร็จ: '+u.error.message+' (ต้องรัน recruit_setup.sql ใน Supabase)'); else meta.path = path;
+        }).catch(function(e){ result.notes.push('เก็บไฟล์ไม่สำเร็จ: '+(e&&e.message||e)); });
+      } else { result.notes.push('ยังไม่ได้ล็อกอิน — ไม่ได้เก็บไฟล์ไว้ในระบบ'); }
+      return stored.then(function(){
+        if(!withRead) return null;
+        if(sess && file.size<=3*1024*1024){
+          onStatus('กำลังให้ AI อ่านเรซูเม่...');
+          return toBase64(file).then(function(b64){ return fetch('/api/ocr',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sess.access_token},body:JSON.stringify({mime:file.type,data:b64})}); })
+            .then(function(r){ return r.json(); }).then(function(j){ if(j.status==='done'){ result.method = 'AI'; return j.extracted; } return null; }).catch(function(){ return null; });
+        }
+        return null;
+      }).then(function(ai){
+        if(ai || !withRead) return ai;
+        onStatus('กำลังอ่านเรซูเม่ในเบราว์เซอร์...');
+        return localExtract(file, job, onStatus).then(function(r){ result.method = r.method; if(r.error) result.notes.push(r.error); return r.extracted; });
+      });
+    }).then(function(ex){
+      result.extracted = ex;
+      meta.ocrStatus = withRead ? (ex ? 'อ่านอัตโนมัติ ('+result.method+')' : 'อ่านไม่สำเร็จ — กรอกเอง') : 'แนบแล้ว';
+      c.resumes.push(meta); saveDB(); return result;
+    });
+  }
   window.rcOpenResume = function(id, idx){
-    var c = candById(id), f = c && c.resumes && c.resumes[idx]; if(!f || !f.path){ toast('ไม่มีไฟล์ที่อัปโหลดไว้'); return; }
+    var c = candById(id), f = c && c.resumes && c.resumes[idx]; if(!f || !f.path){ toast('ไม่มีไฟล์ที่เก็บไว้ในระบบ (ไฟล์นี้ไม่ได้อัปโหลดตอนนำเข้า)'); return; }
     supabaseClient.storage.from('resumes').createSignedUrl(f.path, 3600).then(function(r){ if(r.error){ toast('เปิดไฟล์ไม่สำเร็จ: '+r.error.message); } else window.open(r.data.signedUrl,'_blank'); });
   };
+  function applyExtracted(c, e){
+    if(!e) return;
+    if(e.first_name) c.firstName = e.first_name;
+    if(e.last_name) c.lastName = e.last_name;
+    c.email = e.email||c.email||''; c.phone = e.phone||c.phone||'';
+    c.currentJob = e.current_job||c.currentJob||''; c.currentCompany = e.current_company||c.currentCompany||'';
+    c.expYears = Number(e.exp_years)||c.expYears||0; if(Array.isArray(e.skills) && e.skills.length) c.skills = e.skills;
+    var note = [e.education?('การศึกษา: '+e.education):'', e.summary||''].filter(Boolean).join('\n'); if(note) c.note = note;
+  }
   window.rcOpenImport = function(){
     ensure();
     var openReqs = reqs().filter(function(r){ return r.status==='open'; });
-    if(!openReqs.length){ toast('ต้องมีตำแหน่งงานที่เปิดรับอย่างน้อย 1 ตำแหน่งก่อน'); return; }
-    var html = '<div class="small" style="margin-bottom:10px">เลือกตำแหน่งที่สมัครและไฟล์เรซูเม่ (PDF/รูป หลายไฟล์ได้) ระบบจะสร้างผู้สมัครให้ เดาช่องทางจากชื่อไฟล์ (เช่น มีคำว่า jobthai/linkedin) และอ่านข้อมูลจากเรซูเม่อัตโนมัติถ้าตั้งค่า OCR แล้ว</div>'
+    if(!openReqs.length){ toast('ต้องสร้างตำแหน่งงานที่เปิดรับอย่างน้อย 1 ตำแหน่งก่อน (แท็บ "ตำแหน่งงาน/ใบขอ")'); return; }
+    var html = '<div class="small" style="margin-bottom:10px">เลือกตำแหน่งที่สมัครและไฟล์เรซูเม่ (PDF หรือรูปภาพ เลือกได้หลายไฟล์) ระบบจะ <b>อ่านคำในเรซูเม่</b> เพื่อดึงชื่อ เบอร์ อีเมล ประสบการณ์ และทักษะ แล้วสร้างผู้สมัครให้ — อ่านได้ทั้ง PDF ปกติและไฟล์สแกน/รูป (ภาษาไทย+อังกฤษ) ทีละไฟล์อาจใช้เวลาหลายวินาที ข้อมูลที่อ่านได้ควรตรวจสอบอีกครั้ง</div>'
       +'<div class="field"><label>ตำแหน่งที่สมัคร *</label><select id="im_req">'+openReqs.map(function(r){ return '<option value="'+attr(r.id)+'"'+(reqFilter===r.id?' selected':'')+'>'+esc(reqLabel(r))+'</option>'; }).join('')+'</select></div>'
       +'<div class="field"><label>ไฟล์เรซูเม่ *</label><input id="im_files" type="file" multiple accept=".pdf,image/*"></div>'
-      +'<div id="im_status" class="small" style="margin-top:8px"></div>'
-      +'<div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button class="btn-ghost" onclick="closeSharedModal()">ปิด</button><button class="btn-primary" onclick="rcRunImport()">นำเข้า</button></div>';
+      +'<div id="im_status" style="margin-top:10px"></div>'
+      +'<div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button class="btn-ghost" onclick="closeSharedModal()">ปิด</button><button id="im_go" class="btn-primary" onclick="rcRunImport()">นำเข้าและอ่านเรซูเม่</button></div>';
     openSharedModal('นำเข้าผู้สมัครจาก Resume', html, false);
   };
   window.rcRunImport = function(){
     var reqId = gv('im_req'), files = Array.from((document.getElementById('im_files')||{}).files||[]);
-    var status = document.getElementById('im_status');
+    var box = document.getElementById('im_status'), go = document.getElementById('im_go');
     if(!reqId || !files.length){ toast('กรุณาเลือกตำแหน่งและไฟล์เรซูเม่'); return; }
-    var r = reqById(reqId), done = 0, ocrOk = 0;
-    var chain = Promise.resolve();
-    files.forEach(function(f){
+    var r = reqById(reqId), lines = [], chain = Promise.resolve(), ok = 0;
+    if(go) go.disabled = true;
+    var paint = function(cur){ if(box) box.innerHTML = lines.concat(cur?['<div class="small">⏳ '+esc(cur)+'</div>']:[]).join(''); };
+    files.forEach(function(f, idx){
       chain = chain.then(function(){
-        if(status) status.textContent = 'กำลังประมวลผล '+(done+1)+'/'+files.length+' : '+f.name;
+        var tag = '('+(idx+1)+'/'+files.length+') '+f.name;
+        paint(tag+' : เริ่มประมวลผล');
         var now = nowIso();
         var c = { id:uid('cand_'), createdAt:now, stage:'new', stageChangedAt:now, stageHistory:[{stage:'new',at:now}], onboarding:{}, resumes:[], requisitionId:reqId, company:(r&&r.company)||'',
           firstName:f.name.replace(/\.[^.]+$/,''), lastName:'', source:detectSource(f.name), skills:[], expYears:0, appliedDate:ymd(new Date()), updatedAt:now };
         DB.recruitmentCandidates.push(c);
-        return attachResume(c, f, true).then(function(res){
+        return attachResume(c, f, true, function(s){ paint(tag+' : '+s); }).then(function(res){
           var e = res.extracted;
-          if(e){
-            ocrOk++;
-            c.firstName = e.first_name || c.firstName; c.lastName = e.last_name || ''; c.email = e.email||''; c.phone = e.phone||'';
-            c.currentJob = e.current_job||''; c.currentCompany = e.current_company||''; c.expYears = Number(e.exp_years)||0; c.skills = Array.isArray(e.skills)?e.skills:[];
-            c.note = [e.education?('การศึกษา: '+e.education):'', e.summary||''].filter(Boolean).join('\n');
-          }
-          done++; saveDB();
+          if(e){ ok++; applyExtracted(c, e); }
+          saveDB();
+          var detail = e ? ('✅ <b>'+esc(cname(c))+'</b> · '+esc(c.phone||'ไม่พบเบอร์')+' · '+esc(c.email||'ไม่พบอีเมล')+' · ประสบการณ์ '+esc(c.expYears||0)+' ปี · ทักษะ '+(c.skills||[]).length+' รายการ <span class="small">['+esc(res.method)+']</span>')
+            : ('⚠️ <b>'+esc(f.name)+'</b> — สร้างผู้สมัครแล้วแต่อ่านข้อมูลไม่ได้ ต้องกรอกเอง');
+          lines.push('<div class="rc-kv" style="display:block">'+detail+(res.notes.length?'<div class="small">'+res.notes.map(esc).join('<br>')+'</div>':'')+'</div>');
+          paint('');
         });
       });
     });
-    chain.then(function(){ closeSharedModal(); render(); toast('นำเข้า '+done+' คนแล้ว'+(ocrOk?' (อ่านเรซูเม่อัตโนมัติ '+ocrOk+' คน)':' — ชื่อมาจากชื่อไฟล์ กรุณาตรวจสอบ/แก้ไขข้อมูล')); });
+    chain.then(function(){
+      render(); if(go){ go.disabled = false; go.textContent = 'นำเข้าไฟล์เพิ่ม'; }
+      lines.push('<div class="clean-note" style="margin-top:8px">เสร็จแล้ว: สร้างผู้สมัคร '+files.length+' คน อ่านเรซูเม่สำเร็จ '+ok+' คน — ตรวจสอบข้อมูลในหน้าผู้สมัคร/Pipeline</div>'); paint('');
+    });
+  };
+  window.rcParseFormFile = function(){
+    var inp = document.getElementById('cd_file'), f = inp && inp.files && inp.files[0], box = document.getElementById('cd_readstatus');
+    if(!f) return;
+    var job = reqById(gv('cd_req'));
+    if(box) box.textContent = '⏳ กำลังอ่านเรซูเม่...';
+    var tmp = { resumes:[], requisitionId:gv('cd_req') };
+    localExtract(f, job, function(s){ if(box) box.textContent = '⏳ '+s; }).then(function(r){
+      var e = r.extracted;
+      if(!e){ if(box) box.textContent = '⚠️ '+(r.error||'อ่านไม่สำเร็จ')+' — กรอกข้อมูลเอง'; return; }
+      var fill = function(id, v){ var el = document.getElementById(id); if(el && v!=null && v!=='' && !String(el.value||'').trim()) el.value = v; };
+      fill('cd_first', e.first_name); fill('cd_last', e.last_name); fill('cd_phone', e.phone); fill('cd_email', e.email);
+      fill('cd_curjob', e.current_job); fill('cd_curco', e.current_company);
+      if(e.exp_years && (!Number(gv('cd_exp')))) document.getElementById('cd_exp').value = e.exp_years;
+      if(e.skills.length && !gv('cd_skills')) document.getElementById('cd_skills').value = e.skills.join(', ');
+      var so = document.getElementById('cd_source'); if(so && !so.value) so.value = detectSource(f.name);
+      if(box) box.textContent = '✅ อ่านเรซูเม่แล้ว ('+r.method+') — เติมช่องที่ว่างให้ กรุณาตรวจสอบก่อนบันทึก';
+    });
   };
 
   /* ---------- Click Pulse ---------- */
