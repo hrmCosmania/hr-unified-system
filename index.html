@@ -6815,6 +6815,14 @@ html.theme-soft .gs-stat-card .gs-num{color:#1d2230!important}
 html.theme-soft :is(.sub,.small,.muted,.job-meta,.job-row .job-meta,.card .sub,.empty,.position-list-meta,.course-meta,.bar-label){color:#667085!important}
 html.theme-soft .summary-card .num{color:var(--module-accent)!important}
 html.theme-soft .tab-btn .tab-label-th{color:inherit!important}
+/* layout fix: sidebar sits below fixed top bar on desktop */
+@media(min-width:901px){html body .app-shell > .tabbar{top:88px!important;height:calc(100vh - 88px)!important}}
+/* login gate */
+html.theme-soft .auth-gate{background:#e6e7eb!important}
+html.theme-soft .auth-gate-box{background:#e6e7eb!important;border:0!important;border-radius:26px!important;box-shadow:var(--neu-up)!important;color:#1d2230!important}
+html.theme-soft .auth-gate-box h2,html.theme-soft .auth-gate-box label{color:#1d2230!important}
+html.theme-soft .auth-gate-sub,html.theme-soft .auth-gate-status{color:#667085!important}
+html.theme-soft .auth-gate-error{color:#d64545!important}
 </style>
 <script id="theme-toggle-script">window.toggleThemeSoft=function(){var h=document.documentElement;var soft=h.classList.toggle("theme-soft");try{localStorage.setItem("hr_theme",soft?"soft":"dark");}catch(e){}};</script>
 </body>
