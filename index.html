@@ -7145,5 +7145,356 @@ window.refreshPerfEmployeeSelects=function(){
   setInterval(function(){ try{ pushFeed(); }catch(e){} }, 30*60*1000);
 })();
 </script>
+<script id="recruitment-module-script">
+(function(){
+  var STAGES = ['ใหม่','คัดกรอง','สัมภาษณ์','เสนอเงินเดือน','รับข้อเสนอ','เริ่มงานแล้ว'];
+  var TERMINAL = ['ไม่ผ่าน','ถอนตัว'];
+  var STAGE_COLORS = {'ใหม่':'#64748b','คัดกรอง':'#0ea5e9','สัมภาษณ์':'#8b5cf6','เสนอเงินเดือน':'#f59e0b','รับข้อเสนอ':'#14b8a6','เริ่มงานแล้ว':'#16a34a','ไม่ผ่าน':'#dc2626','ถอนตัว':'#94a3b8'};
+  var SOURCES = ['JobThai','JobsDB','LinkedIn','Facebook / โซเชียล','พนักงานแนะนำ','Walk-in','บริษัทจัดหางาน','อื่นๆ'];
+  var REASONS = ['ทดแทนพนักงานเดิม','เพิ่มอัตรากำลัง','ตำแหน่งใหม่','โครงการ/ชั่วคราว'];
+  var REQ_STATUS = {open:'เปิดรับสมัคร', hold:'พักไว้', filled:'ครบอัตราแล้ว', cancelled:'ยกเลิก'};
+  var sub = 'pipeline', reqFilter = '', showClosed = false;
+
+  function esc(s){ return escapeHtml(String(s==null?'':s)); }
+  function attr(s){ return v4EscapeAttr(s); }
+  function ensure(){
+    ['recruitmentRequisitions','recruitmentCandidates'].forEach(function(k){ if(!Array.isArray(DB[k])) DB[k] = []; });
+  }
+  function inScope(company){ return companyFilter==='ALL' || company===companyFilter; }
+  function reqs(){ ensure(); return DB.recruitmentRequisitions.filter(function(r){ return inScope(r.company); }); }
+  function cands(){ ensure(); return DB.recruitmentCandidates.filter(function(c){ return inScope(c.company); }); }
+  function reqById(id){ return DB.recruitmentRequisitions.find(function(r){ return r.id===id; }); }
+  function candById(id){ return DB.recruitmentCandidates.find(function(c){ return c.id===id; }); }
+  function today(){ return todayStart(); }
+  function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function daysSince(iso){ if(!iso) return 0; return Math.max(0, Math.round((Date.now()-new Date(iso).getTime())/86400000)); }
+  function hiredCount(reqId){ return DB.recruitmentCandidates.filter(function(c){ return c.requisitionId===reqId && c.stage==='เริ่มงานแล้ว'; }).length; }
+  function reqLabel(r){ return r ? (r.code + ' · ' + r.position + (r.company?' ('+r.company+')':'')) : '(ไม่ระบุตำแหน่ง)'; }
+  function interviewDate(c){ return c.interviewDate ? new Date(c.interviewDate+':00+07:00') : null; }
+  function fmtDT(c){ var d = interviewDate(c); return d ? d.toLocaleString('th-TH',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'}) : ''; }
+
+  /* ---------- calendar helpers ---------- */
+  function utcStamp(d){ return d.toISOString().replace(/[-:]/g,'').split('.')[0]+'Z'; }
+  function interviewTitle(c){ var r = reqById(c.requisitionId); return '🧑‍💼 สัมภาษณ์: ' + c.fullName + (r ? ' — ' + r.position : ''); }
+  function interviewDesc(c){ var r = reqById(c.requisitionId); return 'ผู้สมัคร: ' + c.fullName + '\nตำแหน่ง: ' + (r ? r.position : '-') + '\nเบอร์: ' + (c.phone||'-') + '\nอีเมล: ' + (c.email||'-') + '\nผู้สัมภาษณ์: ' + (c.interviewer||'-') + (c.resumeUrl ? '\nResume: ' + c.resumeUrl : ''); }
+  window.rcInterviewGcalUrl = function(id){
+    var c = candById(id); var s = interviewDate(c); if(!s) return '#';
+    var e = new Date(s.getTime()+60*60000);
+    var p = new URLSearchParams({action:'TEMPLATE', text:interviewTitle(c), dates:utcStamp(s)+'/'+utcStamp(e), details:interviewDesc(c), ctz:'Asia/Bangkok'});
+    return 'https://calendar.google.com/calendar/render?' + p.toString();
+  };
+  function interviewVEVENT(c){
+    var s = interviewDate(c); if(!s) return '';
+    var e = new Date(s.getTime()+60*60000);
+    return ['BEGIN:VEVENT','UID:interview-'+c.id+'@hr-unified','DTSTAMP:'+utcStamp(new Date()),'DTSTART:'+utcStamp(s),'DTEND:'+utcStamp(e),
+      'SUMMARY:'+icsEscape(interviewTitle(c)),'DESCRIPTION:'+icsEscape(interviewDesc(c)),
+      'BEGIN:VALARM','TRIGGER:-PT1H','ACTION:DISPLAY','DESCRIPTION:'+icsEscape(interviewTitle(c)),'END:VALARM','END:VEVENT'].join('\r\n');
+  }
+  window.rcDownloadInterviewsICS = function(){
+    var now = Date.now();
+    var ev = cands().filter(function(c){ var d = interviewDate(c); return d && d.getTime() >= now - 86400000 && TERMINAL.indexOf(c.stage)<0; }).map(interviewVEVENT).filter(Boolean);
+    if(!ev.length){ toast('ยังไม่มีนัดสัมภาษณ์ที่กำลังจะถึง'); return; }
+    downloadFile('interviews.ics', ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//HR Unified//Recruitment//TH','CALSCALE:GREGORIAN'].concat(ev,['END:VCALENDAR']).join('\r\n')+'\r\n', 'text/calendar;charset=utf-8');
+    toast('ดาวน์โหลดนัดสัมภาษณ์ ' + ev.length + ' รายการแล้ว');
+  };
+
+  /* ---------- rendering ---------- */
+  function kpis(){
+    var R = reqs(), C = cands();
+    var open = R.filter(function(r){ return r.status==='open'; });
+    var remaining = open.reduce(function(s,r){ return s + Math.max(0, Number(r.headcount||1) - hiredCount(r.id)); }, 0);
+    var active = C.filter(function(c){ return TERMINAL.indexOf(c.stage)<0 && c.stage!=='เริ่มงานแล้ว'; });
+    var now = Date.now(), wk = now + 7*86400000;
+    var upcoming = C.filter(function(c){ var d = interviewDate(c); return d && d.getTime()>=now-3600000 && d.getTime()<=wk && TERMINAL.indexOf(c.stage)<0; }).length;
+    var offers = C.filter(function(c){ return c.stage==='เสนอเงินเดือน' || c.stage==='รับข้อเสนอ'; }).length;
+    var yr = new Date().getFullYear();
+    var hired = C.filter(function(c){ return c.stage==='เริ่มงานแล้ว' && c.hiredDate && new Date(c.hiredDate).getFullYear()===yr; });
+    var tth = hired.filter(function(c){ return c.appliedDate; }).map(function(c){ return Math.max(0, Math.round((new Date(c.hiredDate)-new Date(c.appliedDate))/86400000)); });
+    var avg = tth.length ? Math.round(tth.reduce(function(a,b){return a+b;},0)/tth.length) : null;
+    return '<div class="summary-card"><div class="num">'+remaining+'</div><div class="label">อัตราที่ยังต้องการ ('+open.length+' ใบขอ)</div></div>'
+      + '<div class="summary-card"><div class="num">'+active.length+'</div><div class="label">ผู้สมัครใน Pipeline</div></div>'
+      + '<div class="summary-card"><div class="num">'+upcoming+'</div><div class="label">นัดสัมภาษณ์ใน 7 วัน</div></div>'
+      + '<div class="summary-card"><div class="num">'+offers+'</div><div class="label">อยู่ระหว่างเสนอ/รอตอบรับ</div></div>'
+      + '<div class="summary-card"><div class="num">'+hired.length+'</div><div class="label">รับเข้าทำงานปีนี้'+(avg!=null?' · เฉลี่ย '+avg+' วัน':'')+'</div></div>';
+  }
+  function subnav(){
+    var items = [['pipeline','🧲 Pipeline ผู้สมัคร'],['requisitions','📝 ใบขออัตรากำลัง'],['candidates','👤 รายชื่อผู้สมัคร']];
+    return '<div class="subnav">' + items.map(function(i){ return '<button class="subnav-btn '+(sub===i[0]?'active':'')+'" onclick="rcShowSub(\''+i[0]+'\')">'+i[1]+'</button>'; }).join('') + '</div>';
+  }
+  function candCard(c){
+    var idx = STAGES.indexOf(c.stage);
+    var r = reqById(c.requisitionId);
+    var last = (c.stageHistory||[]).slice(-1)[0];
+    var days = last ? daysSince(last.at) : daysSince(c.createdAt);
+    var iv = c.interviewDate && TERMINAL.indexOf(c.stage)<0 ? '<div class="rc-meta">📅 ' + esc(fmtDT(c)) + ' <a href="'+esc(rcInterviewGcalUrl(c.id))+'" target="_blank" rel="noopener" title="เพิ่มลง Google Calendar">➕</a></div>' : '';
+    var exp = c.expectedSalary ? '<div class="rc-meta">💰 ' + esc(Number(c.expectedSalary).toLocaleString('th-TH')) + ' บาท</div>' : '';
+    var btns = '';
+    if(TERMINAL.indexOf(c.stage)>=0){
+      btns = '<button class="btn-ghost btn-sm" onclick="rcSetStage(\''+attr(c.id)+'\',\'ใหม่\')">↩ เปิดใหม่</button>';
+    } else {
+      btns = (idx>0 ? '<button class="btn-ghost btn-sm" title="ย้อนขั้น" onclick="rcMove(\''+attr(c.id)+'\',-1)">◀</button>' : '')
+        + (idx<STAGES.length-1 ? '<button class="btn-primary btn-sm" title="ไปขั้นถัดไป" onclick="rcMove(\''+attr(c.id)+'\',1)">'+esc(STAGES[idx+1])+' ▶</button>' : '')
+        + (c.stage==='เริ่มงานแล้ว' ? '<button class="btn-green btn-sm" onclick="rcCreateEmployee(\''+attr(c.id)+'\')">➕ สร้างพนักงาน</button>' : '');
+    }
+    return '<div class="rc-card"><div class="rc-name">'+esc(c.fullName)+'</div>'
+      + '<div class="rc-meta">'+esc(r ? r.position : '-')+'</div>'
+      + (c.source ? '<div class="rc-meta">ช่องทาง: '+esc(c.source)+'</div>' : '')
+      + exp + iv
+      + (c.rejectReason && TERMINAL.indexOf(c.stage)>=0 ? '<div class="rc-meta">เหตุผล: '+esc(c.rejectReason)+'</div>' : '')
+      + '<div class="rc-meta rc-days">อยู่ขั้นนี้ '+days+' วัน</div>'
+      + '<div class="rc-actions">'+btns+'<button class="btn-ghost btn-sm" title="แก้ไข" onclick="rcOpenCandidate(\''+attr(c.id)+'\')">✏️</button>'
+      + (TERMINAL.indexOf(c.stage)<0 ? '<button class="btn-ghost btn-sm" title="ไม่ผ่าน/ถอนตัว" onclick="rcReject(\''+attr(c.id)+'\')">✖</button>' : '') + '</div></div>';
+  }
+  function pipelineHtml(){
+    var C = cands().filter(function(c){ return !reqFilter || c.requisitionId===reqFilter; });
+    var opts = '<option value="">ทุกใบขออัตรากำลัง</option>' + reqs().map(function(r){ return '<option value="'+attr(r.id)+'"'+(reqFilter===r.id?' selected':'')+'>'+esc(reqLabel(r))+'</option>'; }).join('');
+    var cols = STAGES.map(function(st){
+      var list = C.filter(function(c){ return c.stage===st; });
+      return '<div class="rc-col"><div class="rc-col-head" style="border-top-color:'+STAGE_COLORS[st]+'"><span>'+esc(st)+'</span><span class="rc-count">'+list.length+'</span></div>'
+        + (list.map(candCard).join('') || '<div class="rc-empty">—</div>') + '</div>';
+    }).join('');
+    var closed = C.filter(function(c){ return TERMINAL.indexOf(c.stage)>=0; });
+    var closedHtml = '<div style="margin-top:14px"><label style="cursor:pointer"><input type="checkbox" '+(showClosed?'checked':'')+' onchange="rcToggleClosed(this.checked)"> แสดงผู้สมัครที่ปิดจบ (ไม่ผ่าน/ถอนตัว) — '+closed.length+' คน</label></div>'
+      + (showClosed ? '<div class="rc-closed">' + (closed.map(candCard).join('') || '<div class="rc-empty">ไม่มีข้อมูล</div>') + '</div>' : '');
+    return '<section class="card"><div class="toolbar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:12px">'
+      + '<div class="field" style="min-width:260px;margin:0"><select onchange="rcSetReqFilter(this.value)">'+opts+'</select></div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-ghost" onclick="rcDownloadInterviewsICS()">📅 นัดสัมภาษณ์ทั้งหมด (.ics)</button><button class="btn-primary" onclick="rcOpenCandidate()">+ เพิ่มผู้สมัคร</button></div></div>'
+      + '<div class="rc-board">'+cols+'</div>'+closedHtml+'</section>';
+  }
+  function vacancyHtml(){
+    if(typeof v4JobOptions !== 'function') return '';
+    var openByKey = {};
+    reqs().filter(function(r){ return r.status==='open'; }).forEach(function(r){ var k = r.jobCode || r.position; openByKey[k] = (openByKey[k]||0) + Math.max(0, Number(r.headcount||1) - hiredCount(r.id)); });
+    var gaps = v4JobOptions().filter(function(o){
+      if(o.status && o.status!=='active') return false;
+      if(o.budgetedHeadcount==null || o.budgetedHeadcount==='') return false;
+      var gap = Number(o.budgetedHeadcount) - Number(o.employeeCount||0) - (openByKey[o.jobCode||o.position]||0);
+      o._gap = gap; return gap > 0;
+    });
+    if(!gaps.length) return '';
+    return '<section class="card"><h3 class="section-title">💡 ตำแหน่งที่ยังขาดอัตรากำลัง (ตามอัตราที่อนุมัติ ยังไม่มีใบขอ)</h3><div class="table-wrap"><table><thead><tr><th>ตำแหน่ง</th><th>แผนก</th><th>บริษัท</th><th>อนุมัติ</th><th>มีอยู่</th><th>ขาด</th><th></th></tr></thead><tbody>'
+      + gaps.map(function(o){ return '<tr><td>'+esc(o.position)+'<div class="small">'+esc(o.jobCode||'')+'</div></td><td>'+esc(o.department||'-')+'</td><td>'+esc(o.company)+'</td><td>'+esc(o.budgetedHeadcount)+'</td><td>'+esc(o.employeeCount||0)+'</td><td><strong>'+o._gap+'</strong></td><td><button class="btn-primary btn-sm" onclick="rcOpenRequisition(\'\',\''+attr(o.key)+'\')">สร้างใบขอ</button></td></tr>'; }).join('')
+      + '</tbody></table></div></section>';
+  }
+  function requisitionsHtml(){
+    var R = reqs().slice().sort(function(a,b){ return String(b.openDate||'').localeCompare(String(a.openDate||'')); });
+    var rows = R.map(function(r){
+      var hired = hiredCount(r.id), n = DB.recruitmentCandidates.filter(function(c){ return c.requisitionId===r.id; }).length;
+      var overdue = r.status==='open' && r.targetDate && new Date(r.targetDate) < today();
+      return '<tr><td>'+esc(r.code)+'</td><td><strong>'+esc(r.position)+'</strong><div class="small">'+esc(r.jobCode||'')+' · '+esc(r.reason||'')+'</div></td><td>'+esc(r.company)+'<div class="small">'+esc(r.department||'-')+'</div></td>'
+        + '<td>'+hired+' / '+esc(r.headcount||1)+'</td><td>'+n+'</td><td>'+esc(r.openDate?formatThaiDate(r.openDate):'-')+'</td><td>'+esc(r.targetDate?formatThaiDate(r.targetDate):'-')+(overdue?' <span class="badge inactive">เกินกำหนด</span>':'')+'</td>'
+        + '<td>'+(r.priority==='ด่วน'?'<span class="badge b-today">ด่วน</span>':'<span class="small">ปกติ</span>')+'</td><td><span class="badge '+(r.status==='open'?'active':'b-none')+'">'+esc(REQ_STATUS[r.status]||r.status)+'</span></td>'
+        + '<td><div class="row-actions"><button class="btn-ghost btn-sm" onclick="rcOpenRequisition(\''+attr(r.id)+'\')">แก้ไข</button><button class="btn-ghost btn-sm" onclick="rcFilterByReq(\''+attr(r.id)+'\')">ดู Pipeline</button><button class="btn-danger btn-sm" onclick="rcDeleteRequisition(\''+attr(r.id)+'\')">ลบ</button></div></td></tr>';
+    }).join('') || '<tr><td colspan="10" class="empty">ยังไม่มีใบขออัตรากำลัง กด "+ สร้างใบขออัตรากำลัง"</td></tr>';
+    return '<section class="card"><div class="toolbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h3 class="section-title" style="margin:0">ใบขออัตรากำลัง (Job Requisition)</h3><button class="btn-primary" onclick="rcOpenRequisition()">+ สร้างใบขออัตรากำลัง</button></div>'
+      + '<div class="table-wrap"><table><thead><tr><th>เลขที่</th><th>ตำแหน่ง</th><th>บริษัท/แผนก</th><th>รับแล้ว/ต้องการ</th><th>ผู้สมัคร</th><th>วันที่เปิด</th><th>กำหนดแล้วเสร็จ</th><th>ความเร่งด่วน</th><th>สถานะ</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></section>' + vacancyHtml();
+  }
+  var candSearch = '', candStage = '';
+  function candidatesHtml(){
+    var q = candSearch.toLowerCase();
+    var C = cands().filter(function(c){ return (!candStage || c.stage===candStage) && (!q || [c.fullName,c.phone,c.email,c.source,(reqById(c.requisitionId)||{}).position].join(' ').toLowerCase().indexOf(q)>=0); })
+      .sort(function(a,b){ return String(b.createdAt||'').localeCompare(String(a.createdAt||'')); });
+    var rows = C.map(function(c){
+      var r = reqById(c.requisitionId);
+      return '<tr><td><strong>'+esc(c.fullName)+'</strong><div class="small">'+esc(c.phone||'')+' '+esc(c.email||'')+'</div></td><td>'+esc(r?r.position:'-')+'<div class="small">'+esc(r?r.code:'')+'</div></td><td>'+esc(c.source||'-')+'</td>'
+        + '<td><span class="badge" style="color:'+STAGE_COLORS[c.stage]+'">'+esc(c.stage)+'</span></td><td>'+esc(c.expectedSalary?Number(c.expectedSalary).toLocaleString('th-TH'):'-')+'</td><td>'+esc(c.interviewDate?fmtDT(c):'-')+'</td><td>'+esc(c.appliedDate?formatThaiDate(c.appliedDate):'-')+'</td>'
+        + '<td><div class="row-actions"><button class="btn-ghost btn-sm" onclick="rcOpenCandidate(\''+attr(c.id)+'\')">แก้ไข</button><button class="btn-danger btn-sm" onclick="rcDeleteCandidate(\''+attr(c.id)+'\')">ลบ</button></div></td></tr>';
+    }).join('') || '<tr><td colspan="8" class="empty">ไม่พบผู้สมัคร</td></tr>';
+    var stageOpts = '<option value="">ทุกขั้นตอน</option>' + STAGES.concat(TERMINAL).map(function(s){ return '<option'+(candStage===s?' selected':'')+'>'+esc(s)+'</option>'; }).join('');
+    return '<section class="card"><div class="toolbar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="display:flex;gap:10px;flex-wrap:wrap"><input class="search-input" id="rcCandSearch" placeholder="ค้นหาชื่อ / เบอร์ / ตำแหน่ง" value="'+attr(candSearch)+'" oninput="rcSetCandSearch(this.value)"><select onchange="rcSetCandStage(this.value)">'+stageOpts+'</select></div><button class="btn-primary" onclick="rcOpenCandidate()">+ เพิ่มผู้สมัคร</button></div>'
+      + '<div class="table-wrap"><table><thead><tr><th>ผู้สมัคร</th><th>ตำแหน่งที่สมัคร</th><th>ช่องทาง</th><th>ขั้นตอน</th><th>เงินเดือนที่ต้องการ</th><th>นัดสัมภาษณ์</th><th>วันที่สมัคร</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></section>';
+  }
+  function render(){
+    var v = document.getElementById('view-recruitment'); if(!v) return;
+    ensure();
+    var body = sub==='requisitions' ? requisitionsHtml() : sub==='candidates' ? candidatesHtml() : pipelineHtml();
+    var active = document.activeElement && document.activeElement.id === 'rcCandSearch';
+    v.innerHTML = '<section class="card"><div class="module-intro"><div><h2>สรรหาบุคลากร<span class="module-title-en">Recruitment</span></h2><div class="sub">ใบขออัตรากำลัง · Pipeline ผู้สมัคร · นัดสัมภาษณ์ลงปฏิทิน · สร้างประวัติพนักงานเมื่อรับเข้าทำงาน</div></div></div>' + subnav() + '</section>'
+      + '<section class="summary-grid">' + kpis() + '</section>' + body;
+    if(active){ var i = document.getElementById('rcCandSearch'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } }
+  }
+
+  /* ---------- actions ---------- */
+  window.rcShowSub = function(s){ sub = s; render(); };
+  window.rcSetReqFilter = function(v){ reqFilter = v; render(); };
+  window.rcFilterByReq = function(id){ reqFilter = id; sub = 'pipeline'; render(); };
+  window.rcToggleClosed = function(on){ showClosed = !!on; render(); };
+  window.rcSetCandSearch = function(v){ candSearch = v; render(); };
+  window.rcSetCandStage = function(v){ candStage = v; render(); };
+
+  function pushStage(c, stage){
+    c.stage = stage; c.stageHistory = c.stageHistory || []; c.stageHistory.push({stage:stage, at:new Date().toISOString()});
+    c.updatedAt = new Date().toISOString();
+    if(stage==='เริ่มงานแล้ว'){ c.hiredDate = ymd(new Date()); }
+    var r = reqById(c.requisitionId);
+    if(r && r.status==='open' && hiredCount(r.id) >= Number(r.headcount||1)){ r.status = 'filled'; r.updatedAt = c.updatedAt; toast('ใบขอ ' + r.code + ' รับครบอัตราแล้ว ปิดเป็น "ครบอัตรา" อัตโนมัติ'); }
+  }
+  window.rcMove = function(id, dir){
+    var c = candById(id); if(!c) return;
+    var i = STAGES.indexOf(c.stage) + dir; if(i<0 || i>=STAGES.length) return;
+    pushStage(c, STAGES[i]); saveDB(); render();
+  };
+  window.rcSetStage = function(id, stage){ var c = candById(id); if(!c) return; pushStage(c, stage); if(stage==='ใหม่') c.rejectReason=''; saveDB(); render(); };
+  window.rcReject = function(id){
+    var c = candById(id); if(!c) return;
+    var kind = confirm('กด "ตกลง" = ไม่ผ่านการพิจารณา\nกด "ยกเลิก" = ผู้สมัครถอนตัว');
+    var reason = prompt(kind ? 'เหตุผลที่ไม่ผ่าน (ไม่บังคับ)' : 'เหตุผลที่ถอนตัว (ไม่บังคับ)', '');
+    if(reason===null) return;
+    c.rejectReason = reason; pushStage(c, kind ? 'ไม่ผ่าน' : 'ถอนตัว'); saveDB(); render();
+  };
+
+  function reqOptionsHtml(sel){
+    return reqs().filter(function(r){ return r.status==='open' || r.id===sel; }).map(function(r){ return '<option value="'+attr(r.id)+'"'+(sel===r.id?' selected':'')+'>'+esc(reqLabel(r))+'</option>'; }).join('');
+  }
+  window.rcOpenCandidate = function(id){
+    ensure();
+    var c = id ? candById(id) : null;
+    var d = c || { requisitionId: reqFilter || '', company: companyFilter==='ALL' ? '' : companyFilter, stage:'ใหม่', appliedDate: ymd(new Date()) };
+    var rq = reqs().filter(function(r){ return r.status==='open'; });
+    if(!c && !d.requisitionId && rq.length===1) d.requisitionId = rq[0].id;
+    var html = '<form onsubmit="event.preventDefault();rcSaveCandidate()"><input type="hidden" id="cd_id" value="'+attr(id||'')+'">'
+      + '<div class="form-grid two">'
+      + '<div class="field"><label>ชื่อ-นามสกุล *</label><input id="cd_fullName" required value="'+attr(d.fullName||'')+'"></div>'
+      + '<div class="field"><label>ตำแหน่งที่สมัคร (ใบขออัตรากำลัง) *</label><select id="cd_req" required><option value="">— เลือก —</option>'+reqOptionsHtml(d.requisitionId)+'</select></div>'
+      + '<div class="field"><label>เบอร์โทร</label><input id="cd_phone" value="'+attr(d.phone||'')+'"></div>'
+      + '<div class="field"><label>อีเมล</label><input id="cd_email" type="email" value="'+attr(d.email||'')+'"></div>'
+      + '<div class="field"><label>ช่องทางที่ได้ผู้สมัคร</label><select id="cd_source"><option value=""></option>'+SOURCES.map(function(s){ return '<option'+(d.source===s?' selected':'')+'>'+esc(s)+'</option>'; }).join('')+'</select></div>'
+      + '<div class="field"><label>เงินเดือนที่ต้องการ (บาท)</label><input id="cd_salary" type="number" min="0" value="'+attr(d.expectedSalary||'')+'"></div>'
+      + '<div class="field"><label>วันที่สมัคร</label><input id="cd_applied" type="date" value="'+attr(d.appliedDate||'')+'"></div>'
+      + '<div class="field"><label>ขั้นตอนปัจจุบัน</label><select id="cd_stage">'+STAGES.concat(TERMINAL).map(function(s){ return '<option'+(d.stage===s?' selected':'')+'>'+esc(s)+'</option>'; }).join('')+'</select></div>'
+      + '<div class="field"><label>นัดสัมภาษณ์ (วัน-เวลา)</label><input id="cd_iv" type="datetime-local" value="'+attr(d.interviewDate||'')+'"></div>'
+      + '<div class="field"><label>ผู้สัมภาษณ์</label><input id="cd_interviewer" value="'+attr(d.interviewer||'')+'"></div>'
+      + '<div class="field" style="grid-column:1/-1"><label>ลิงก์ Resume / Portfolio</label><input id="cd_resume" value="'+attr(d.resumeUrl||'')+'" placeholder="https://..."></div>'
+      + '<div class="field" style="grid-column:1/-1"><label>หมายเหตุ / ผลการสัมภาษณ์</label><textarea id="cd_note" rows="3">'+esc(d.note||'')+'</textarea></div>'
+      + '</div><div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn-ghost" onclick="closeSharedModal()">ยกเลิก</button><button type="submit" class="btn-primary">บันทึก</button></div></form>';
+    openSharedModal(c ? 'แก้ไขผู้สมัคร' : 'เพิ่มผู้สมัคร', html, true);
+  };
+  window.rcSaveCandidate = function(){
+    ensure();
+    var g = function(i){ return (document.getElementById(i)||{}).value || ''; };
+    var id = g('cd_id'), name = g('cd_fullName').trim(), reqId = g('cd_req');
+    if(!name || !reqId){ toast('กรุณากรอกชื่อและเลือกตำแหน่งที่สมัคร'); return; }
+    var r = reqById(reqId); var now = new Date().toISOString();
+    var c = id ? candById(id) : null;
+    if(!c){ c = { id: uid('cand_'), createdAt: now, stageHistory: [], stage:'' }; DB.recruitmentCandidates.push(c); }
+    Object.assign(c, { fullName:name, requisitionId:reqId, company:(r&&r.company)||c.company||'', phone:g('cd_phone').trim(), email:g('cd_email').trim(), source:g('cd_source'),
+      expectedSalary:g('cd_salary'), appliedDate:g('cd_applied'), interviewDate:g('cd_iv'), interviewer:g('cd_interviewer').trim(), resumeUrl:g('cd_resume').trim(), note:g('cd_note'), updatedAt:now });
+    var stage = g('cd_stage') || 'ใหม่';
+    if(c.stage !== stage) pushStage(c, stage);
+    saveDB(); closeSharedModal(); render(); toast('บันทึกผู้สมัครแล้ว');
+  };
+  window.rcDeleteCandidate = function(id){ var c = candById(id); if(!c || !confirm('ลบผู้สมัคร "'+c.fullName+'" ?')) return; DB.recruitmentCandidates = DB.recruitmentCandidates.filter(function(x){ return x.id!==id; }); saveDB(); render(); };
+
+  function nextReqCode(){
+    var y = new Date().getFullYear(), n = DB.recruitmentRequisitions.filter(function(r){ return String(r.code||'').indexOf('RQ-'+y)===0; }).length + 1, code;
+    do { code = 'RQ-' + y + '-' + String(n++).padStart(3,'0'); } while(DB.recruitmentRequisitions.some(function(r){ return r.code===code; }));
+    return code;
+  }
+  window.rcPositionPicked = function(){
+    var p = (document.getElementById('rq_position')||{}).value || '', co = (document.getElementById('rq_company')||{}).value || '';
+    var hit = (DB.jd||[]).find(function(j){ return j.position===p && (!co || j.company===co); }) || (DB.jd||[]).find(function(j){ return j.position===p; });
+    if(hit){ document.getElementById('rq_jobCode').value = hit.jobCode||''; if(!document.getElementById('rq_dept').value) document.getElementById('rq_dept').value = hit.department||''; if(hit.company) document.getElementById('rq_company').value = hit.company; }
+  };
+  window.rcOpenRequisition = function(id, optKey){
+    ensure();
+    var r = id ? reqById(id) : null, d = r;
+    if(!d){
+      d = { company: companyFilter==='ALL' ? 'CMN' : companyFilter, headcount:1, priority:'ปกติ', reason:'ทดแทนพนักงานเดิม', status:'open', openDate: ymd(new Date()) };
+      if(optKey && typeof v4JobOptions==='function'){ var o = v4JobOptions().find(function(x){ return x.key===optKey; }); if(o){ d.company=o.company; d.position=o.position; d.jobCode=o.jobCode; d.department=o.department; d.reason='เพิ่มอัตรากำลัง'; d.headcount=Math.max(1, Number(o._gap||1)); } }
+    }
+    var posList = [], seen = {};
+    (DB.jd||[]).forEach(function(j){ if(j.position && !seen[j.position]){ seen[j.position]=1; posList.push(j.position); } });
+    var html = '<form onsubmit="event.preventDefault();rcSaveRequisition()"><input type="hidden" id="rq_id" value="'+attr(id||'')+'">'
+      + '<datalist id="rcPositionList">'+posList.map(function(p){ return '<option value="'+attr(p)+'">'; }).join('')+'</datalist>'
+      + '<div class="form-grid two">'
+      + '<div class="field"><label>บริษัท *</label><select id="rq_company" onchange="rcPositionPicked()"><option'+(d.company==='CMN'?' selected':'')+'>CMN</option><option'+(d.company==='CIL'?' selected':'')+'>CIL</option></select></div>'
+      + '<div class="field"><label>ตำแหน่ง *</label><input id="rq_position" list="rcPositionList" required value="'+attr(d.position||'')+'" onchange="rcPositionPicked()" placeholder="เลือกจากรายการหรือพิมพ์ใหม่"></div>'
+      + '<div class="field"><label>Job Code</label><input id="rq_jobCode" value="'+attr(d.jobCode||'')+'"></div>'
+      + '<div class="field"><label>แผนก/ฝ่าย</label><input id="rq_dept" value="'+attr(d.department||'')+'"></div>'
+      + '<div class="field"><label>จำนวนที่ต้องการ (อัตรา)</label><input id="rq_head" type="number" min="1" value="'+attr(d.headcount||1)+'"></div>'
+      + '<div class="field"><label>เหตุผลการขอ</label><select id="rq_reason">'+REASONS.map(function(s){ return '<option'+(d.reason===s?' selected':'')+'>'+esc(s)+'</option>'; }).join('')+'</select></div>'
+      + '<div class="field"><label>ผู้ขออัตรากำลัง / หัวหน้าหน่วยงาน</label><input id="rq_requester" value="'+attr(d.requester||'')+'"></div>'
+      + '<div class="field"><label>ความเร่งด่วน</label><select id="rq_priority"><option'+(d.priority!=='ด่วน'?' selected':'')+'>ปกติ</option><option'+(d.priority==='ด่วน'?' selected':'')+'>ด่วน</option></select></div>'
+      + '<div class="field"><label>วันที่เปิดรับ</label><input id="rq_open" type="date" value="'+attr(d.openDate||'')+'"></div>'
+      + '<div class="field"><label>กำหนดให้เริ่มงาน/แล้วเสร็จ</label><input id="rq_target" type="date" value="'+attr(d.targetDate||'')+'"></div>'
+      + '<div class="field"><label>สถานะ</label><select id="rq_status">'+Object.keys(REQ_STATUS).map(function(k){ return '<option value="'+k+'"'+(d.status===k?' selected':'')+'>'+esc(REQ_STATUS[k])+'</option>'; }).join('')+'</select></div>'
+      + '<div class="field" style="grid-column:1/-1"><label>คุณสมบัติ/หมายเหตุ</label><textarea id="rq_note" rows="3">'+esc(d.note||'')+'</textarea></div>'
+      + '</div><div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn-ghost" onclick="closeSharedModal()">ยกเลิก</button><button type="submit" class="btn-primary">บันทึก</button></div></form>';
+    openSharedModal(r ? 'แก้ไขใบขออัตรากำลัง ' + r.code : 'สร้างใบขออัตรากำลัง', html, true);
+  };
+  window.rcSaveRequisition = function(){
+    ensure();
+    var g = function(i){ return (document.getElementById(i)||{}).value || ''; };
+    var id = g('rq_id'), position = g('rq_position').trim();
+    if(!position){ toast('กรุณาระบุตำแหน่ง'); return; }
+    var now = new Date().toISOString(), r = id ? reqById(id) : null;
+    if(!r){ r = { id: uid('req_'), code: nextReqCode(), createdAt: now }; DB.recruitmentRequisitions.push(r); }
+    Object.assign(r, { company:g('rq_company'), position:position, jobCode:g('rq_jobCode').trim(), department:g('rq_dept').trim(), headcount:Math.max(1, parseInt(g('rq_head'),10)||1),
+      reason:g('rq_reason'), requester:g('rq_requester').trim(), priority:g('rq_priority'), openDate:g('rq_open'), targetDate:g('rq_target'), status:g('rq_status'), note:g('rq_note'), updatedAt:now });
+    saveDB(); closeSharedModal(); render(); toast('บันทึกใบขออัตรากำลัง ' + r.code + ' แล้ว');
+  };
+  window.rcDeleteRequisition = function(id){
+    var r = reqById(id); if(!r) return;
+    var n = DB.recruitmentCandidates.filter(function(c){ return c.requisitionId===id; }).length;
+    if(!confirm('ลบใบขอ ' + r.code + ' (' + r.position + ')' + (n ? ' และผู้สมัครที่เกี่ยวข้อง ' + n + ' คน' : '') + ' ? ไม่สามารถกู้คืนได้')) return;
+    DB.recruitmentRequisitions = DB.recruitmentRequisitions.filter(function(x){ return x.id!==id; });
+    DB.recruitmentCandidates = DB.recruitmentCandidates.filter(function(c){ return c.requisitionId!==id; });
+    saveDB(); render();
+  };
+  window.rcCreateEmployee = function(id){
+    var c = candById(id); if(!c) return; var r = reqById(c.requisitionId) || {};
+    showTab('employees');
+    try{ showEmployeeSubtab('add'); resetEmployeeForm(); }catch(e){}
+    var set = function(i, v){ var el = document.getElementById(i); if(el) el.value = v || ''; };
+    set('emp_fullName', c.fullName); set('emp_company', r.company || c.company || 'CMN'); set('emp_position', r.position); set('emp_positionSearch', r.position);
+    set('emp_jobCode', r.jobCode); set('emp_department', r.department); set('emp_departmentSearch', r.department);
+    set('emp_phone', c.phone); set('emp_email', c.email); set('emp_startDate', c.hiredDate || ymd(new Date())); set('emp_status', 'Active');
+    toast('กรอกข้อมูลจากผู้สมัครให้แล้ว กรุณาตรวจสอบ ใส่รหัสพนักงาน แล้วกดบันทึก');
+  };
+
+  /* ---------- install: tab button, view, styles ---------- */
+  function install(){
+    if(document.getElementById('view-recruitment')) return;
+    var st = document.createElement('style'); st.id = 'recruitment-style';
+    st.textContent = ''
+      + 'body[data-module="recruitment"]{--module-accent:#14B8A6;--module-accent-soft:rgba(20,184,166,.16);--module-accent-border:rgba(20,184,166,.5)}'
+      + '.rc-board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(235px,1fr);gap:14px;overflow-x:auto;padding:4px 2px 10px;align-items:start}'
+      + '.rc-col{background:rgba(127,127,150,.08);border-radius:16px;padding:10px;min-height:140px}'
+      + '.rc-col-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:13.5px;padding:8px 6px 10px;border-top:3px solid #888;margin:-10px -10px 8px;padding-left:16px;padding-right:16px;border-radius:16px 16px 0 0}'
+      + '.rc-count{background:rgba(127,127,150,.22);border-radius:99px;padding:1px 9px;font-size:12px}'
+      + '.rc-card{background:var(--v4-surface,#fff);border:1px solid var(--v4-border,#ddd);border-radius:14px;padding:12px;margin-bottom:10px}'
+      + '.rc-name{font-weight:700;font-size:14.5px;margin-bottom:4px}'
+      + '.rc-meta{font-size:12.5px;color:var(--v4-muted,#667085);margin-top:3px;line-height:1.4}'
+      + '.rc-days{font-size:11.5px;opacity:.85}'
+      + '.rc-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}'
+      + '.rc-empty{text-align:center;color:var(--v4-muted,#667085);padding:18px 0}'
+      + '.rc-closed{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:10px}'
+      + 'html.theme-soft .rc-col{background:#e6e7eb!important;box-shadow:var(--neu-in-sm)!important}'
+      + 'html.theme-soft .rc-col-head{color:#1d2230!important}'
+      + 'html.theme-soft .rc-count{background:#e6e7eb!important;box-shadow:var(--neu-up-sm)!important;color:#3a4153}'
+      + 'html.theme-soft .rc-card{background:#e6e7eb!important;border:0!important;box-shadow:var(--neu-up-sm)!important;color:#1d2230!important}'
+      + 'html.theme-soft .rc-meta,html.theme-soft .rc-empty{color:#667085!important}';
+    document.head.appendChild(st);
+
+    var dashBtn = document.querySelector('.tab-btn[data-tab="dashboard"]');
+    if(dashBtn && !dashBtn.querySelector('.tab-label')){
+      dashBtn.innerHTML = '<span aria-hidden="true">🏠</span><span class="tab-label"><span class="tab-label-th">หน้าแรก</span><span class="tab-label-en">Dashboard</span></span>';
+    }
+    var btn = document.createElement('button');
+    btn.className = 'tab-btn'; btn.dataset.tab = 'recruitment'; btn.dataset.module = 'recruitment';
+    btn.setAttribute('onclick', "showTab('recruitment')");
+    btn.innerHTML = '<span aria-hidden="true">🧲</span><span class="tab-label"><span class="tab-label-th">สรรหาบุคลากร</span><span class="tab-label-en">Recruitment</span></span>';
+    if(dashBtn) dashBtn.insertAdjacentElement('afterend', btn); else document.getElementById('tabbar').appendChild(btn);
+
+    var view = document.createElement('div');
+    view.className = 'view'; view.id = 'view-recruitment';
+    var dashView = document.getElementById('view-dashboard');
+    if(dashView) dashView.insertAdjacentElement('afterend', view); else document.querySelector('.wrap').appendChild(view);
+    TAB_RENDERERS.recruitment = render;
+  }
+  install();
+  window.renderRecruitment = render;
+})();
+</script>
 </body>
 </html>
