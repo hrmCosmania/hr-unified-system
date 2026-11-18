@@ -2,6 +2,7 @@
 
 <html lang="th">
 <head>
+<script>try{if(localStorage.getItem("hr_theme")!=="dark")document.documentElement.classList.add("theme-soft");}catch(e){document.documentElement.classList.add("theme-soft");}</script>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>PeopleConnect — HR Management System v4.7</title>
@@ -391,7 +392,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <input id="globalSearchInput" type="search" placeholder="🔍 ค้นหาพนักงาน / ตำแหน่งงาน..." autocomplete="off" oninput="globalSearchRun(this.value)" onfocus="globalSearchRun(this.value)"/>
 <div class="global-search-results hidden" id="globalSearchResults"></div>
 </div>
-<button class="topbar-bell" onclick="showTab('onboarding')" title="เคส Onboarding ที่ยังไม่ปิด" aria-label="การแจ้งเตือน Onboarding">🔔<span class="bell-badge hidden" id="topbarBellBadge">0</span></button>
+<button class="theme-toggle-btn" onclick="toggleThemeSoft()" title="สลับธีม Soft / Dark" aria-label="สลับธีม">🌓</button><button class="topbar-bell" onclick="showTab('onboarding')" title="เคส Onboarding ที่ยังไม่ปิด" aria-label="การแจ้งเตือน Onboarding">🔔<span class="bell-badge hidden" id="topbarBellBadge">0</span></button>
 <div class="cloud-sync-status" id="cloudSyncStatus">
 <span id="cloudSyncLabel">-</span>
 <button class="btn-ghost btn-sm" onclick="authGateLogout()">ออกจากระบบ</button>
@@ -6703,5 +6704,118 @@ window.applyJdTemplateImport = applyJdTemplateImport;
   setTimeout(updateTopbarExtras, 600);
 })();
 </script>
+<style id="soft-neu-theme">
+/* ===== Soft Neumorphic theme (default). Toggle back to dark with the 🌓 button; stored in localStorage hr_theme ===== */
+html.theme-soft{
+  color-scheme:light;
+  --neu-bg:#e6e7eb;
+  --neu-up:8px 8px 18px rgba(163,170,185,.55),-8px -8px 18px rgba(255,255,255,.95);
+  --neu-up-sm:4px 4px 9px rgba(163,170,185,.55),-4px -4px 9px rgba(255,255,255,.95);
+  --neu-in:inset 6px 6px 12px rgba(163,170,185,.5),inset -6px -6px 12px rgba(255,255,255,.95);
+  --neu-in-sm:inset 3px 3px 7px rgba(163,170,185,.55),inset -3px -3px 7px rgba(255,255,255,.95);
+  --v4-bg:#e6e7eb;--v4-nav:#e6e7eb;--v4-surface:#e6e7eb;--v4-surface-2:#dcdde3;
+  --v4-border:rgba(160,166,182,.32);--v4-text:#1d2230;--v4-muted:#667085;--v4-subtle:#8a91a3;
+  --shadow:var(--neu-up);
+  --gs-ink-900:#1d2230;--gs-ink-700:#3a4153;--gs-ink-500:#667085;--gs-ink-300:#8a91a3;
+  --gs-glass-1:#e6e7eb;--gs-glass-2:#e6e7eb;--gs-glass-border:transparent;--gs-glass-border-soft:transparent;
+  --gs-cmn:#2f63d0;--gs-cil:#0f9467;--gs-ok:#0f9467;--gs-danger:#d64545;--gs-violet:#6d5bd0;--gs-amber:#c97a14;
+  --gs-violet-glow:rgba(120,120,160,.25);
+}
+html.theme-soft body{--module-accent:#4f7cff;--module-accent-soft:rgba(79,124,255,.14);--module-accent-border:rgba(79,124,255,.4);
+  background:#e6e7eb!important;color:#1d2230!important;}
+html.theme-soft *{scrollbar-color:#b4b8c6 transparent}
+html.theme-soft .gs-bg{background:#e6e7eb!important}
+html.theme-soft .gs-bg::after,html.theme-soft .gs-orb{display:none!important}
+
+/* top bar */
+html.theme-soft .topbar{background:#e6e7eb!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border-bottom:0!important;box-shadow:0 6px 16px rgba(163,170,185,.4)!important}
+html.theme-soft .brand h1{color:#1d2230!important}
+html.theme-soft .brand p{color:#667085!important}
+html.theme-soft .brand .mark{background:linear-gradient(145deg,#a6a8b0,#85878f)!important;color:#fff!important;box-shadow:var(--neu-up-sm)!important}
+html.theme-soft .company-toggle{background:#e6e7eb!important;border:0!important;box-shadow:var(--neu-in-sm)!important;border-radius:999px!important}
+html.theme-soft .cf-btn{color:#667085!important;border-radius:999px!important}
+html.theme-soft .cf-btn.active,html.theme-soft .cf-btn.active[data-c]{background:#e6e7eb!important;border:0!important;color:#1d2230!important;box-shadow:var(--neu-up-sm)!important}
+html.theme-soft .cloud-sync-status{color:#667085!important}
+html.theme-soft .global-search input{background:#e6e7eb!important;color:#1d2230!important;border:0!important;box-shadow:var(--neu-in-sm)!important;border-radius:999px!important;padding:10px 18px!important}
+html.theme-soft .global-search input::placeholder{color:#8a91a3!important}
+html.theme-soft .global-search-results{background:#e6e7eb!important;border:0!important;box-shadow:var(--neu-up)!important;border-radius:18px!important}
+html.theme-soft .gs-res-group{color:#667085!important}
+html.theme-soft .gs-res-item{color:#1d2230!important}
+html.theme-soft .gs-res-item small{color:#667085!important}
+html.theme-soft .gs-res-item:hover{background:rgba(255,255,255,.65)!important}
+html.theme-soft .topbar-bell,html.theme-soft .sidebar-toggle-btn,html.theme-soft .theme-toggle-btn{background:#e6e7eb!important;border:0!important;color:#3a4153!important;box-shadow:var(--neu-up-sm)!important;border-radius:50%!important}
+.theme-toggle-btn{width:40px;height:40px;cursor:pointer;font-size:16px;flex-shrink:0;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff}
+
+/* sidebar */
+html.theme-soft .app-shell > .tabbar{background:#e6e7eb!important;box-shadow:6px 0 16px rgba(163,170,185,.35)!important;border-right:0!important;gap:12px!important;padding:22px 16px!important}
+html.theme-soft .app-shell > .tabbar .tab-btn{background:#e6e7eb!important;border:0!important;color:#4a5163!important;border-radius:999px!important;box-shadow:var(--neu-up-sm)!important;padding:11px 16px!important}
+html.theme-soft .app-shell > .tabbar .tab-btn:hover:not(.active){color:#1d2230!important;border:0!important}
+html.theme-soft .app-shell > .tabbar .tab-btn.active{background:#e6e7eb!important;color:var(--module-accent)!important;box-shadow:var(--neu-in-sm)!important;border:0!important}
+html.theme-soft .tab-label-en,html.theme-soft .tab-btn.active .tab-label-en{color:#8a91a3!important}
+html.theme-soft .sidebar-profile{background:#e6e7eb!important;box-shadow:var(--neu-in-sm)!important;border:0!important;border-radius:20px!important}
+html.theme-soft .sidebar-profile-name{color:#1d2230!important}
+html.theme-soft .sidebar-profile-role{color:#667085!important}
+
+/* cards & panels */
+html.theme-soft :is(.card,.summary-card,.compare-pane,.job-group,.gs-stat-card,.diff-card,.org-outline-panel,.org-canvas-panel,#view-employees .module-intro,#view-employees > section.card){
+  background:#e6e7eb!important;border:0!important;border-radius:22px!important;box-shadow:var(--neu-up)!important;color:#1d2230!important;backdrop-filter:none!important}
+html.theme-soft .modal{background:#e6e7eb!important;border:0!important;border-radius:24px!important;box-shadow:var(--neu-up)!important;color:#1d2230!important}
+html.theme-soft .modal-bg{background:rgba(214,216,224,.72)!important}
+html.theme-soft :is(.card h2,.card h3,.modal h3,.section-title,.job-group-head,.job-row .job-name,.summary-card .label,.compare-pane-head){color:#1d2230!important}
+html.theme-soft :is(.org-outline-head,.org-canvas-toolbar,.compare-pane-head){background:#dcdde3!important;border-color:transparent!important}
+html.theme-soft :is(.clean-note,.notice,.original-block,.participant-picker,.theme-swatch,.diff-card,.dash-list-row,.position-list-item,.course-item){
+  background:#e6e7eb!important;border:0!important;color:#3a4153!important;box-shadow:var(--neu-in-sm)!important;border-radius:16px!important}
+html.theme-soft :is(.position-list-item,.course-item,.dash-list-row):hover,html.theme-soft :is(.position-list-item,.course-item).active{box-shadow:var(--neu-in)!important;background:#e6e7eb!important}
+html.theme-soft .job-row:hover,html.theme-soft .clickable:hover{background:rgba(255,255,255,.55)!important}
+html.theme-soft .org-card{background:#e6e7eb!important;border:0!important;box-shadow:var(--neu-up-sm)!important;color:#1d2230!important}
+html.theme-soft .org-card.group{background:#dcdde3!important}
+html.theme-soft .org-tree-v4 li>ul:before,html.theme-soft .org-tree-v4 li>ul>li:before{background:#b4b8c6!important}
+html.theme-soft .bar-track,html.theme-soft .dash-progress-track{background:#e6e7eb!important;border:0!important;box-shadow:var(--neu-in-sm)!important}
+html.theme-soft .combo-options{background:#e6e7eb!important;border:0!important;box-shadow:var(--neu-up)!important;border-radius:16px!important}
+html.theme-soft .combo-option:hover,html.theme-soft .combo-option.active{background:rgba(255,255,255,.6)!important}
+
+/* buttons: pills */
+html.theme-soft :is(.btn-primary,.btn-green,.btn-gold,.btn-purple,#view-employees .btn-primary){
+  background:linear-gradient(145deg,#a6a8b0,#85878f)!important;color:#fff!important;border:0!important;border-radius:999px!important;box-shadow:var(--neu-up-sm)!important}
+html.theme-soft :is(.btn-ghost,.subnav-btn,.report-topic-btn,.detail-tab,#view-employees .btn-ghost,#view-employees .subnav-btn){
+  background:#e6e7eb!important;color:#3a4153!important;border:0!important;border-radius:999px!important;box-shadow:var(--neu-up-sm)!important}
+html.theme-soft :is(.btn-danger,.danger-outline,#view-employees .btn-danger){background:#e6e7eb!important;color:#d64545!important;border:0!important;border-radius:999px!important;box-shadow:var(--neu-up-sm)!important}
+html.theme-soft :is(.btn-primary,.btn-green,.btn-gold,.btn-purple,.btn-ghost,.btn-danger):hover{filter:none!important;transform:none!important;box-shadow:var(--neu-up)!important}
+html.theme-soft :is(.btn-primary,.btn-green,.btn-gold,.btn-purple,.btn-ghost,.btn-danger,.subnav-btn,.detail-tab):active{box-shadow:var(--neu-in-sm)!important}
+html.theme-soft :is(.subnav-btn.active,.report-topic-btn.active,.detail-tab.active,#view-employees .subnav-btn.active){background:#e6e7eb!important;color:var(--module-accent)!important;box-shadow:var(--neu-in-sm)!important;border:0!important}
+
+/* inputs: inset */
+html.theme-soft :is(.field input:not([type=checkbox]):not([type=radio]),.field select,.field textarea,.search-input,select,textarea,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),#view-employees .field input,#view-employees .field select,#view-employees .field textarea){
+  background:#e6e7eb!important;color:#1d2230!important;border:0!important;border-radius:14px!important;box-shadow:var(--neu-in-sm)!important}
+html.theme-soft :is(input,select,textarea):focus{box-shadow:var(--neu-in-sm),0 0 0 2px var(--module-accent)!important;outline:none!important}
+html.theme-soft .field label,html.theme-soft #view-employees label{color:#667085!important}
+html.theme-soft input::placeholder,html.theme-soft textarea::placeholder{color:#8a91a3!important}
+html.theme-soft input[type=checkbox],html.theme-soft input[type=radio]{accent-color:#4f7cff}
+
+/* tables */
+html.theme-soft :is(.table-wrap,#view-employees .table-wrap){background:#e6e7eb!important;border:0!important;border-radius:20px!important;box-shadow:var(--neu-in-sm)!important}
+html.theme-soft .table-wrap table{color:#1d2230!important}
+html.theme-soft :is(thead th,#view-employees thead th){background:#dcdde3!important;color:#667085!important;border-color:rgba(160,166,182,.3)!important}
+html.theme-soft :is(tbody td,#view-employees tbody td){border-color:rgba(160,166,182,.25)!important;color:#2b3142}
+html.theme-soft :is(tbody tr:hover,#view-employees tbody tr:hover){background:rgba(255,255,255,.55)!important}
+html.theme-soft .gs-info b,html.theme-soft .gs-pos{color:#1d2230!important}
+
+/* badges / pills */
+html.theme-soft .badge{border:0!important;box-shadow:var(--neu-up-sm)}
+html.theme-soft .badge.CMN{background:#e6e7eb!important;color:#2f63d0!important}
+html.theme-soft .badge.CIL,html.theme-soft .badge.active{background:#e6e7eb!important;color:#0f9467!important}
+html.theme-soft .badge.inactive{background:#e6e7eb!important;color:#d64545!important}
+html.theme-soft :is(.badge.b-today,.badge.b-soon,.badge.b-month,.badge.b-normal,.badge.b-none){background:#e6e7eb!important;color:#3a4153!important}
+html.theme-soft :is(.gs-co-badge,.gs-status-pill){border:0!important;background:#e6e7eb!important;box-shadow:var(--neu-up-sm)}
+html.theme-soft .gs-stat-card .gs-chip{background:#e6e7eb!important;border:0!important;box-shadow:var(--neu-in-sm)}
+html.theme-soft .gs-stat-card .gs-glow{display:none}
+html.theme-soft .gs-stat-card .gs-num{color:#1d2230!important}
+
+/* misc text */
+html.theme-soft :is(.sub,.small,.muted,.job-meta,.job-row .job-meta,.card .sub,.empty,.position-list-meta,.course-meta,.bar-label){color:#667085!important}
+html.theme-soft .summary-card .num{color:var(--module-accent)!important}
+html.theme-soft .tab-btn .tab-label-th{color:inherit!important}
+</style>
+<script id="theme-toggle-script">window.toggleThemeSoft=function(){var h=document.documentElement;var soft=h.classList.toggle("theme-soft");try{localStorage.setItem("hr_theme",soft?"soft":"dark");}catch(e){}};</script>
 </body>
 </html>
