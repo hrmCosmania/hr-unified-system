@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>แบบประเมินทดลองงานพนักงาน + บันทึกผ่านทดลองงาน</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink-900: #f2f2f8;
+      --ink-700: #c7c8db;
+      --ink-500: #8f90ab;
+      --ink-300: #5c5d78;
+      --glass-1: rgba(38,40,58,.55);
+      --glass-2: rgba(38,40,58,.36);
+      --glass-border: rgba(255,255,255,.10);
+      --glass-border-soft: rgba(255,255,255,.07);
+      --cmn: #8fa0ff;
+      --cmn-glow: rgba(143,160,255,.4);
+      --cil: #4fe0bd;
+      --cil-glow: rgba(79,224,189,.4);
+      --violet: #b79bff;
+      --violet-glow: rgba(183,155,255,.45);
+      --violet-grad: linear-gradient(135deg,#b18bff,#5a6fe0);
+      --amber: #ffb168;
+      --amber-glow: rgba(255,177,104,.4);
+      --ok: #4fe0bd;
+      --danger: #ff7a90;
+
+      --bg: #0d0e16;
+      --surface: var(--glass-1);
+      --surface-2: rgba(255,255,255,.05);
+      --border: var(--glass-border);
+      --border-soft: var(--glass-border-soft);
+      --navy: var(--ink-900);
+      --navy-2: var(--violet);
+      --blue: var(--violet);
+      --blue-2: var(--violet);
+      --blue-soft: rgba(143,160,255,.14);
+      --pink: var(--amber);
+      --pink-soft: rgba(255,177,104,.14);
+      --green: var(--ok);
+      --green-soft: rgba(79,224,189,.14);
+      --amber-soft: rgba(255,177,104,.14);
+      --red: var(--danger);
+      --red-soft: rgba(255,122,144,.14);
+      --text: var(--ink-900);
+      --muted: var(--ink-500);
+      --muted-2: var(--ink-300);
+      --shadow-sm: 0 1px 0 rgba(255,255,255,.06) inset, 0 8px 20px rgba(0,0,0,.28);
+      --shadow-md: 0 1px 0 rgba(255,255,255,.06) inset, 0 12px 34px rgba(0,0,0,.34);
+      --radius: 20px;
+      --radius-sm: 11px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { background: #0d0e16; }
+
+    body {
+      font-family: 'IBM Plex Sans Thai', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: transparent;
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.65;
+      padding: 32px 16px 88px;
+      -webkit-font-smoothing: antialiased;
+      position: relative;
+    }
+
+    .bg-fx {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      background:
+        radial-gradient(38% 42% at 12% 15%, #2c2f66 0%, transparent 70%),
+        radial-gradient(42% 46% at 88% 12%, #5a3a4a 0%, transparent 70%),
+        radial-gradient(46% 50% at 20% 92%, #1d4a3f 0%, transparent 70%),
+        radial-gradient(40% 44% at 90% 88%, #4a2c56 0%, transparent 70%),
+        linear-gradient(160deg,#0d0e16,#131320 60%,#0e1712);
+    }
+    .bg-fx::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,.5) 1px, transparent 1px);
+      background-size: 3px 3px;
+      opacity: .06;
+      mix-blend-mode: overlay;
+    }
+    .orb { position: fixed; border-radius: 50%; filter: blur(70px); z-index: -1; opacity: .28; animation: orbFloat 18s ease-in-out infinite; pointer-events: none; }
+    .orb1 { width: 380px; height: 380px; background: var(--violet); top: -120px; left: 20%; }
+    .orb2 { width: 320px; height: 320px; background: var(--cil); bottom: -100px; right: 10%; animation-delay: -6s; }
+    .orb3 { width: 260px; height: 260px; background: var(--amber); bottom: 20%; left: -80px; animation-delay: -11s; }
+    @keyframes orbFloat { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(30px,-40px) scale(1.08); } }
+
+    .page-wrapper {
+      width: 80%;
+      max-width: 1600px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero {
+      background: var(--glass-1);
+      backdrop-filter: blur(28px) saturate(160%);
+      -webkit-backdrop-filter: blur(28px) saturate(160%);
+      color: #fff;
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      padding: 30px 34px;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 22px;
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+    }
+
+    .hero-mark {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: var(--violet-grad);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex: none;
+      box-shadow: 0 8px 22px var(--violet-glow), 0 1px 0 rgba(255,255,255,.35) inset;
+    }
+
+    .hero-body { flex: 1; min-width: 0; }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(183,155,255,.35);
+      background: rgba(183,155,255,.16);
+      color: var(--violet);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 13px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero h1 {
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 8px;
+      position: relative;
+      z-index: 1;
+      color: var(--ink-900);
+    }
+
+    .hero p {
+      font-size: 13.5px;
+      color: var(--ink-500);
+      position: relative;
+      z-index: 1;
+      max-width: 680px;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 10px;
+      z-index: 20;
+      background: var(--glass-1);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--shadow-sm);
+      border-radius: 18px;
+      padding: 12px;
+      margin-bottom: 22px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .toolbar .status {
+      flex: 1;
+      min-width: 210px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .progress-track {
+      flex: 1;
+      height: 8px;
+      min-width: 120px;
+      background: rgba(255,255,255,.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--violet-grad);
+      border-radius: 999px;
+      transition: width .25s ease;
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      cursor: pointer;
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 11px 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform .18s, box-shadow .18s, background .18s, border-color .18s;
+      white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary {
+      color: white;
+      background: var(--violet-grad);
+      box-shadow: 0 8px 20px var(--violet-glow);
+    }
+    .btn-secondary {
+      color: var(--ink-700);
+      background: rgba(255,255,255,.06);
+      border: 1.5px solid var(--glass-border);
+    }
+    .btn-secondary:hover { border-color: var(--violet); color: var(--violet); background: rgba(255,255,255,.10); }
+    .btn-danger-soft {
+      color: var(--danger);
+      background: rgba(255,122,144,.14);
+      border: 1.5px solid rgba(255,122,144,.32);
+    }
+
+    .section-card {
+      background: var(--glass-1);
+      backdrop-filter: blur(24px) saturate(160%);
+      -webkit-backdrop-filter: blur(24px) saturate(160%);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 28px 30px;
+      margin-bottom: 20px;
+      animation: fadeUp .35s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding-bottom: 18px;
+      margin-bottom: 22px;
+      border-bottom: 1px solid var(--glass-border-soft);
+    }
+
+    .section-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      color: var(--violet);
+      font-size: 20px;
+      flex: none;
+    }
+
+    .section-title {
+      color: var(--ink-900);
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .section-sub {
+      color: var(--ink-500);
+      font-size: 12.5px;
+      margin-top: 3px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px 22px;
+    }
+    .full { grid-column: 1 / -1; }
+
+    .field { display: flex; flex-direction: column; gap: 7px; }
+    .field label, .label {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--ink-500);
+      letter-spacing: .01em;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--ink-900);
+      background: rgba(255,255,255,.05);
+      border: 1.5px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      outline: none;
+      padding: 10px 13px;
+      transition: border-color .18s, box-shadow .18s, background .18s;
+    }
+    textarea { min-height: 92px; resize: vertical; line-height: 1.7; }
+    input::placeholder, textarea::placeholder { color: var(--ink-300); }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--violet);
+      box-shadow: 0 0 0 3px rgba(183,155,255,.18);
+      background: rgba(255,255,255,.08);
+    }
+
+    .scale-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 14px 16px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      margin-bottom: 18px;
+    }
+    .scale-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--ink-500);
+      font-size: 12.5px;
+      font-weight: 700;
+    }
+    .dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 800;
+      font-size: 11px;
+      flex: none;
+    }
+
+    .criteria-table, .data-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--glass-1);
+      backdrop-filter: blur(20px) saturate(150%);
+      -webkit-backdrop-filter: blur(20px) saturate(150%);
+    }
+    .criteria-table th, .data-table th {
+      background: rgba(255,255,255,.04);
+      color: var(--ink-300);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .criteria-table td, .data-table td {
+      padding: 11px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      vertical-align: top;
+      color: var(--ink-700);
+    }
+    .criteria-table tr:hover td, .data-table tr:hover td { background: rgba(255,255,255,.03); }
+    .criteria-table tr:last-child td, .data-table tr:last-child td { border-bottom: none; }
+    .criteria-title { font-weight: 700; color: var(--ink-900); font-size: 13.5px; }
+    .criteria-desc { color: var(--ink-500); font-size: 11.5px; margin-top: 2px; }
+
+    .score-group {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-width: 182px;
+    }
+    .score-group input { display: none; }
+    .score-btn {
+      width: 31px;
+      height: 31px;
+      border-radius: 50%;
+      border: 2px solid var(--glass-border);
+      background: rgba(255,255,255,.05);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--ink-500);
+      transition: all .16s;
+      user-select: none;
+    }
+    .score-btn:hover { border-color: var(--violet); color: var(--violet); }
+    .score-group input:checked + .score-btn { color: #fff; border-color: transparent; }
+    .score-v-1 input:checked + .score-btn { background: var(--danger); }
+    .score-v-2 input:checked + .score-btn { background: var(--amber); }
+    .score-v-3 input:checked + .score-btn { background: #ffd166; color: #1f2937; }
+    .score-v-4 input:checked + .score-btn { background: var(--cmn); }
+    .score-v-5 input:checked + .score-btn { background: var(--cil); }
+
+    .total-box {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 112px;
+      padding: 8px 18px;
+      border-radius: 999px;
+      color: #fff;
+      background: var(--violet-grad);
+      font-size: 18px;
+      font-weight: 900;
+      box-shadow: 0 8px 18px var(--violet-glow);
+    }
+
+    .result-options, .retention-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .choice input { display: none; }
+    .choice-label, .retention-opt {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: 1.5px solid var(--glass-border);
+      background: rgba(255,255,255,.05);
+      cursor: pointer;
+      color: var(--ink-500);
+      font-size: 13px;
+      font-weight: 700;
+      transition: all .16s;
+      user-select: none;
+    }
+    .choice-label:hover, .retention-opt:hover { transform: translateY(-1px); border-color: var(--violet); color: var(--violet); }
+    #pass:checked + .choice-label { background: rgba(79,224,189,.16); border-color: rgba(79,224,189,.35); color: var(--cil); }
+    #pass_cond:checked + .choice-label { background: rgba(255,177,104,.16); border-color: rgba(255,177,104,.35); color: var(--amber); }
+    #fail:checked + .choice-label { background: rgba(255,122,144,.16); border-color: rgba(255,122,144,.35); color: var(--danger); }
+
+    #cond_note_wrap { display: none; margin-top: 14px; }
+    #cond_note_wrap.show { display: block; }
+
+    .feedback-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .feedback-box {
+      border-radius: 15px;
+      overflow: hidden;
+      border: 1.5px solid var(--glass-border);
+      background: var(--glass-2);
+    }
+    .feedback-head {
+      padding: 10px 13px;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .feedback-box textarea { border: none; border-radius: 0; min-height: 118px; background: transparent; color: var(--ink-900); }
+    .keep .feedback-head { background: rgba(79,224,189,.14); color: var(--cil); }
+    .start .feedback-head { background: rgba(143,160,255,.14); color: var(--cmn); }
+    .stop .feedback-head { background: rgba(255,177,104,.14); color: var(--amber); }
+
+    .note-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 38px;
+      border-radius: 8px;
+      background: rgba(183,155,255,.16);
+      color: var(--violet);
+      padding: 2px 9px;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .06em;
+    }
+    .note-label-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 7px;
+    }
+
+    .retention-panel {
+      background: linear-gradient(135deg, rgba(183,155,255,.12), rgba(38,40,58,.72));
+      backdrop-filter: blur(24px) saturate(160%);
+      -webkit-backdrop-filter: blur(24px) saturate(160%);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      color: #fff;
+      padding: 24px;
+      box-shadow: var(--shadow-md);
+      margin-top: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+    .retention-panel::after {
+      content: '';
+      position: absolute;
+      right: -70px;
+      top: -70px;
+      width: 210px;
+      height: 210px;
+      border-radius: 50%;
+      background: rgba(183,155,255,.10);
+    }
+    .retention-title {
+      font-size: 15px;
+      font-weight: 800;
+      margin-bottom: 4px;
+      position: relative;
+      z-index: 1;
+      color: var(--ink-900);
+    }
+    .retention-sub {
+      color: var(--ink-500);
+      font-size: 12px;
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
+    }
+    .retention-panel .field label { color: var(--ink-500); }
+    .retention-panel textarea {
+      background: rgba(255,255,255,.06);
+      border-color: var(--glass-border);
+      color: var(--ink-900);
+      min-height: 78px;
+    }
+    .retention-panel textarea::placeholder { color: var(--ink-300); }
+    .retention-panel textarea:focus { background: rgba(255,255,255,.10); box-shadow: 0 0 0 3px rgba(183,155,255,.18); border-color: var(--violet); }
+    .retention-panel .grid, .retention-panel .retention-options { position: relative; z-index: 1; }
+    .retention-opt {
+      border-radius: 14px;
+      background: rgba(255,255,255,.06);
+      color: var(--ink-500);
+      border-color: var(--glass-border);
+      flex: 1;
+      min-width: 170px;
+      justify-content: center;
+      text-align: center;
+    }
+    .retention-opt.selected-critical { background: rgba(255,122,144,.18); color: #ffd6dc; border-color: var(--danger); }
+    .retention-opt.selected-important { background: rgba(255,177,104,.18); color: #ffe1c2; border-color: var(--amber); }
+    .retention-opt.selected-replaceable { background: rgba(79,224,189,.18); color: #c9fbe9; border-color: var(--cil); }
+
+    .table-wrap { overflow-x: auto; border-radius: 14px; }
+    .data-table { min-width: 760px; }
+    .data-table input, .data-table textarea {
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      padding: 7px 8px;
+      font-size: 13px;
+      color: var(--ink-900);
+    }
+    .data-table textarea { min-height: 58px; }
+    .data-table input:focus, .data-table textarea:focus { background: rgba(255,255,255,.08); box-shadow: none; }
+
+    .sig-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .sig-box {
+      background: var(--glass-2);
+      border: 1.5px dashed var(--glass-border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .sig-role {
+      font-size: 12px;
+      color: var(--violet);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 13px;
+    }
+    .sig-box .field { margin-bottom: 10px; }
+    .sig-box .field:last-child { margin-bottom: 0; }
+
+    .sheet-help {
+      background: var(--glass-2);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 16px;
+      color: var(--ink-500);
+      font-size: 13px;
+      margin-top: 18px;
+    }
+    .sheet-help summary {
+      cursor: pointer;
+      color: var(--violet);
+      font-weight: 800;
+    }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(0,0,0,.35);
+      color: var(--ink-700);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      padding: 14px;
+      overflow: auto;
+      margin-top: 12px;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(8, 9, 15, .68);
+      backdrop-filter: blur(8px);
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+    .modal.show { display: flex; }
+    .modal-box {
+      width: min(480px, 100%);
+      background: var(--glass-1);
+      backdrop-filter: blur(32px) saturate(160%);
+      -webkit-backdrop-filter: blur(32px) saturate(160%);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      box-shadow: var(--shadow-md);
+      padding: 34px 28px 26px;
+      text-align: center;
+    }
+    .modal-icon { font-size: 46px; margin-bottom: 10px; }
+    .modal-title { color: var(--ink-900); font-size: 20px; font-weight: 800; margin-bottom: 7px; }
+    .modal-sub { color: var(--ink-500); font-size: 13.5px; line-height: 1.75; margin-bottom: 22px; }
+    .modal-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+    #toast {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%) translateY(90px);
+      background: var(--glass-1);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      border: 1px solid var(--glass-border);
+      border-left: 3px solid var(--cil);
+      border-radius: 16px;
+      box-shadow: var(--shadow-md);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 120;
+      color: var(--ink-900);
+      font-size: 14px;
+      font-weight: 700;
+      min-width: 260px;
+      max-width: calc(100vw - 28px);
+      transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.error { border-left-color: var(--danger); }
+
+    #loading {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: rgba(8, 9, 15, .72);
+      backdrop-filter: blur(6px);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 14px;
+      color: var(--ink-500);
+      font-weight: 700;
+    }
+    #loading.show { display: flex; }
+    .spinner {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 4px solid var(--glass-border);
+      border-top-color: var(--violet);
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #printDoc {
+      display: none;
+      font-family: 'IBM Plex Sans Thai', 'Inter', sans-serif;
+      color: var(--navy-900);
+      background: #fff;
+      width: 794px;
+      padding: 28px 34px;
+      line-height: 1.55;
+      font-size: 12px;
+    }
+    .pd-header {
+      text-align: center;
+      border-bottom: 3px solid var(--navy-900);
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+    }
+    .pd-header h1 { font-size: 18px; color: var(--navy-900); margin-bottom: 3px; }
+    .pd-header p { color: var(--slate-600); font-size: 11px; }
+    .pd-section { margin-bottom: 13px; break-inside: avoid; }
+    .pd-title {
+      font-size: 11px;
+      color: var(--navy-900);
+      font-weight: 900;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      border-left: 4px solid var(--gold);
+      padding-left: 8px;
+      margin-bottom: 8px;
+    }
+    .pd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; }
+    .pd-row { display: flex; gap: 6px; align-items: baseline; min-height: 18px; }
+    .pd-label { color: var(--slate-600); font-weight: 800; min-width: 115px; flex: none; }
+    .pd-val { border-bottom: 1px dotted var(--slate-300); flex: 1; min-height: 16px; }
+    .pd-table { width: 100%; border-collapse: collapse; font-size: 10.8px; }
+    .pd-table th { background: var(--slate-100); color: var(--navy-900); border: 1px solid var(--slate-300); padding: 5px 6px; text-align: left; }
+    .pd-table td { border: 1px solid var(--slate-200); padding: 5px 6px; vertical-align: top; }
+    .pd-table tr:nth-child(even) td { background: var(--slate-100); }
+    .pd-score { text-align: center; font-size: 13px; font-weight: 900; color: var(--navy-900); }
+    .pd-box { border: 1px solid var(--slate-200); border-radius: 8px; padding: 7px 8px; min-height: 32px; background: var(--slate-100); }
+    .pd-result { display: inline-block; border: 2px solid var(--gold); border-radius: 999px; padding: 4px 14px; font-weight: 900; color: var(--navy-900); }
+    .pd-sig-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .pd-sig { border: 1px solid var(--slate-300); border-radius: 10px; padding: 12px; background: var(--surface-2); }
+    .pd-sig-space { height: 48px; border-bottom: 1.5px solid var(--navy-900); margin: 0 10px 4px; }
+    .pd-sig-caption { text-align: center; color: var(--slate-500); font-size: 10px; margin-bottom: 6px; }
+
+    @media (max-width: 760px) {
+      body { padding: 18px 12px 72px; }
+      .page-wrapper { width: 100%; }
+      .hero { padding: 24px 20px; flex-direction: column; }
+      .section-card { padding: 22px 18px; }
+      .grid, .feedback-grid, .sig-grid { grid-template-columns: 1fr; }
+      .full { grid-column: auto; }
+      .toolbar { position: static; }
+      .criteria-table { min-width: 760px; }
+      .score-group { justify-content: flex-start; }
+    }
+
+    @media print {
+      body { background: #fff !important; padding: 0 !important; }
+      body > *:not(#printDoc) { display: none !important; }
+      #printDoc { display: block !important; width: auto !important; padding: 0 !important; }
+      @page { size: A4 portrait; margin: 12mm 11mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-fx"></div>
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+  <div class="page-wrapper" id="app">
+    <header class="hero">
+      <div class="hero-mark">📋</div>
+      <div class="hero-body">
+        <div class="hero-badge">HR Integrated Form</div>
+        <h1>แบบประเมินทดลองงานพนักงาน + บันทึกประเมินผ่านทดลองงาน</h1>
+        <p>รวม 2 ฟอร์มเป็นชุดเดียว: ประเมินคะแนนช่วงทดลองงาน, สรุปผล, บันทึกการสนทนา, KPI, IDP, Retention Assessment, บันทึกลง Google Sheets, พิมพ์ และส่งออก PDF</p>
+      </div>
+    </header>
+
+    <div class="toolbar">
+      <div class="status">
+        <span id="progressText">กรอกแล้ว 0%</span>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+      <button class="btn btn-primary" type="button" onclick="submitForm()">📤 บันทึก Google Sheets</button>
+      <button class="btn btn-secondary" type="button" onclick="printCurrentForm()">🖨️ พิมพ์</button>
+      <button class="btn btn-secondary" type="button" onclick="exportPDF()">📄 ส่งออก PDF</button>
+      <button class="btn btn-danger-soft" type="button" onclick="resetForm()">ล้างฟอร์ม</button>
+    </div>
+
+    <section class="section-card" data-section="basic">
+      <div class="section-head">
+        <div class="section-icon">👤</div>
+        <div>
+          <div class="section-title">A. ข้อมูลพนักงานและผู้ประเมิน</div>
+          <div class="section-sub">กรอกข้อมูลพื้นฐานเพื่อใช้ทั้งในแบบประเมิน คะแนน ใบพิมพ์ และข้อมูลส่ง Google Sheets</div>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="field"><label>ชื่อ-นามสกุลพนักงาน *</label><input type="text" id="emp_name" placeholder="เช่น สมชาย ใจดี" /></div>
+        <div class="field"><label>รหัสพนักงาน</label><input type="text" id="emp_id" placeholder="เช่น EMP-0001" /></div>
+        <div class="field"><label>ตำแหน่ง</label><input type="text" id="position" placeholder="ตำแหน่งงาน" /></div>
+        <div class="field"><label>แผนก/ฝ่าย</label><input type="text" id="department" placeholder="แผนกหรือฝ่ายที่สังกัด" /></div>
+        <div class="field"><label>วันที่เริ่มทดลองงาน</label><input type="date" id="start_date" /></div>
+        <div class="field"><label>วันที่สิ้นสุดทดลองงาน</label><input type="date" id="end_date" /></div>
+        <div class="field"><label>วันที่ประเมิน</label><input type="date" id="eval_date" /></div>
+        <div class="field"><label>ชื่อผู้ประเมิน *</label><input type="text" id="evaluator" placeholder="ชื่อผู้ประเมิน" /></div>
+        <div class="field full"><label>ตำแหน่งผู้ประเมิน</label><input type="text" id="eval_position" placeholder="เช่น ผู้จัดการฝ่าย / หัวหน้างาน" /></div>
+      </div>
+    </section>
+
+    <section class="section-card" data-section="score">
+      <div class="section-head">
+        <div class="section-icon">⭐</div>
+        <div>
+          <div class="section-title">B. แบบประเมินผลการปฏิบัติงาน</div>
+          <div class="section-sub">ให้คะแนน 1-5 พร้อมความคิดเห็นรายหัวข้อ ระบบจะคำนวณคะแนนรวมให้อัตโนมัติ</div>
+        </div>
+      </div>
+      <div class="scale-legend">
+        <span class="scale-item"><span class="dot" style="background:#ff7a90">1</span> ปรับปรุงอย่างมาก</span>
+        <span class="scale-item"><span class="dot" style="background:#ffb168">2</span> ต้องปรับปรุง</span>
+        <span class="scale-item"><span class="dot" style="background:#ffd166;color:#1f2937">3</span> ปานกลาง</span>
+        <span class="scale-item"><span class="dot" style="background:#8fa0ff">4</span> ดี</span>
+        <span class="scale-item"><span class="dot" style="background:#4fe0bd">5</span> ดีเยี่ยม</span>
+      </div>
+      <div class="table-wrap">
+        <table class="criteria-table" id="scoreTable">
+          <thead>
+            <tr>
+              <th style="width:38%">หัวข้อการประเมิน</th>
+              <th style="width:205px;text-align:center">คะแนน</th>
+              <th>ความคิดเห็นเพิ่มเติม</th>
+            </tr>
+          </thead>
+          <tbody id="criteriaBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section-card" data-section="result">
+      <div class="section-head">
+        <div class="section-icon">✅</div>
+        <div>
+          <div class="section-title">C. สรุปผลการประเมินและข้อเสนอแนะ</div>
+          <div class="section-sub">เลือกผลการทดลองงาน พร้อมสรุป Keep / Start / Stop เพื่อสื่อสารอย่างชัดเจน</div>
+        </div>
+      </div>
+      <div class="field full" style="margin-bottom:18px;">
+        <label>ผลการทดลองงาน *</label>
+        <div class="result-options">
+          <label class="choice"><input type="radio" name="result" id="pass" value="ผ่านการทดลองงาน" /><span class="choice-label">✅ ผ่านการทดลองงาน</span></label>
+          <label class="choice"><input type="radio" name="result" id="pass_cond" value="ผ่านการทดลองงาน โดยมีเงื่อนไข" /><span class="choice-label">⚠️ ผ่านโดยมีเงื่อนไข</span></label>
+          <label class="choice"><input type="radio" name="result" id="fail" value="ไม่ผ่านการทดลองงาน" /><span class="choice-label">❌ ไม่ผ่านการทดลองงาน</span></label>
+        </div>
+      </div>
+      <div id="cond_note_wrap" class="field full">
+        <label>ระบุเงื่อนไข / หมายเหตุ</label>
+        <input type="text" id="cond_note" placeholder="เช่น ขยายระยะเวลาติดตามผล 30 วัน / ต้องปรับปรุงเรื่อง..." />
+      </div>
+      <div class="feedback-grid" style="margin-top:18px;">
+        <div class="feedback-box keep">
+          <div class="feedback-head">🌟 สิ่งที่อยากให้รักษาไว้ <span style="font-size:11px;font-weight:600;opacity:.7">Keep</span></div>
+          <textarea id="feedback_keep" placeholder="สิ่งที่พนักงานทำได้ดีและควรรักษาไว้..."></textarea>
+        </div>
+        <div class="feedback-box start">
+          <div class="feedback-head">🚀 สิ่งที่อยากให้เริ่มทำ <span style="font-size:11px;font-weight:600;opacity:.7">Start</span></div>
+          <textarea id="feedback_start" placeholder="สิ่งที่อยากให้พนักงานเริ่มทำเพื่อพัฒนาตัวเอง..."></textarea>
+        </div>
+        <div class="feedback-box stop">
+          <div class="feedback-head">🔄 สิ่งที่อยากให้ลด/ปรับเปลี่ยน <span style="font-size:11px;font-weight:600;opacity:.7">Stop / Change</span></div>
+          <textarea id="feedback_stop" placeholder="พฤติกรรมหรือวิธีการทำงานที่อยากให้ปรับเปลี่ยน..."></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-card" data-section="conversation">
+      <div class="section-head">
+        <div class="section-icon">💬</div>
+        <div>
+          <div class="section-title">D. บันทึกเนื้อหาการสนทนาหลังผ่านทดลองงาน</div>
+          <div class="section-sub">ใช้บันทึกประเด็นสำคัญระหว่างหัวหน้าและพนักงาน เพื่อให้มีหลักฐานการสื่อสารร่วมกัน</div>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="field full">
+          <div class="note-label-line"><span class="note-badge">C1</span><label style="margin:0">ยืนยันผลผ่านทดลองงาน + เหตุผลที่ชัดเจน</label></div>
+          <textarea id="note_c1" placeholder="บันทึกผลการตัดสิน และเหตุผลประกอบที่แจ้งกับพนักงาน..."></textarea>
+        </div>
+        <div class="field full">
+          <div class="note-label-line"><span class="note-badge">C2</span><label style="margin:0">ทบทวนช่วงทดลองงานร่วมกัน</label></div>
+          <textarea id="note_c2" placeholder="สรุปภาพรวมช่วงทดลองงาน จุดแข็ง จุดพัฒนา และสิ่งที่ทำได้ดี..."></textarea>
+        </div>
+        <div class="field full">
+          <div class="note-label-line"><span class="note-badge">C3</span><label style="margin:0">ตั้ง KPI และเป้าหมายรอบถัดไป</label></div>
+          <textarea id="note_c3" placeholder="เป้าหมายที่ตกลงร่วมกัน ระยะเวลา และวิธีวัดผล..."></textarea>
+        </div>
+        <div class="field full">
+          <div class="note-label-line"><span class="note-badge">C4</span><label style="margin:0">Career Path และการเติบโต</label></div>
+          <textarea id="note_c4" placeholder="แนวทางเส้นทางอาชีพ และแผนพัฒนาในระยะถัดไป..."></textarea>
+        </div>
+        <div class="field full">
+          <div class="note-label-line"><span class="note-badge">C5</span><label style="margin:0">สิทธิ์ที่เปลี่ยนแปลงหลังผ่านโปร</label></div>
+          <textarea id="note_c5" placeholder="สวัสดิการ สิทธิ์ประโยชน์ที่ปรับเปลี่ยน เช่น ประกัน วันลา ฯลฯ..."></textarea>
+        </div>
+        <div class="field full">
+          <div class="note-label-line"><span class="note-badge">C6</span><label style="margin:0">สิ่งที่พนักงานต้องการ Support เพิ่ม</label></div>
+          <textarea id="note_c6" placeholder="ความต้องการ ข้อกังวล หรือสิ่งที่พนักงานต้องการให้ช่วยเหลือ..."></textarea>
+        </div>
+      </div>
+
+      <div class="retention-panel">
+        <div class="retention-title">🔒 C7. Retention Assessment</div>
+        <div class="retention-sub">สำหรับผู้ประเมิน / HR เท่านั้น — ใช้ประเมินความสำคัญของพนักงานต่อทีมและแผนรักษาคน</div>
+        <div class="grid">
+          <div class="field full"><label>บทบาทสำคัญต่อทีมและผลลัพธ์ธุรกิจอย่างไร?</label><textarea id="c7q1" placeholder="อธิบายบทบาทและผลกระทบต่อทีม..."></textarea></div>
+          <div class="field full"><label>ถ้าขาดคนนี้ไป จะกระทบอย่างไร?</label><textarea id="c7q2" placeholder="ผลกระทบต่อการดำเนินงาน..."></textarea></div>
+          <div class="field full"><label>การหาและ Train คนทดแทนยากแค่ไหน?</label><textarea id="c7q3" placeholder="ระยะเวลา ความยาก ทักษะเฉพาะที่ต้องใช้..."></textarea></div>
+          <div class="field full"><label>อะไรคือสิ่งสำคัญที่สุดในการรักษาคนนี้ไว้?</label><textarea id="c7q4" placeholder="แรงจูงใจ ปัจจัย หรือแผนการรักษาพนักงาน..."></textarea></div>
+        </div>
+        <div class="retention-options" style="margin-top:14px;">
+          <div class="retention-opt" onclick="selectRetention(this,'Critical')">🔴 Critical — ขาดไม่ได้</div>
+          <div class="retention-opt" onclick="selectRetention(this,'Important')">🟡 Important — สำคัญ</div>
+          <div class="retention-opt" onclick="selectRetention(this,'Replaceable')">🟢 Replaceable — หาคนแทนได้</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-card" data-section="kpi">
+      <div class="section-head">
+        <div class="section-icon">🎯</div>
+        <div>
+          <div class="section-title">E. KPI และเป้าหมายหลังผ่านทดลองงาน</div>
+          <div class="section-sub">กำหนดเป้าหมาย วิธีวัดผล ระยะเวลา และน้ำหนักคะแนนอย่างชัดเจน</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>เป้าหมาย / KPI</th>
+              <th>เกณฑ์วัดผล</th>
+              <th>ระยะเวลา</th>
+              <th style="width:90px">น้ำหนัก %</th>
+            </tr>
+          </thead>
+          <tbody id="kpiRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section-card" data-section="idp">
+      <div class="section-head">
+        <div class="section-icon">🌱</div>
+        <div>
+          <div class="section-title">F. Individual Development Plan (IDP)</div>
+          <div class="section-sub">ระบุแผนพัฒนารายบุคคลหลังผ่านการทดลองงาน พร้อมทรัพยากรและผู้รับผิดชอบ</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ด้านพัฒนา</th>
+              <th>แผนดำเนินการ</th>
+              <th>ทรัพยากร</th>
+              <th>เวลา</th>
+              <th>ผู้รับผิดชอบ</th>
+            </tr>
+          </thead>
+          <tbody id="idpRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section-card" data-section="signature">
+      <div class="section-head">
+        <div class="section-icon">✍️</div>
+        <div>
+          <div class="section-title">G. ลายมือชื่อรับทราบ / อนุมัติ</div>
+          <div class="section-sub">ข้อมูลนี้จะปรากฏในใบพิมพ์และ PDF เพื่อใช้ลงนามจริง</div>
+        </div>
+      </div>
+      <div class="sig-grid">
+        <div class="sig-box">
+          <div class="sig-role">👤 ผู้ประเมิน</div>
+          <div class="field"><label>ชื่อ-นามสกุล</label><input type="text" id="sig_evaluator_name" placeholder="ชื่อผู้ประเมิน" /></div>
+          <div class="field"><label>ตำแหน่ง</label><input type="text" id="sig_evaluator_pos" placeholder="ตำแหน่ง" /></div>
+          <div class="field"><label>วันที่</label><input type="date" id="sig_evaluator_date" /></div>
+        </div>
+        <div class="sig-box">
+          <div class="sig-role">✅ พนักงานรับทราบ</div>
+          <div class="field"><label>ชื่อ-นามสกุล</label><input type="text" id="sig_receiver_name" placeholder="ชื่อพนักงาน" /></div>
+          <div class="field"><label>ตำแหน่ง</label><input type="text" id="sig_receiver_pos" placeholder="ตำแหน่ง" /></div>
+          <div class="field"><label>วันที่</label><input type="date" id="sig_receiver_date" /></div>
+        </div>
+        <div class="sig-box">
+          <div class="sig-role">🏢 กรรมการผู้จัดการ</div>
+          <div class="field"><label>ชื่อ-นามสกุล</label><input type="text" id="sig_md_name" value="นายธัชพล เกียรติวิชชุกุล" /></div>
+          <div class="field"><label>ตำแหน่ง</label><input type="text" id="sig_md_pos" value="กรรมการผู้จัดการ" /></div>
+          <div class="field"><label>วันที่</label><input type="date" id="sig_md_date" /></div>
+        </div>
+      </div>
+
+      <details class="sheet-help">
+        <summary>วิธีตั้งค่า Google Sheets / Apps Script</summary>
+        <div style="margin-top:10px;">1) เปิด Google Sheets → Extensions → Apps Script<br>2) วางโค้ดด้านล่าง → Deploy → Web App → Execute as Me → Anyone with the link<br>3) Copy Web App URL แล้วนำมาใส่ในตัวแปร <strong>SHEET_URL</strong> ในส่วน JavaScript</div>
+        <pre>function doPost(e) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName('Probation_Evaluation') || ss.insertSheet('Probation_Evaluation');
+  const data = JSON.parse(e.postData.contents);
+
+  const headers = Object.keys(data);
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(headers);
+  } else {
+    const existingHeaders = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    const missing = headers.filter(h => !existingHeaders.includes(h));
+    if (missing.length) {
+      sh.getRange(1, existingHeaders.length + 1, 1, missing.length).setValues([missing]);
+    }
+  }
+
+  const currentHeaders = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const row = currentHeaders.map(h => data[h] ?? '');
+  sh.appendRow(row);
+
+  return ContentService
+    .createTextOutput(JSON.stringify({ status: 'ok' }))
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+      </details>
+    </section>
+  </div>
+
+  <div id="printDoc"></div>
+
+  <div id="loading"><div class="spinner"></div><div>กำลังบันทึกข้อมูล...</div></div>
+
+  <div class="modal" id="resultModal">
+    <div class="modal-box">
+      <div class="modal-icon" id="modalIcon">🎉</div>
+      <div class="modal-title" id="modalTitle">บันทึกข้อมูลเรียบร้อยแล้ว</div>
+      <div class="modal-sub" id="modalSub">สามารถพิมพ์หรือส่งออก PDF เพื่อใช้ลงนามได้ทันที</div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" type="button" onclick="printCurrentForm()">🖨️ พิมพ์</button>
+        <button class="btn btn-secondary" type="button" onclick="exportPDF()">📄 ส่งออก PDF</button>
+        <button class="btn btn-secondary" type="button" onclick="closeModal()">ปิด</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"><span id="toastIcon">✅</span><span id="toastMsg">บันทึกเรียบร้อย</span></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script>
+    // ─────────────────────────────────────────────
+    // CONFIG: ใส่ Google Apps Script Web App URL ตรงนี้
+    // หากยังไม่ได้ตั้งค่า ให้ใช้ปุ่มพิมพ์/PDF ได้ตามปกติ
+    // ─────────────────────────────────────────────
+    const SHEET_URL = "https://script.google.com/macros/s/AKfycbxO47VRd0RWWWInyUtSHtWQtDQoEwYOjPk3Tdehm3EZMxnoJnTJsBAHR1ht5O3pq0cb/exec";
+
+    const KPI_ROWS = 5;
+    const IDP_ROWS = 3;
+    let selectedRetention = '';
+
+    const criteria = [
+      { title: 'ความรู้ความเข้าใจในงาน', desc: 'เข้าใจในลักษณะงาน หน้าที่ และขั้นตอนการทำงานที่ได้รับมอบหมาย' },
+      { title: 'คุณภาพของงาน', desc: 'ผลงานมีความถูกต้อง ครบถ้วน ได้มาตรฐาน และเป็นไปตามที่กำหนด' },
+      { title: 'ปริมาณงาน / ความรับผิดชอบ', desc: 'สามารถปฏิบัติงานได้ตามปริมาณงานและรับผิดชอบงานที่ได้รับมอบหมาย' },
+      { title: 'การทำงานเป็นระบบและการวางแผน', desc: 'สามารถจัดลำดับความสำคัญของงาน วางแผนและติดตามงานได้อย่างเหมาะสม' },
+      { title: 'การทำงานเป็นทีม', desc: 'ให้ความร่วมมือ ช่วยเหลือเพื่อนร่วมงาน และสื่อสารได้อย่างมีประสิทธิภาพ' },
+      { title: 'การสื่อสาร', desc: 'สื่อสารได้ชัดเจน เข้าใจง่าย ทั้งการพูด การเขียน และการประสานงาน' },
+      { title: 'ความรับผิดชอบและความน่าเชื่อถือ', desc: 'รับผิดชอบต่องาน ตรงต่อเวลา และสามารถเชื่อถือได้' },
+      { title: 'การเรียนรู้และพัฒนา', desc: 'เปิดใจเรียนรู้สิ่งใหม่ และนำความรู้ไปพัฒนาการทำงานได้ดี' },
+      { title: 'ทัศนคติและพฤติกรรมในการทำงาน', desc: 'มีทัศนคติที่ดี กระตือรือร้น และปฏิบัติตามระเบียบของงาน' },
+      { title: 'การปฏิบัติตามระเบียบและวินัย', desc: 'ปฏิบัติตามนโยบาย ระเบียบ และข้อกำหนดขององค์กรอย่างเคร่งครัด' }
+    ];
+
+    function byId(id) { return document.getElementById(id); }
+    function val(id) { return (byId(id)?.value || '').trim(); }
+    function esc(str) {
+      return String(str ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;')
+        .replaceAll('\n', '<br>');
+    }
+
+    function buildCriteriaRows() {
+      const tbody = byId('criteriaBody');
+      tbody.innerHTML = '';
+      criteria.forEach((c, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <div class="criteria-title">${i + 1}. ${c.title}</div>
+            <div class="criteria-desc">${c.desc}</div>
+          </td>
+          <td>
+            <div class="score-group">
+              ${[1,2,3,4,5].map(v => `
+                <label class="score-v-${v}">
+                  <input type="radio" name="score_${i}" value="${v}">
+                  <span class="score-btn">${v}</span>
+                </label>
+              `).join('')}
+            </div>
+          </td>
+          <td><input type="text" id="comment_${i}" placeholder="หมายเหตุ / ตัวอย่างพฤติกรรม..." /></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const totalTr = document.createElement('tr');
+      totalTr.innerHTML = `
+        <td><strong style="color:var(--navy-2)">คะแนนรวม</strong> <span style="color:var(--muted-2);font-size:12px;">(เต็ม 50 คะแนน)</span></td>
+        <td style="text-align:center"><span class="total-box" id="totalScore">0 / 50</span></td>
+        <td><span id="scorePercent" style="font-weight:800;color:var(--muted)">0%</span></td>
+      `;
+      tbody.appendChild(totalTr);
+    }
+
+    function buildKpiRows() {
+      const c = byId('kpiRows');
+      c.innerHTML = '';
+      for (let i = 1; i <= KPI_ROWS; i++) {
+        c.innerHTML += `<tr>
+          <td><input type="text" id="kpi${i}" placeholder="เป้าหมายที่ ${i}" /></td>
+          <td><input type="text" id="kpi${i}Criteria" placeholder="วิธีวัดผล" /></td>
+          <td><input type="text" id="kpi${i}Period" placeholder="ระยะเวลา" /></td>
+          <td><input type="number" id="kpi${i}Weight" placeholder="0" min="0" max="100" /></td>
+        </tr>`;
+      }
+    }
+
+    function buildIdpRows() {
+      const c = byId('idpRows');
+      c.innerHTML = '';
+      for (let i = 1; i <= IDP_ROWS; i++) {
+        c.innerHTML += `<tr>
+          <td><textarea id="idp${i}Area" placeholder="ด้านที่ต้องพัฒนา"></textarea></td>
+          <td><textarea id="idp${i}Plan" placeholder="แผนดำเนินการ"></textarea></td>
+          <td><textarea id="idp${i}Resource" placeholder="ทรัพยากรที่ต้องใช้"></textarea></td>
+          <td><textarea id="idp${i}Period" placeholder="ระยะเวลา"></textarea></td>
+          <td><textarea id="idp${i}Owner" placeholder="ผู้รับผิดชอบ"></textarea></td>
+        </tr>`;
+      }
+    }
+
+    function selectRetention(el, value) {
+      selectedRetention = value;
+      document.querySelectorAll('.retention-opt').forEach(item => {
+        item.classList.remove('selected-critical', 'selected-important', 'selected-replaceable');
+      });
+      const map = { Critical: 'selected-critical', Important: 'selected-important', Replaceable: 'selected-replaceable' };
+      el.classList.add(map[value]);
+      updateProgress();
+    }
+
+    function calcTotal() {
+      let sum = 0;
+      criteria.forEach((_, i) => {
+        const checked = document.querySelector(`input[name="score_${i}"]:checked`);
+        if (checked) sum += Number(checked.value);
+      });
+      byId('totalScore').textContent = `${sum} / 50`;
+      byId('scorePercent').textContent = `${Math.round((sum / 50) * 100)}%`;
+      return sum;
+    }
+
+    function updateProgress() {
+      const checks = [
+        val('emp_name'), val('evaluator'), val('position'), val('department'), val('eval_date'),
+        document.querySelector('input[name="result"]:checked')?.value || '',
+        val('feedback_keep'), val('feedback_start'), val('feedback_stop'),
+        val('note_c1'), val('note_c2'), val('note_c3'), val('kpi1'), val('idp1Area'), val('sig_evaluator_name')
+      ];
+      criteria.forEach((_, i) => checks.push(document.querySelector(`input[name="score_${i}"]:checked`)?.value || ''));
+      const done = checks.filter(Boolean).length;
+      const pct = Math.round((done / checks.length) * 100);
+      byId('progressFill').style.width = pct + '%';
+      byId('progressText').textContent = `กรอกแล้ว ${pct}%`;
+    }
+
+    function getScoresData() {
+      const scoreData = {};
+      let total = 0;
+      criteria.forEach((c, i) => {
+        const checked = document.querySelector(`input[name="score_${i}"]:checked`);
+        const score = checked ? Number(checked.value) : 0;
+        total += score;
+        scoreData[`score_${i+1}_${c.title}`] = score;
+        scoreData[`score_comment_${i+1}_${c.title}`] = val(`comment_${i}`);
+      });
+      scoreData.total_score = total;
+      scoreData.score_percent = Math.round((total / 50) * 100);
+      return scoreData;
+    }
+
+    function buildPayload() {
+      const result = document.querySelector('input[name="result"]:checked')?.value || '';
+      const payload = {
+        timestamp: new Date().toLocaleString('th-TH'),
+        form_type: 'Combined Probation Evaluation + Pass Probation Conversation',
+        emp_name: val('emp_name'),
+        emp_id: val('emp_id'),
+        position: val('position'),
+        department: val('department'),
+        start_date: val('start_date'),
+        end_date: val('end_date'),
+        eval_date: val('eval_date'),
+        evaluator: val('evaluator'),
+        eval_position: val('eval_position'),
+        ...getScoresData(),
+        result,
+        cond_note: val('cond_note'),
+        feedback_keep: val('feedback_keep'),
+        feedback_start: val('feedback_start'),
+        feedback_stop: val('feedback_stop'),
+        note_c1: val('note_c1'),
+        note_c2: val('note_c2'),
+        note_c3: val('note_c3'),
+        note_c4: val('note_c4'),
+        note_c5: val('note_c5'),
+        note_c6: val('note_c6'),
+        c7_role_impact: val('c7q1'),
+        c7_loss_impact: val('c7q2'),
+        c7_replacement_difficulty: val('c7q3'),
+        c7_retention_factor: val('c7q4'),
+        retention_level: selectedRetention,
+        sig_evaluator_name: val('sig_evaluator_name'),
+        sig_evaluator_pos: val('sig_evaluator_pos'),
+        sig_evaluator_date: val('sig_evaluator_date'),
+        sig_receiver_name: val('sig_receiver_name'),
+        sig_receiver_pos: val('sig_receiver_pos'),
+        sig_receiver_date: val('sig_receiver_date'),
+        sig_md_name: val('sig_md_name'),
+        sig_md_pos: val('sig_md_pos'),
+        sig_md_date: val('sig_md_date')
+      };
+
+      for (let i = 1; i <= KPI_ROWS; i++) {
+        payload[`kpi_${i}_goal`] = val(`kpi${i}`);
+        payload[`kpi_${i}_criteria`] = val(`kpi${i}Criteria`);
+        payload[`kpi_${i}_period`] = val(`kpi${i}Period`);
+        payload[`kpi_${i}_weight`] = val(`kpi${i}Weight`);
+      }
+
+      for (let i = 1; i <= IDP_ROWS; i++) {
+        payload[`idp_${i}_area`] = val(`idp${i}Area`);
+        payload[`idp_${i}_plan`] = val(`idp${i}Plan`);
+        payload[`idp_${i}_resource`] = val(`idp${i}Resource`);
+        payload[`idp_${i}_period`] = val(`idp${i}Period`);
+        payload[`idp_${i}_owner`] = val(`idp${i}Owner`);
+      }
+
+      return payload;
+    }
+
+    function validatePayload(payload) {
+      if (!payload.emp_name) return 'กรุณากรอกชื่อ-นามสกุลพนักงาน';
+      if (!payload.evaluator) return 'กรุณากรอกชื่อผู้ประเมิน';
+      if (!payload.result) return 'กรุณาเลือกผลการทดลองงาน';
+      return '';
+    }
+
+    function showToast(message, isError = false) {
+      const t = byId('toast');
+      byId('toastIcon').textContent = isError ? '❌' : '✅';
+      byId('toastMsg').textContent = message;
+      t.classList.toggle('error', isError);
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3800);
+    }
+
+    function showModal(icon, title, sub) {
+      byId('modalIcon').textContent = icon;
+      byId('modalTitle').textContent = title;
+      byId('modalSub').innerHTML = sub;
+      byId('resultModal').classList.add('show');
+    }
+
+    function closeModal() { byId('resultModal').classList.remove('show'); }
+
+    async function submitForm() {
+      const payload = buildPayload();
+      const validation = validatePayload(payload);
+      if (validation) { showToast(validation, true); return; }
+
+      buildPrintDoc(payload);
+      const hasSheet = SHEET_URL && !SHEET_URL.includes('YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL');
+
+      if (!hasSheet) {
+        showModal('✅', 'พร้อมพิมพ์ / ส่งออก PDF', 'ยังไม่ได้ตั้งค่า Google Sheets URL<br>แต่สามารถพิมพ์หรือส่งออก PDF ได้ทันที');
+        return;
+      }
+
+      byId('loading').classList.add('show');
+      try {
+        // ใช้ text/plain เพื่อลดปัญหา preflight CORS กับ Apps Script
+        const res = await fetch(SHEET_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+
+        let ok = res.ok;
+        try {
+          const text = await res.text();
+          if (text && text.includes('ok')) ok = true;
+        } catch (_) {}
+
+        if (ok) {
+          showModal('🎉', 'บันทึกข้อมูลเรียบร้อยแล้ว', 'ข้อมูลถูกส่งไปยัง Google Sheets แล้ว<br>สามารถพิมพ์หรือส่งออก PDF เพื่อใช้ลงนามได้ทันที');
+        } else {
+          showModal('⚠️', 'ส่งข้อมูลแล้ว แต่ตรวจสอบผลไม่ได้', 'เบราว์เซอร์ไม่สามารถอ่านผลตอบกลับจาก Apps Script ได้<br>แนะนำตรวจสอบใน Google Sheets อีกครั้ง และยังสามารถพิมพ์/PDF ได้');
+        }
+      } catch (err) {
+        try {
+          await fetch(SHEET_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+          });
+          showModal('⚠️', 'ส่งข้อมูลแบบ no-cors แล้ว', 'ระบบส่งข้อมูลไปยัง Google Sheets แล้ว แต่อ่านผลตอบกลับไม่ได้<br>โปรดตรวจสอบใน Google Sheets และยังสามารถพิมพ์/PDF ได้');
+        } catch (err2) {
+          console.error(err2);
+          showModal('❌', 'ไม่สามารถเชื่อมต่อ Google Sheets ได้', 'โปรดตรวจสอบ SHEET_URL / สิทธิ์ Web App / การ Deploy<br>แต่ยังสามารถพิมพ์หรือส่งออก PDF ได้');
+        }
+      } finally {
+        byId('loading').classList.remove('show');
+      }
+    }
+
+    function buildPrintDoc(p) {
+      const scoreRows = criteria.map((c, i) => {
+        const score = p[`score_${i+1}_${c.title}`] || 0;
+        const comment = p[`score_comment_${i+1}_${c.title}`] || '';
+        return `<tr>
+          <td><strong>${i+1}. ${esc(c.title)}</strong><br><span style="color:#94a3b8;font-size:10px">${esc(c.desc)}</span></td>
+          <td class="pd-score">${score || '–'}</td>
+          <td>${esc(comment) || '&nbsp;'}</td>
+        </tr>`;
+      }).join('');
+
+      const kpiRows = Array.from({ length: KPI_ROWS }, (_, idx) => {
+        const i = idx + 1;
+        if (!p[`kpi_${i}_goal`] && !p[`kpi_${i}_criteria`] && !p[`kpi_${i}_period`] && !p[`kpi_${i}_weight`]) return '';
+        return `<tr><td>${esc(p[`kpi_${i}_goal`])}</td><td>${esc(p[`kpi_${i}_criteria`])}</td><td>${esc(p[`kpi_${i}_period`])}</td><td class="pd-score">${esc(p[`kpi_${i}_weight`])}</td></tr>`;
+      }).join('') || '<tr><td colspan="4" style="color:#94a3b8">ยังไม่ได้ระบุ KPI</td></tr>';
+
+      const idpRows = Array.from({ length: IDP_ROWS }, (_, idx) => {
+        const i = idx + 1;
+        if (!p[`idp_${i}_area`] && !p[`idp_${i}_plan`] && !p[`idp_${i}_resource`] && !p[`idp_${i}_period`] && !p[`idp_${i}_owner`]) return '';
+        return `<tr><td>${esc(p[`idp_${i}_area`])}</td><td>${esc(p[`idp_${i}_plan`])}</td><td>${esc(p[`idp_${i}_resource`])}</td><td>${esc(p[`idp_${i}_period`])}</td><td>${esc(p[`idp_${i}_owner`])}</td></tr>`;
+      }).join('') || '<tr><td colspan="5" style="color:#94a3b8">ยังไม่ได้ระบุ IDP</td></tr>';
+
+      const resultColor = p.result === 'ผ่านการทดลองงาน' ? '#15803d' : p.result === 'ไม่ผ่านการทดลองงาน' ? '#dc2626' : '#d97706';
+
+      byId('printDoc').innerHTML = `
+        <div class="pd-header">
+          <h1>แบบประเมินทดลองงานพนักงานและบันทึกประเมินผ่านทดลองงาน</h1>
+          <p>พิมพ์เมื่อ: ${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })} | เอกสารสำหรับลงนามและจัดเก็บโดย HR</p>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">A. ข้อมูลพนักงานและผู้ประเมิน</div>
+          <div class="pd-grid">
+            <div class="pd-row"><span class="pd-label">ชื่อ-นามสกุล</span><span class="pd-val">${esc(p.emp_name)}</span></div>
+            <div class="pd-row"><span class="pd-label">รหัสพนักงาน</span><span class="pd-val">${esc(p.emp_id)}</span></div>
+            <div class="pd-row"><span class="pd-label">ตำแหน่ง</span><span class="pd-val">${esc(p.position)}</span></div>
+            <div class="pd-row"><span class="pd-label">แผนก/ฝ่าย</span><span class="pd-val">${esc(p.department)}</span></div>
+            <div class="pd-row"><span class="pd-label">เริ่มทดลองงาน</span><span class="pd-val">${esc(p.start_date)}</span></div>
+            <div class="pd-row"><span class="pd-label">สิ้นสุดทดลองงาน</span><span class="pd-val">${esc(p.end_date)}</span></div>
+            <div class="pd-row"><span class="pd-label">วันที่ประเมิน</span><span class="pd-val">${esc(p.eval_date)}</span></div>
+            <div class="pd-row"><span class="pd-label">ผู้ประเมิน</span><span class="pd-val">${esc(p.evaluator)}</span></div>
+            <div class="pd-row"><span class="pd-label">ตำแหน่งผู้ประเมิน</span><span class="pd-val">${esc(p.eval_position)}</span></div>
+          </div>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">B. ผลการประเมินคะแนน</div>
+          <table class="pd-table">
+            <thead><tr><th>หัวข้อการประเมิน</th><th style="width:52px;text-align:center">คะแนน</th><th style="width:28%">ความคิดเห็น</th></tr></thead>
+            <tbody>${scoreRows}<tr><td><strong>คะแนนรวม</strong> <span style="color:#64748b">(เต็ม 50)</span></td><td class="pd-score">${p.total_score}</td><td><strong>${p.score_percent}%</strong></td></tr></tbody>
+          </table>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">C. สรุปผลและข้อเสนอแนะ</div>
+          <div style="margin-bottom:7px"><span class="pd-result" style="border-color:${resultColor};color:${resultColor}">${esc(p.result) || 'ยังไม่ระบุผล'}</span> ${p.cond_note ? `<span style="color:#64748b;margin-left:8px">เงื่อนไข: ${esc(p.cond_note)}</span>` : ''}</div>
+          <table class="pd-table">
+            <thead><tr><th>Keep</th><th>Start</th><th>Stop / Change</th></tr></thead>
+            <tbody><tr><td>${esc(p.feedback_keep) || '&nbsp;'}</td><td>${esc(p.feedback_start) || '&nbsp;'}</td><td>${esc(p.feedback_stop) || '&nbsp;'}</td></tr></tbody>
+          </table>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">D. บันทึกเนื้อหาการสนทนา</div>
+          <table class="pd-table">
+            <tbody>
+              <tr><th style="width:24%">C1 ยืนยันผล</th><td>${esc(p.note_c1) || '&nbsp;'}</td></tr>
+              <tr><th>C2 ทบทวนช่วงทดลองงาน</th><td>${esc(p.note_c2) || '&nbsp;'}</td></tr>
+              <tr><th>C3 KPI รอบถัดไป</th><td>${esc(p.note_c3) || '&nbsp;'}</td></tr>
+              <tr><th>C4 Career Path</th><td>${esc(p.note_c4) || '&nbsp;'}</td></tr>
+              <tr><th>C5 สิทธิ์หลังผ่านโปร</th><td>${esc(p.note_c5) || '&nbsp;'}</td></tr>
+              <tr><th>C6 Support เพิ่ม</th><td>${esc(p.note_c6) || '&nbsp;'}</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">E. Retention Assessment</div>
+          <table class="pd-table">
+            <tbody>
+              <tr><th style="width:28%">Retention Level</th><td><strong>${esc(p.retention_level) || 'ยังไม่ระบุ'}</strong></td></tr>
+              <tr><th>บทบาทสำคัญต่อทีม</th><td>${esc(p.c7_role_impact) || '&nbsp;'}</td></tr>
+              <tr><th>ผลกระทบหากขาดคนนี้</th><td>${esc(p.c7_loss_impact) || '&nbsp;'}</td></tr>
+              <tr><th>ความยากในการทดแทน</th><td>${esc(p.c7_replacement_difficulty) || '&nbsp;'}</td></tr>
+              <tr><th>ปัจจัยรักษาคน</th><td>${esc(p.c7_retention_factor) || '&nbsp;'}</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">F. KPI และเป้าหมาย</div>
+          <table class="pd-table"><thead><tr><th>เป้าหมาย/KPI</th><th>เกณฑ์วัดผล</th><th>ระยะเวลา</th><th style="width:60px;text-align:center">น้ำหนัก</th></tr></thead><tbody>${kpiRows}</tbody></table>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">G. Individual Development Plan</div>
+          <table class="pd-table"><thead><tr><th>ด้านพัฒนา</th><th>แผนดำเนินการ</th><th>ทรัพยากร</th><th>เวลา</th><th>ผู้รับผิดชอบ</th></tr></thead><tbody>${idpRows}</tbody></table>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">H. ลายมือชื่อ</div>
+          <div class="pd-sig-grid">
+            <div class="pd-sig"><strong>ผู้ประเมิน</strong><div class="pd-sig-space"></div><div class="pd-sig-caption">(ลายมือชื่อ)</div><div>ชื่อ: ${esc(p.sig_evaluator_name)}</div><div>ตำแหน่ง: ${esc(p.sig_evaluator_pos)}</div><div>วันที่: ${esc(p.sig_evaluator_date)}</div></div>
+            <div class="pd-sig"><strong>พนักงานรับทราบ</strong><div class="pd-sig-space"></div><div class="pd-sig-caption">(ลายมือชื่อ)</div><div>ชื่อ: ${esc(p.sig_receiver_name)}</div><div>ตำแหน่ง: ${esc(p.sig_receiver_pos)}</div><div>วันที่: ${esc(p.sig_receiver_date)}</div></div>
+            <div class="pd-sig"><strong>กรรมการผู้จัดการ</strong><div class="pd-sig-space"></div><div class="pd-sig-caption">(ลายมือชื่อ)</div><div>ชื่อ: ${esc(p.sig_md_name)}</div><div>ตำแหน่ง: ${esc(p.sig_md_pos)}</div><div>วันที่: ${esc(p.sig_md_date)}</div></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function printCurrentForm() {
+      const payload = buildPayload();
+      buildPrintDoc(payload);
+      setTimeout(() => window.print(), 80);
+    }
+
+    async function exportPDF() {
+      const payload = buildPayload();
+      buildPrintDoc(payload);
+      const doc = byId('printDoc');
+      const original = {
+        display: doc.style.display,
+        position: doc.style.position,
+        left: doc.style.left,
+        top: doc.style.top
+      };
+      doc.style.display = 'block';
+      doc.style.position = 'fixed';
+      doc.style.left = '-9999px';
+      doc.style.top = '0';
+
+      const filename = `Probation_Evaluation_${payload.emp_name || 'Employee'}.pdf`.replace(/[\\/:*?"<>|]/g, '_');
+      const opt = {
+        margin: 0.25,
+        filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+      try {
+        await html2pdf().set(opt).from(doc).save();
+      } catch (err) {
+        console.error(err);
+        showToast('ไม่สามารถส่งออก PDF ได้ โปรดลองใช้ปุ่มพิมพ์แทน', true);
+      } finally {
+        doc.style.display = original.display;
+        doc.style.position = original.position;
+        doc.style.left = original.left;
+        doc.style.top = original.top;
+      }
+    }
+
+    function resetForm() {
+      if (!confirm('ต้องการล้างข้อมูลทั้งหมดในฟอร์มหรือไม่?')) return;
+      document.querySelectorAll('input[type="text"], input[type="date"], input[type="number"], textarea').forEach(el => {
+        if (el.id === 'sig_md_name') el.value = 'นายธัชพล เกียรติวิชชุกุล';
+        else if (el.id === 'sig_md_pos') el.value = 'กรรมการผู้จัดการ';
+        else el.value = '';
+      });
+      document.querySelectorAll('input[type="radio"]').forEach(el => el.checked = false);
+      selectedRetention = '';
+      document.querySelectorAll('.retention-opt').forEach(el => el.classList.remove('selected-critical', 'selected-important', 'selected-replaceable'));
+      byId('cond_note_wrap').classList.remove('show');
+      calcTotal();
+      updateProgress();
+      showToast('ล้างข้อมูลเรียบร้อยแล้ว');
+    }
+
+    function init() {
+      buildCriteriaRows();
+      buildKpiRows();
+      buildIdpRows();
+      document.addEventListener('input', () => { calcTotal(); updateProgress(); });
+      document.addEventListener('change', (e) => {
+        if (e.target.matches('input[name="result"]')) {
+          byId('cond_note_wrap').classList.toggle('show', e.target.value.includes('เงื่อนไข') && e.target.checked);
+        }
+        calcTotal();
+        updateProgress();
+      });
+      calcTotal();
+      updateProgress();
+    }
+
+    init();
+  </script>
+</body>
+</html>
