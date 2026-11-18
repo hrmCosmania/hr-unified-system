@@ -6842,12 +6842,18 @@ window.courseInCompany=function(c,company){
   return (DB.trainingEnrollments||[]).some(function(en){return en.courseId===c.id&&empInCompany(en.employeeCode,company);});
 };
 window.refreshPerfEmployeeSelects=function(){
-  var v=document.getElementById('view-performance-tracking'); if(!v||typeof perfEmployeeOptionsHtml!=='function')return;
+  var v=document.getElementById('view-performance-tracking'); if(!v)return;
+  var esc=function(s){return escapeHtml(String(s==null?'':s));};
+  var build=function(activeOnly,includeAll){
+    var list=(DB.employees||[]).filter(function(e){return (companyFilter==='ALL'||e.company===companyFilter)&&(!activeOnly||e.status!=='Inactive');})
+      .sort(function(a,b){return (a.department||'').localeCompare(b.department||'','th')||(a.fullName||'').localeCompare(b.fullName||'','th');});
+    return (includeAll?'<option value="">ทั้งหมด</option>':'')+list.map(function(e){return '<option value="'+esc(e.empCode)+'">'+esc(e.fullName)+' ('+esc(e.empCode)+') · '+esc(e.department||'-')+'</option>';}).join('');
+  };
   v.querySelectorAll('select').forEach(function(sel){
     var opts=Array.from(sel.options); if(!opts.some(function(o){return /\([A-Za-z0-9\-]+\) ·/.test(o.textContent);}))return;
     var includeAll=opts.length&&opts[0].value==='';
     var prev=sel.value;
-    sel.innerHTML=perfEmployeeOptionsHtml(!includeAll,includeAll);
+    sel.innerHTML=build(!includeAll,includeAll);
     if(Array.from(sel.options).some(function(o){return o.value===prev;}))sel.value=prev;
   });
   try{ if(typeof renderPerformanceTrackingModule==='function')renderPerformanceTrackingModule(); }catch(e){}
