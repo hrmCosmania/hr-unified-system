@@ -7793,8 +7793,14 @@ window.refreshPerfEmployeeSelects=function(){
       var hit = ascii ? new RegExp('(^|[^a-z0-9])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^a-z0-9]|$)').test(low) : low.indexOf(k)>=0;
       if(hit) found.push(dict[k]);
     });
-    var sec = flat.match(/(?:ทักษะ|skills?|ความสามารถ|competenc(?:y|ies))[^\n]*\n((?:[^\n]*\n?){1,8})/i);
-    if(sec){ sec[1].split(/[\n,;•·|●▪•]+/).forEach(function(s){ s = s.replace(/^[\s\-–*]+/,'').trim(); if(s.length>=2 && s.length<=30 && !/\d{4}/.test(s) && !/@/.test(s) && found.length<30 && found.map(function(f){return f.toLowerCase();}).indexOf(s.toLowerCase())<0) found.push(s); }); }
+    var addSkill = function(s){ s = s.replace(/^[\s\-–*]+/,'').trim(); if(s.length>=2 && s.length<=30 && !/\d{4}/.test(s) && !/@/.test(s) && found.length<30 && found.map(function(f){return f.toLowerCase();}).indexOf(s.toLowerCase())<0) found.push(s); };
+    var headRe = /^(?:ทักษะ|skills?|ความสามารถ|competenc(?:y|ies)|technical skills?|key skills?)\b[^:：\n]*[:：]?\s*(.*)$/i, endRe = /ประสบการณ์|experience|การศึกษา|education|ประวัติ|ติดต่อ|contact|อ้างอิง|reference|งานอดิเรก|interest|ที่อยู่|address|objective|summary/i;
+    for(var hi=0; hi<lines.length; hi++){
+      var hm = lines[hi].match(headRe); if(!hm) continue;
+      if(hm[1]) hm[1].split(/[,;•·|●▪•]+/).forEach(addSkill);
+      for(var k2=hi+1; k2<Math.min(lines.length,hi+9); k2++){ if(endRe.test(lines[k2]) || lines[k2].length>60) break; lines[k2].split(/[,;•·|●▪•]+/).forEach(addSkill); }
+      break;
+    }
     out.skills = found.slice(0,30);
 
     var edu = lines.filter(function(l){ return /ปริญญา|ปวส|ปวช|มหาวิทยาลัย|bachelor|master|diploma|university|college|วิทยาลัย/i.test(l); }).slice(0,2);
