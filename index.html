@@ -93,6 +93,24 @@
   .dash-progress-fill{height:100%; border-radius:99px; background:linear-gradient(90deg,var(--module-accent),color-mix(in srgb,var(--module-accent) 55%,white));}
   @media(max-width:900px){ .dash-grid-2{grid-template-columns:1fr;} }
 
+  /* ===== Top bar: global search + bell, sidebar profile ===== */
+  .global-search{position:relative; flex:1 1 260px; max-width:420px; min-width:160px;}
+  .global-search input{width:100%; padding:10px 14px; border-radius:11px; border:1px solid rgba(255,255,255,.22); background:rgba(255,255,255,.08); color:#fff; font-size:13.5px;}
+  .global-search input::placeholder{color:rgba(255,255,255,.6);}
+  .global-search-results{position:absolute; top:46px; left:0; right:0; z-index:300; background:#121722; border:1px solid #293142; border-radius:12px; box-shadow:0 18px 42px rgba(0,0,0,.5); max-height:380px; overflow:auto; padding:6px;}
+  .global-search-results.hidden{display:none;}
+  .gs-res-group{font-size:11px; color:#A7B0C0; padding:6px 8px 2px; text-transform:uppercase; letter-spacing:.05em;}
+  .gs-res-item{display:block; width:100%; text-align:left; background:transparent; border:0; color:#F4F7FB; padding:8px 10px; border-radius:8px; cursor:pointer; font-size:13px;}
+  .gs-res-item:hover{background:rgba(124,58,237,.18);}
+  .gs-res-item small{display:block; color:#A7B0C0; font-size:11.5px; margin-top:2px;}
+  .topbar-bell{position:relative; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.25); color:#fff; border-radius:10px; width:40px; height:40px; cursor:pointer; font-size:17px; flex-shrink:0;}
+  .topbar-bell .bell-badge{position:absolute; top:-6px; right:-6px; min-width:18px; height:18px; padding:0 5px; border-radius:99px; background:#ef4444; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center;}
+  .topbar-bell .bell-badge.hidden{display:none;}
+  .sidebar-profile{margin-top:auto; display:flex; align-items:center; gap:10px; padding:12px; border-radius:12px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12);}
+  .sidebar-avatar{width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#7C3AED,#0EA5E9); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0;}
+  .sidebar-profile-name{color:#fff; font-weight:600; font-size:13px;}
+  .sidebar-profile-role{color:#A7B0C0; font-size:11.5px;}
+
   /* ===== Cards / stats ===== */
   .card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:16px;}
   .card h2{font-size:16px;margin:0 0 12px;font-weight:600;color:var(--navy-900);display:flex;align-items:center;gap:8px;}
@@ -369,6 +387,11 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <button class="cf-btn" data-c="CMN" onclick="setCompanyFilter('CMN')">CMN</button>
 <button class="cf-btn" data-c="CIL" onclick="setCompanyFilter('CIL')">CIL</button>
 </div>
+<div class="global-search" id="globalSearchBox">
+<input id="globalSearchInput" type="search" placeholder="🔍 ค้นหาพนักงาน / ตำแหน่งงาน..." autocomplete="off" oninput="globalSearchRun(this.value)" onfocus="globalSearchRun(this.value)"/>
+<div class="global-search-results hidden" id="globalSearchResults"></div>
+</div>
+<button class="topbar-bell" onclick="showTab('onboarding')" title="เคส Onboarding ที่ยังไม่ปิด" aria-label="การแจ้งเตือน Onboarding">🔔<span class="bell-badge hidden" id="topbarBellBadge">0</span></button>
 <div class="cloud-sync-status" id="cloudSyncStatus">
 <span id="cloudSyncLabel">-</span>
 <button class="btn-ghost btn-sm" onclick="authGateLogout()">ออกจากระบบ</button>
@@ -385,7 +408,8 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <button class="tab-btn" data-tab="jobpositions" onclick="showTab('jobpositions')">🗂️ จัดการตำแหน่งงาน</button>
 <button class="tab-btn" data-tab="training" onclick="showTab('training')">🎓 ประวัติการฝึกอบรม</button>
 <button class="tab-btn" data-tab="reports" onclick="showTab('reports')">📊 รายงาน</button>
-<button class="tab-btn" data-tab="settings" onclick="showTab('settings')">⚙️ Setting</button></div>
+<button class="tab-btn" data-tab="settings" onclick="showTab('settings')">⚙️ Setting</button>
+<div class="sidebar-profile" id="sidebarProfile"><div class="sidebar-avatar">HR</div><div><div class="sidebar-profile-name">HR Admin</div><div class="sidebar-profile-role" id="sidebarProfileRole">-</div></div></div></div>
 <div class="wrap">
 <!-- ============ DASHBOARD (หน้าแรก) ============ -->
 <div class="view" id="view-dashboard">
@@ -6612,6 +6636,71 @@ window.confirmApplyJdTemplateImport = function(){
   applyJdTemplateImport();
 };
 window.applyJdTemplateImport = applyJdTemplateImport;
+})();
+</script>
+<script id="topbar-extras-script">
+(function(){
+  function esc(s){ return (typeof escapeHtml==='function') ? escapeHtml(s==null?'':String(s)) : String(s==null?'':s); }
+  function box(){ return document.getElementById('globalSearchResults'); }
+  window.globalSearchRun = function(q){
+    var b = box(); if(!b) return;
+    q = String(q||'').trim().toLowerCase();
+    if(!q){ b.classList.add('hidden'); b.innerHTML=''; return; }
+    var emps = (DB.employees||[]).filter(function(e){
+      return [e.empCode,e.fullName,e.nickname,e.position,e.department].join(' ').toLowerCase().indexOf(q)>=0;
+    }).slice(0,8);
+    var seen = {}; var poss = [];
+    (DB.jd||[]).forEach(function(j){
+      var key = j.jobCode || (j.company+'|'+j.position);
+      if(seen[key]) return;
+      if([j.position,j.positionEn,j.jobCode,j.department].join(' ').toLowerCase().indexOf(q)>=0){ seen[key]=1; poss.push(j); }
+    });
+    poss = poss.slice(0,6);
+    var html = '';
+    if(emps.length){
+      html += '<div class="gs-res-group">พนักงาน</div>' + emps.map(function(e){
+        return '<button class="gs-res-item" onclick="globalSearchGo(\'emp\',decodeURIComponent(\''+encodeURIComponent(e.empCode)+'\'))">'+esc(e.fullName)+(e.nickname?' ('+esc(e.nickname)+')':'')+'<small>'+esc(e.empCode)+' · '+esc(e.position||'-')+' · '+esc(e.department||'-')+'</small></button>';
+      }).join('');
+    }
+    if(poss.length){
+      html += '<div class="gs-res-group">ตำแหน่งงาน</div>' + poss.map(function(j){
+        return '<button class="gs-res-item" onclick="globalSearchGo(\'pos\',decodeURIComponent(\''+encodeURIComponent(j.jobCode||'')+'\'))">'+esc(j.position||'-')+'<small>'+esc(j.company||'')+' · '+esc(j.jobCode||'ไม่มี Job Code')+' · '+esc(j.department||'-')+'</small></button>';
+      }).join('');
+    }
+    b.innerHTML = html || '<div class="gs-res-group">ไม่พบผลลัพธ์</div>';
+    b.classList.remove('hidden');
+  };
+  window.globalSearchGo = function(type, val){
+    var b = box(); if(b) b.classList.add('hidden');
+    var inp = document.getElementById('globalSearchInput'); if(inp) inp.value='';
+    if(type==='emp'){
+      showTab('employees');
+      if(typeof showEmployeeSubtab==='function') try{ showEmployeeSubtab('search'); }catch(e){}
+      var s = document.getElementById('empSearch');
+      if(s){ s.value = val; s.dispatchEvent(new Event('input',{bubbles:true})); }
+      if(TAB_RENDERERS.employees) TAB_RENDERERS.employees();
+    } else {
+      showTab('jobpositions');
+      var opt = (typeof v4JobOptions==='function') ? v4JobOptions().find(function(o){return o.jobCode===val;}) : null;
+      if(opt && typeof selectJobPosition==='function') selectJobPosition(opt.key);
+    }
+  };
+  document.addEventListener('click', function(ev){
+    if(!ev.target.closest('#globalSearchBox')){ var b=box(); if(b) b.classList.add('hidden'); }
+  });
+  function updateTopbarExtras(){
+    try{
+      var badge = document.getElementById('topbarBellBadge');
+      if(badge && typeof onboardingOpenCasesCount==='function' && DB && DB.employees){
+        var n = onboardingOpenCasesCount();
+        badge.textContent = String(n); badge.classList.toggle('hidden', n===0);
+      }
+      var role = document.getElementById('sidebarProfileRole');
+      if(role) role.textContent = companyFilter==='ALL' ? 'ทุกบริษัท (CMN & CIL)' : companyFilter;
+    }catch(e){}
+  }
+  setInterval(updateTopbarExtras, 2500);
+  setTimeout(updateTopbarExtras, 600);
 })();
 </script>
 </body>
