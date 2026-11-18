@@ -6876,5 +6876,274 @@ window.refreshPerfEmployeeSelects=function(){
 };
 </script>
 <script id="theme-toggle-script">window.toggleThemeSoft=function(){var h=document.documentElement;var soft=h.classList.toggle("theme-soft");try{localStorage.setItem("hr_theme",soft?"soft":"dark");}catch(e){}};</script>
+<script id="calendar-sync-script">
+(function(){
+  var SQL_TEXT = [
+    "create table if not exists hr_calendar_feed (",
+    "  token text primary key,",
+    "  ics text not null,",
+    "  updated_at timestamptz default now()",
+    ");",
+    "alter table hr_calendar_feed enable row level security;",
+    "drop policy if exists \"authenticated manage calendar feed\" on hr_calendar_feed;",
+    "create policy \"authenticated manage calendar feed\" on hr_calendar_feed",
+    "  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');",
+    "create or replace function get_calendar_feed(p_token text)",
+    "returns text language sql security definer set search_path = public as $$",
+    "  select ics from hr_calendar_feed where token = p_token limit 1",
+    "$$;",
+    "revoke all on function get_calendar_feed(text) from public;",
+    "grant execute on function get_calendar_feed(text) to anon, authenticated;"
+  ].join('\n');
+
+  var lastPush = { at:'', count:0, error:'' };
+  var pushTimer = null, pushing = false;
+
+  function esc(s){ return escapeHtml(String(s==null?'':s)); }
+  function cfg(){
+    DB.settings = DB.settings || {};
+    var c = DB.settings.calendarFeed;
+    if(!c){ c = DB.settings.calendarFeed = { enabled:false, token:'', scope:'ALL', types:{birthday:true, anniversary:true, probation:true} }; }
+    c.types = c.types || { birthday:true, anniversary:true, probation:true };
+    if(!c.scope) c.scope = 'ALL';
+    return c;
+  }
+  function stamp(){ return new Date().toISOString().replace(/[-:]/g,'').split('.')[0] + 'Z'; }
+  function fold(line){
+    var chars = Array.from(line);
+    if(chars.length <= 60) return line;
+    var out = [chars.slice(0,60).join('')], i = 60;
+    while(i < chars.length){ out.push(' ' + chars.slice(i, i+58).join('')); i += 58; }
+    return out.join('\r\n');
+  }
+  function alarmLines(days, title){
+    var l = [];
+    days.forEach(function(d){
+      l.push('BEGIN:VALARM');
+      l.push(d===0 ? 'TRIGGER:PT9H' : 'TRIGGER:-PT' + (d*24-9) + 'H');
+      l.push('ACTION:DISPLAY');
+      l.push('DESCRIPTION:' + icsEscape(title));
+      l.push('END:VALARM');
+    });
+    return l;
+  }
+  function vevent(uid, start, summary, desc, opts){
+    opts = opts || {};
+    var l = ['BEGIN:VEVENT', 'UID:' + uid + '@hr-unified', 'DTSTAMP:' + stamp(),
+      'DTSTART;VALUE=DATE:' + calendarDateUTC(start), 'DTEND;VALUE=DATE:' + calendarDateUTC(addDays(start,1)),
+      'SUMMARY:' + icsEscape(summary), 'DESCRIPTION:' + icsEscape(desc||''), 'TRANSP:TRANSPARENT'];
+    if(opts.yearly) l.push('RRULE:FREQ=YEARLY');
+    l = l.concat(alarmLines(opts.alarms || [], summary));
+    l.push('END:VEVENT');
+    return l;
+  }
+  function empLabel(e){ return (e.fullName||'') + (e.nickname ? ' (' + e.nickname + ')' : ''); }
+  function empDesc(e, extra){
+    return 'บริษัท: ' + (e.company||'-') + '\nรหัสพนักงาน: ' + (e.empCode||'') + '\nแผนก: ' + (e.department||'-') + '\nตำแหน่ง: ' + (e.position||'-') + (extra ? '\n' + extra : '');
+  }
+  function scopeEmployees(scope){
+    return (DB.employees||[]).filter(function(e){ return e.status !== 'Inactive' && (scope==='ALL' || e.company===scope); });
+  }
+  function buildICS(types, scope){
+    var emps = scopeEmployees(scope), lines = [], counts = { birthday:0, anniversary:0, probation:0 };
+    var today = todayStart();
+    emps.forEach(function(e){
+      if(types.birthday && e.birthDate){
+        var next = nextBirthdayDate(e);
+        if(next){
+          var title = '🎂 วันเกิด: ' + empLabel(e);
+          lines = lines.concat(vevent('birthday-' + e.empCode, next, title, empDesc(e, 'วันเกิด: ' + formatThaiDate(e.birthDate)), { yearly:true, alarms:getBdayReminderDays() }));
+          counts.birthday++;
+        }
+      }
+      var start = e.startDate ? parseDate(e.startDate) : null;
+      if(start && types.anniversary){
+        [1,3,5].forEach(function(y){
+          var m = start.getMonth(), day = start.getDate(), yr = start.getFullYear() + y;
+          var d = new Date(yr, m, day);
+          if(d.getMonth() !== m) d = new Date(yr, m, 28);
+          if(d >= today){
+            var title = '🎉 ครบรอบการทำงาน ' + y + ' ปี: ' + empLabel(e);
+            lines = lines.concat(vevent('anniv-' + e.empCode + '-' + y, d, title, empDesc(e, 'วันเริ่มงาน: ' + formatThaiDate(e.startDate)), { alarms:[7,0] }));
+            counts.anniversary++;
+          }
+        });
+      }
+      if(start && types.probation){
+        probationMilestones(e).forEach(function(ms){
+          if(ms.date >= today){
+            var title = (ms.final ? '📋 ครบกำหนดทดลองงาน: ' : '📋 ติดตามทดลองงาน ' + ms.label + ': ') + empLabel(e);
+            var extra = 'วันเริ่มงาน: ' + formatThaiDate(e.startDate) + '\nหัวหน้างาน: ' + (getEmployeeName(e.parentId)||'-') + (ms.final ? '\nลิงก์แบบประเมิน: ' + probationAssessmentUrl() : '');
+            lines = lines.concat(vevent('probation-' + e.empCode + '-' + ms.day, ms.date, title, empDesc(e, extra), { alarms: ms.final ? [7,1,0] : [1,0] }));
+            counts.probation++;
+          }
+        });
+      }
+    });
+    var head = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//HR Unified//Calendar//TH', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+      'X-WR-CALNAME:HR · วันเกิด/ครบรอบ/ทดลองงาน', 'X-WR-TIMEZONE:Asia/Bangkok', 'REFRESH-INTERVAL;VALUE=DURATION:PT6H', 'X-PUBLISHED-TTL:PT6H'];
+    var all = head.concat(lines, ['END:VCALENDAR']).map(fold);
+    return { ics: all.join('\r\n') + '\r\n', counts: counts, total: counts.birthday + counts.anniversary + counts.probation };
+  }
+
+  function feedUrl(){ var c = cfg(); return location.origin + '/api/calendar?token=' + c.token; }
+  function newToken(){
+    var a = new Uint8Array(24); crypto.getRandomValues(a);
+    return Array.from(a).map(function(b){ return ('0' + b.toString(16)).slice(-2); }).join('');
+  }
+
+  function pushFeed(){
+    var c = cfg();
+    if(!c.enabled || !c.token || typeof supabaseClient === 'undefined') return Promise.resolve();
+    if(pushing) return Promise.resolve();
+    pushing = true;
+    return supabaseClient.auth.getSession().then(function(r){
+      if(!r || !r.data || !r.data.session){ pushing = false; return; }
+      var built = buildICS(c.types, c.scope);
+      return supabaseClient.from('hr_calendar_feed').upsert({ token:c.token, ics:built.ics, updated_at:new Date().toISOString() }).then(function(res){
+        pushing = false;
+        if(res.error){ lastPush.error = res.error.message || String(res.error); }
+        else { lastPush = { at:new Date().toISOString(), count:built.total, error:'' }; }
+        renderPanel();
+      });
+    }).catch(function(e){ pushing = false; lastPush.error = String(e && e.message || e); renderPanel(); });
+  }
+  function schedulePush(){
+    var c = cfg(); if(!c.enabled) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(pushFeed, 4000);
+  }
+
+  function chk(key, label, hint){
+    var c = cfg();
+    return '<label style="display:flex;gap:10px;align-items:flex-start;margin:8px 0;cursor:pointer"><input type="checkbox" ' + (c.types[key] ? 'checked' : '') + ' onchange="calendarSyncToggleType(\'' + key + '\',this.checked)" style="margin-top:4px"><span><strong>' + label + '</strong><br><span class="small">' + hint + '</span></span></label>';
+  }
+  function renderPanel(){
+    var box = document.getElementById('calendarSyncPanel'); if(!box) return;
+    var c = cfg();
+    var built = buildICS(c.types, c.scope);
+    var scopeSel = '<select onchange="calendarSyncSetScope(this.value)"><option value="ALL"' + (c.scope==='ALL'?' selected':'') + '>ทุกบริษัท</option><option value="CMN"' + (c.scope==='CMN'?' selected':'') + '>CMN</option><option value="CIL"' + (c.scope==='CIL'?' selected':'') + '>CIL</option></select>';
+    var html = ''
+      + '<section class="card"><h3 class="section-title">📅 ปฏิทินรวมทุกคน (ส่งเข้าปฏิทินครั้งเดียวจบ)</h3>'
+      + '<div class="sub" style="margin-bottom:12px">รวมวันเกิด ครบรอบอายุงาน และกำหนดการทดลองงานของพนักงานทุกคนไว้ในปฏิทินเดียว ไม่ต้องเพิ่มทีละคนทีละช่วง</div>'
+      + chk('birthday', '🎂 วันเกิดพนักงาน', 'ซ้ำทุกปีอัตโนมัติ · แจ้งเตือนล่วงหน้าตามที่ตั้งไว้ในหน้า "วันเกิด"')
+      + chk('anniversary', '🎉 ครบรอบการทำงาน 1 / 3 / 5 ปี', 'ใส่ทุกรอบที่ยังมาไม่ถึงของพนักงานแต่ละคนพร้อมกัน · แจ้งเตือนล่วงหน้า 7 วันและวันครบรอบ')
+      + chk('probation', '📋 ทดลองงาน', 'ทุกช่วง: ครบ 30 / 60 / 90 วัน และครบกำหนดทดลองงาน · แจ้งเตือน 7 วัน, 1 วัน และวันครบกำหนด')
+      + '<div class="form-grid two" style="margin-top:12px"><div class="field"><label>ขอบเขตบริษัท</label>' + scopeSel + '</div>'
+      + '<div class="field"><label>จำนวนนัดหมายที่จะสร้าง</label><div class="clean-note"><strong>' + built.total + '</strong> รายการ · วันเกิด ' + built.counts.birthday + ' · ครบรอบ ' + built.counts.anniversary + ' · ทดลองงาน ' + built.counts.probation + '</div></div></div>'
+      + '<div style="margin-top:14px"><button class="btn-primary" onclick="calendarSyncDownload()">⬇️ ดาวน์โหลดไฟล์ปฏิทินรวม (.ics)</button></div>'
+      + '<div class="small" style="margin-top:8px">นำเข้าครั้งเดียว: Google Calendar → ⚙️ การตั้งค่า → นำเข้าและส่งออก → นำเข้า (หรือดับเบิลคลิกไฟล์ใน Outlook / Apple Calendar)</div></section>';
+
+    var syncHtml = '<section class="card"><h3 class="section-title">🔄 ซิงก์อัตโนมัติ (Subscribe)</h3>'
+      + '<div class="sub" style="margin-bottom:12px">เพิ่มลิงก์นี้ใน Google Calendar หนึ่งครั้ง จากนั้นปฏิทินจะอัปเดตเองทุกครั้งที่ HR แก้ไขข้อมูลในระบบ (พนักงานใหม่ ลาออก เปลี่ยนวันเริ่มงาน ฯลฯ) โดยไม่ต้องนำเข้าใหม่</div>';
+    if(!c.enabled){
+      syncHtml += '<button class="btn-primary" onclick="calendarSyncEnable()">เปิดใช้งานซิงก์อัตโนมัติ</button>';
+    } else {
+      var url = feedUrl();
+      var gcal = 'https://calendar.google.com/calendar/r?cid=' + encodeURIComponent('webcal://' + location.host + '/api/calendar?token=' + c.token);
+      syncHtml += '<div class="field"><label>ลิงก์ปฏิทิน (เก็บเป็นความลับ — ใครมีลิงก์นี้จะเห็นรายชื่อ วันเกิด และวันเริ่มงานของพนักงาน)</label><input readonly id="calendarSyncUrl" value="' + esc(url) + '" onclick="this.select()"></div>'
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><a class="btn btn-green" href="' + esc(gcal) + '" target="_blank" rel="noopener">➕ เพิ่มใน Google Calendar</a>'
+        + '<button class="btn-ghost" onclick="calendarSyncCopy()">📋 คัดลอกลิงก์</button>'
+        + '<button class="btn-ghost" onclick="calendarSyncPushNow()">🔄 อัปเดตฟีดตอนนี้</button>'
+        + '<button class="btn-ghost" onclick="calendarSyncRotate()">🔑 สร้างลิงก์ใหม่ (ยกเลิกลิงก์เดิม)</button>'
+        + '<button class="btn-danger" onclick="calendarSyncDisable()">ปิดการซิงก์</button></div>';
+      if(lastPush.error){
+        var missing = /hr_calendar_feed|schema cache|does not exist|relation/i.test(lastPush.error);
+        syncHtml += '<div class="notice" style="margin-top:12px;color:#d64545"><strong>อัปเดตฟีดไม่สำเร็จ:</strong> ' + esc(lastPush.error) + '</div>';
+        if(missing){
+          syncHtml += '<div class="notice" style="margin-top:8px"><strong>ต้องตั้งค่าฐานข้อมูลครั้งแรก (ทำครั้งเดียว):</strong> เปิด Supabase → SQL Editor → วางสคริปต์ด้านล่าง → Run แล้วกด "อัปเดตฟีดตอนนี้"<br><button class="btn-ghost btn-sm" style="margin-top:8px" onclick="calendarSyncCopySql()">📋 คัดลอกสคริปต์ SQL</button><textarea readonly style="width:100%;min-height:150px;margin-top:8px;font-family:monospace;font-size:12px">' + esc(SQL_TEXT) + '</textarea></div>';
+        }
+      } else if(lastPush.at){
+        syncHtml += '<div class="small" style="margin-top:10px">✅ อัปเดตฟีดล่าสุด ' + esc(new Date(lastPush.at).toLocaleString('th-TH')) + ' · ' + lastPush.count + ' รายการ</div>';
+      } else {
+        syncHtml += '<div class="small" style="margin-top:10px">ยังไม่ได้อัปเดตฟีดในเซสชันนี้ — กด "อัปเดตฟีดตอนนี้" หรือฟีดจะอัปเดตเองเมื่อมีการบันทึกข้อมูล</div>';
+      }
+      syncHtml += '<div class="small" style="margin-top:10px">หมายเหตุ: Google Calendar ดึงข้อมูลจากลิงก์ซับสไครบ์เองทุกไม่กี่ชั่วโมงถึงประมาณ 1 วัน จึงอาจเห็นการเปลี่ยนแปลงช้ากว่าที่บันทึกในระบบเล็กน้อย</div>';
+    }
+    syncHtml += '</section>';
+    box.innerHTML = html + syncHtml;
+  }
+
+  window.calendarSyncToggleType = function(key, on){ var c = cfg(); c.types[key] = !!on; saveDB(); renderPanel(); };
+  window.calendarSyncSetScope = function(v){ var c = cfg(); c.scope = v; saveDB(); renderPanel(); };
+  window.calendarSyncDownload = function(){
+    var c = cfg(), built = buildICS(c.types, c.scope);
+    if(!built.total){ toast('ไม่มีนัดหมายให้สร้างไฟล์ (ตรวจสอบประเภทที่เลือกและข้อมูลวันเกิด/วันเริ่มงาน)'); return; }
+    downloadFile('hr_calendar_all.ics', built.ics, 'text/calendar;charset=utf-8');
+    toast('ดาวน์โหลดปฏิทินรวม ' + built.total + ' รายการแล้ว');
+  };
+  window.calendarSyncEnable = function(){
+    var c = cfg(); if(!c.token) c.token = newToken(); c.enabled = true; saveDB();
+    lastPush = { at:'', count:0, error:'' };
+    renderPanel(); pushFeed();
+  };
+  window.calendarSyncPushNow = function(){ lastPush.error = ''; pushing = false; pushFeed().then(function(){ toast(lastPush.error ? 'อัปเดตฟีดไม่สำเร็จ' : 'อัปเดตฟีดแล้ว'); }); };
+  window.calendarSyncRotate = function(){
+    if(!confirm('สร้างลิงก์ใหม่? ลิงก์เดิมที่เคยเพิ่มใน Google Calendar จะใช้ไม่ได้อีก และต้องเพิ่มลิงก์ใหม่แทน')) return;
+    var c = cfg(), old = c.token;
+    c.token = newToken(); saveDB();
+    if(old && typeof supabaseClient !== 'undefined'){ supabaseClient.from('hr_calendar_feed').delete().eq('token', old).then(function(){}); }
+    lastPush = { at:'', count:0, error:'' }; renderPanel(); pushFeed();
+  };
+  window.calendarSyncDisable = function(){
+    if(!confirm('ปิดการซิงก์อัตโนมัติ? ปฏิทินที่ Subscribe ไว้จะไม่ได้รับข้อมูลอีก')) return;
+    var c = cfg(), old = c.token; c.enabled = false; c.token = ''; saveDB();
+    if(old && typeof supabaseClient !== 'undefined'){ supabaseClient.from('hr_calendar_feed').delete().eq('token', old).then(function(){}); }
+    lastPush = { at:'', count:0, error:'' }; renderPanel();
+  };
+  function copyText(t, okMsg){
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(function(){ toast(okMsg); }, function(){ toast('คัดลอกไม่สำเร็จ กรุณาคัดลอกเอง'); }); }
+    else { toast('คัดลอกไม่สำเร็จ กรุณาคัดลอกเอง'); }
+  }
+  window.calendarSyncCopy = function(){ copyText(feedUrl(), 'คัดลอกลิงก์ปฏิทินแล้ว'); };
+  window.calendarSyncCopySql = function(){ copyText(SQL_TEXT, 'คัดลอกสคริปต์ SQL แล้ว'); };
+  window.renderCalendarSyncPanel = renderPanel;
+
+  // ---- UI wiring: new sub-tab in Onboarding ----
+  function install(){
+    var nameBtn = document.getElementById('onboardSubBtnNamecard');
+    var nameView = document.getElementById('onboarding-sub-namecard');
+    if(!nameBtn || !nameView || document.getElementById('onboarding-sub-calendar')) return;
+    var btn = document.createElement('button');
+    btn.className = 'subnav-btn'; btn.id = 'onboardSubBtnCalendar';
+    btn.setAttribute('onclick', "showOnboardingSubtab('calendar')");
+    btn.textContent = '📅 ปฏิทินอัตโนมัติ';
+    nameBtn.insertAdjacentElement('afterend', btn);
+    var view = document.createElement('div');
+    view.className = 'subview'; view.id = 'onboarding-sub-calendar';
+    view.innerHTML = '<div id="calendarSyncPanel"></div>';
+    nameView.insertAdjacentElement('afterend', view);
+    // banners on the three tabs pointing to the all-in-one calendar
+    [['onboarding-sub-birthday','🎂 วันเกิด'],['onboarding-sub-anniversary','🎉 ครบรอบการทำงาน'],['onboarding-sub-probation','📋 ทดลองงาน']].forEach(function(p){
+      var v = document.getElementById(p[0]); if(!v) return;
+      var b = document.createElement('div');
+      b.className = 'notice'; b.style.cssText = 'margin-bottom:12px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap';
+      b.innerHTML = '<span>📅 ส่ง' + p[1].replace(/^[^ ]+ /,'') + 'ของพนักงานทุกคนเข้าปฏิทินพร้อมกัน และซิงก์อัตโนมัติ ไม่ต้องทำทีละคน</span><button class="btn-primary btn-sm" onclick="showOnboardingSubtab(\'calendar\')">ไปที่ปฏิทินอัตโนมัติ →</button>';
+      v.insertBefore(b, v.firstChild);
+    });
+    var orig = window.showOnboardingSubtab;
+    window.showOnboardingSubtab = function(name){
+      var isCal = name === 'calendar';
+      orig(isCal ? 'checklist' : name);
+      if(isCal){
+        ['onboarding-sub-checklist','onboarding-sub-birthday','onboarding-sub-anniversary','onboarding-sub-probation','onboarding-sub-namecard'].forEach(function(id){ var e = document.getElementById(id); if(e) e.classList.remove('active'); });
+        ['onboardSubBtnChecklist','onboardSubBtnBirthday','onboardSubBtnAnniversary','onboardSubBtnProbation','onboardSubBtnNamecard'].forEach(function(id){ var e = document.getElementById(id); if(e) e.classList.remove('active'); });
+      }
+      view.classList.toggle('active', isCal);
+      btn.classList.toggle('active', isCal);
+      if(isCal) renderPanel();
+    };
+    showOnboardingSubtab = window.showOnboardingSubtab;
+  }
+  install();
+
+  // ---- auto push: on data save (debounced), shortly after load, and periodically ----
+  var prevSave = window.saveDB;
+  window.saveDB = function(){ var r = prevSave.apply(this, arguments); try{ schedulePush(); }catch(e){} return r; };
+  saveDB = window.saveDB;
+  setTimeout(function(){ try{ pushFeed(); }catch(e){} }, 8000);
+  setInterval(function(){ try{ pushFeed(); }catch(e){} }, 30*60*1000);
+})();
+</script>
 </body>
 </html>
