@@ -6833,6 +6833,22 @@ html.theme-soft .org-card .org-name{color:#4a5163!important}
 html.theme-soft .org-card .org-dept{color:#2f63d0!important}
 html.theme-soft .org-toggle{color:#4a5163!important}
 html.theme-soft :is(.btn-primary,.btn-green,.btn-gold,.btn-purple,#view-employees .btn-primary){background:linear-gradient(145deg,#8f919a,#6f717a)!important}
+/* org chart readability */
+html.theme-soft #orgChartCanvas .org-card{width:250px!important;min-height:96px!important;padding:15px 18px 14px!important;border-radius:16px!important;background:#f1f2f5!important;box-shadow:var(--neu-up-sm)!important}
+html.theme-soft #orgChartCanvas .org-card.group{background:#dde3f2!important}
+html.theme-soft #orgChartCanvas .org-card.root{background:#d6e6f7!important}
+html.theme-soft #orgChartCanvas .org-card.unassigned{background:#f6ecd0!important}
+html.theme-soft #orgChartCanvas .org-card .org-title{font-size:15.5px!important;font-weight:700!important;line-height:1.35!important;color:#0f1420!important;text-shadow:none!important;letter-spacing:0!important;padding-right:30px!important}
+html.theme-soft #orgChartCanvas .org-card .org-name{font-size:14px!important;font-weight:500!important;line-height:1.45!important;color:#2b3244!important;text-shadow:none!important;margin-top:6px!important}
+html.theme-soft #orgChartCanvas .org-card .org-dept{font-size:13px!important;font-weight:600!important;color:#1b52c4!important;text-shadow:none!important;margin-top:5px!important}
+html.theme-soft #orgChartCanvas .org-toggle{width:26px!important;height:26px!important;font-size:15px!important;color:#2b3244!important;background:#e6e7eb!important;border:0!important;box-shadow:var(--neu-up-sm)!important;text-shadow:none!important;backdrop-filter:none!important}
+html.theme-soft #orgChartCanvas .org-tree-v4,html.theme-soft #orgChartCanvas .org-tree-v4 ul{gap:26px!important}
+html.theme-soft #orgChartCanvas .org-tree-v4 ul{padding-top:44px!important}
+html.theme-soft #orgChartCanvas .org-tree-v4 li>ul:before,html.theme-soft #orgChartCanvas .org-tree-v4 li>ul>li:before{background:#8f96a8!important;width:2px}
+html.theme-soft #orgChartCanvas .org-tree-v4 li>ul>li:before{width:auto;height:2px}
+html.theme-soft .org-canvas-toolbar,html.theme-soft .org-canvas-toolbar *{text-shadow:none!important}
+html.theme-soft .org-canvas-toolbar .small,html.theme-soft .org-canvas-toolbar label{font-size:13px!important;color:#4a5163!important}
+html.theme-soft .org-outline-item{font-size:14px!important;color:#2b3244!important}
 </style>
 <script id="company-scope-helpers">
 window.empInCompany=function(code,company){ if(!company||company==='ALL')return true; var e=(DB.employees||[]).find(function(x){return x.empCode===code;}); return !!e&&e.company===company; };
