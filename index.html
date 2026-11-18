@@ -3484,6 +3484,7 @@ function setCompanyFilter(c){
   try{var oc=document.getElementById('orgCompanySelect');if(oc&&c!=='ALL')oc.value=c;var rc=document.getElementById('reportCompanyFilter');if(rc)rc.value=c;}catch(e){}
   refreshEmployeeFilters(); renderEmployeesTable(); renderEmployeeSummary();
   Object.keys(TAB_RENDERERS).forEach(function(k){try{TAB_RENDERERS[k]();}catch(e){console.warn('renderer',k,e);}});
+  try{refreshPerfEmployeeSelects();}catch(e){}
 }
 
 /* Employee database */
@@ -6839,6 +6840,17 @@ window.courseInCompany=function(c,company){
   if(!company||company==='ALL')return true;
   if(c.company)return c.company===company;
   return (DB.trainingEnrollments||[]).some(function(en){return en.courseId===c.id&&empInCompany(en.employeeCode,company);});
+};
+window.refreshPerfEmployeeSelects=function(){
+  var v=document.getElementById('view-performance-tracking'); if(!v||typeof perfEmployeeOptionsHtml!=='function')return;
+  v.querySelectorAll('select').forEach(function(sel){
+    var opts=Array.from(sel.options); if(!opts.some(function(o){return /\([A-Za-z0-9\-]+\) ·/.test(o.textContent);}))return;
+    var includeAll=opts.length&&opts[0].value==='';
+    var prev=sel.value;
+    sel.innerHTML=perfEmployeeOptionsHtml(!includeAll,includeAll);
+    if(Array.from(sel.options).some(function(o){return o.value===prev;}))sel.value=prev;
+  });
+  try{ if(typeof renderPerformanceTrackingModule==='function')renderPerformanceTrackingModule(); }catch(e){}
 };
 </script>
 <script id="theme-toggle-script">window.toggleThemeSoft=function(){var h=document.documentElement;var soft=h.classList.toggle("theme-soft");try{localStorage.setItem("hr_theme",soft?"soft":"dark");}catch(e){}};</script>
