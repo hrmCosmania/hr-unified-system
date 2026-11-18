@@ -1,0 +1,4 @@
+# Files that must never be served on the public website
+CLAUDE.md
+.env*
+.vercel
