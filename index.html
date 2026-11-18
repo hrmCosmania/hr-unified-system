@@ -7728,7 +7728,7 @@ window.refreshPerfEmployeeSelects=function(){
     return scriptCache[src];
   }
   var COMMON_SKILLS = ['Excel','Microsoft Office','Word','PowerPoint','Google Sheets','Photoshop','Illustrator','Canva','Figma','Premiere','After Effects','Lightroom','CorelDRAW','AutoCAD','SAP','Power BI','Python','SQL','JavaScript','HTML','Java','PHP','WordPress','Shopify','SEO','Google Ads','Facebook Ads','TikTok','LINE OA','Content Marketing','Digital Marketing','Marketing','Social Media','E-commerce','Shopee','Lazada','Sales','Customer Service','Negotiation','Presentation','Project Management','Leadership','Communication','Teamwork','Problem Solving','Accounting','Payroll','Tax','Audit','Purchasing','Procurement','Logistics','Warehouse','Inventory','Production','Planning','QC','QA','GMP','ISO','R&D','Formulation','Regulatory','Recruitment','HR','English','Chinese','Japanese','การตลาด','การขาย','บัญชี','การเงิน','ภาษี','การจัดซื้อ','คลังสินค้า','การผลิต','วางแผน','ควบคุมคุณภาพ','ประกันคุณภาพ','ภาษาอังกฤษ','ภาษาจีน','ภาษาญี่ปุ่น','ภาวะผู้นำ','การสื่อสาร','การเจรจาต่อรอง','บริการลูกค้า','ออกแบบกราฟิก','ตัดต่อวิดีโอ','สรรหา','กฎหมายแรงงาน','เงินเดือน','ไลฟ์สด','ถ่ายภาพ','การนำเสนอ'];
-  function thaiClean(t){ return String(t||'').replace(/([฀-๿])[ \t]+(?=[฀-๿])/g,'$1'); }
+  function thaiClean(t){ return String(t||'').replace(/[ \t]+(?=[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E])/g,''); }
 
   function parseResumeText(text, job){
     text = String(text||'').replace(/\r/g,'').replace(/[​ ]/g,' ');
@@ -7756,7 +7756,7 @@ window.refreshPerfEmployeeSelects=function(){
         if(w.length>=2 && w.length<=4 && w.every(function(x){ return /^[A-Za-z฀-๿.'\-]+$/.test(x); })){ name = w.join(' '); break; }
       }
     }
-    if(name){ var parts = name.split(' '); out.first_name = parts.shift(); out.last_name = parts.join(' '); }
+    if(name){ var parts = name.split(' ').filter(function(w){ return !/^(โทร|โทรศัพท์|อีเมล|เมล|email|e-mail|tel|phone|mobile|เบอร์)$/i.test(w); }); out.first_name = parts.shift() || ''; out.last_name = parts.join(' '); }
 
     var cj = flat.match(/(?:ตำแหน่งที่สมัคร|ตำแหน่ง|position|job\s*title)\s*[:：]\s*([^\n]{2,60})/i); if(cj) out.current_job = cj[1].trim();
     var cc = flat.match(/(?:บริษัท|company|employer|หน่วยงาน)\s*[:：]\s*([^\n]{2,60})/i); if(cc) out.current_company = cc[1].trim();
@@ -7822,8 +7822,8 @@ window.refreshPerfEmployeeSelects=function(){
     }).then(function(buf){ return pdfjsLib.getDocument({data:buf}).promise; }).then(function(pdf){
       var n = Math.min(pdf.numPages, 5), text = '', chain = Promise.resolve();
       for(var i=1;i<=n;i++){ (function(p){ chain = chain.then(function(){ return pdf.getPage(p).then(function(page){ return page.getTextContent(); }).then(function(tc){
-        var lastY = null, line = '';
-        tc.items.forEach(function(it){ var y = it.transform ? it.transform[5] : 0; if(lastY!==null && Math.abs(y-lastY)>3){ text += line.trim()+'\n'; line=''; } line += it.str + (it.hasEOL?'\n':' '); lastY = y; });
+        var lastY = null, lastEnd = null, line = '';
+        tc.items.forEach(function(it){ var x = it.transform ? it.transform[4] : 0, y = it.transform ? it.transform[5] : 0; if(lastY!==null && Math.abs(y-lastY)>3){ text += line.trim()+'\n'; line=''; lastEnd = null; } if(lastEnd!==null && x-lastEnd > Math.max(1.5,(it.height||10)*0.2)) line += ' '; line += it.str; if(it.hasEOL){ text += line.trim()+'\n'; line=''; lastEnd = null; } else { lastEnd = x + (it.width||0); } lastY = y; });
         text += line.trim()+'\n';
       }); }); })(i); }
       return chain.then(function(){
