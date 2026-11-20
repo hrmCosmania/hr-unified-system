@@ -7531,7 +7531,7 @@ window.refreshPerfEmployeeSelects=function(){
     var d = daysSince(c.stageChangedAt); return d>sla ? d-sla : 0;
   }
   function subnav(){
-    var items = [['dashboard','📊 ภาพรวม'],['pipeline','🧲 Pipeline'],['jobs','📝 ตำแหน่งงาน/ใบขอ'],['candidates','👤 ผู้สมัคร'],['reports','📈 KPI & SLA']];
+    var items = [['dashboard','📊 ภาพรวม'],['jobs','📝 ตำแหน่ง/ใบขอ'],['candidates','👤 ผู้สมัคร'],['pipeline','🧲 Pipeline'],['reports','📈 KPI & SLA']];
     return '<div class="subnav">'+items.map(function(i){ return '<button class="subnav-btn '+(sub===i[0]?'active':'')+'" onclick="rcShowSub(\''+i[0]+'\')">'+i[1]+'</button>'; }).join('')
       +'<span style="flex:1"></span><button class="subnav-btn" onclick="rcOpenSettings()">⚙️ ตั้งค่า</button></div>';
   }
@@ -9634,7 +9634,7 @@ html:not(.theme-soft) .side-sub button.on{background:rgba(255,255,255,.14);color
   var MODS = {
     employees:[['search','ค้นหาพนักงาน',call('showEmployeeSubtab','search')],['add','เพิ่มข้อมูลพนักงาน',call('showEmployeeSubtab','add')]],
     onboarding:[['checklist','Checklist เริ่มงานใหม่',call('showOnboardingSubtab','checklist')],['birthday','วันเกิด',call('showOnboardingSubtab','birthday')],['anniversary','ครบรอบการทำงาน',call('showOnboardingSubtab','anniversary')],['probation','ทดลองงาน',call('showOnboardingSubtab','probation')],['namecard','นามบัตร QR',call('showOnboardingSubtab','namecard')]],
-    recruitment:[['dashboard','ภาพรวม',call('rcShowSub','dashboard')],['pipeline','Pipeline',call('rcShowSub','pipeline')],['jobs','ตำแหน่งงาน / ใบขอ',call('rcShowSub','jobs')],['candidates','ผู้สมัคร',call('rcShowSub','candidates')],['reports','KPI & SLA',call('rcShowSub','reports')],['settings','ตั้งค่าการสรรหา',call('rcOpenSettings')]],
+    recruitment:[['dashboard','ภาพรวม',call('rcShowSub','dashboard')],['jobs','ตำแหน่ง/ใบขอ',call('rcShowSub','jobs')],['candidates','ผู้สมัคร',call('rcShowSub','candidates')],['pipeline','Pipeline',call('rcShowSub','pipeline')],['reports','KPI & SLA',call('rcShowSub','reports')],['settings','ตั้งค่าการสรรหา',call('rcOpenSettings')]],
     training:[['overview','ภาพรวม',call('showTrainingSubtab','overview')],['ojt','OJT (On-the-Job Training)',call('showTrainingSubtab','ojt')],['history','ประวัติการฝึกอบรม',call('showTrainingSubtab','history')],['budget','งบประมาณการฝึกอบรม',call('showTrainingSubtab','budget')],['dsd','ยื่นหลักสูตรกรมพัฒนาฝีมือแรงงาน',call('showTrainingSubtab','dsd')],['followup','ติดตามผลหลังอบรม',call('showTrainingSubtab','followup')],['need','Training Need & Roadmap',call('showTrainingSubtab','need')]],
     'performance-tracking':[['attendance','การขาด ลา มาสาย',call('setPerfSubTab','attendance')],['leavequota','โควตาวันลา',call('setPerfSubTab','leavequota')],['goals','เป้าหมาย / OKR',call('setPerfSubTab','goals')],['kpi','ประเมินผลรายเดือน',call('setPerfSubTab','kpi')]],
     reports:[['headcount','อัตรากำลัง',call('showReportTopic','headcount')],['tenure','อายุงาน / อายุคน',call('showReportTopic','tenure')],['lifecycle','สถานะพนักงาน',call('showReportTopic','lifecycle')],['turnover','การลาออก (Turnover)',call('showReportTopic','turnover')],['onboarding','Onboarding',call('showReportTopic','onboarding')],['positions','ตำแหน่งงาน',call('showReportTopic','positions')],['training','การฝึกอบรม',call('showReportTopic','training')],['orgquality','ผังองค์กรและ Data Quality',call('showReportTopic','orgquality')]]
