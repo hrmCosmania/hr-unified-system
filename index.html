@@ -894,6 +894,7 @@ function defaultDB(){
     trainingNeeds: [],
     trainingFollowupLinks: [],
     auditLog: [],
+    contractDocs: [],
     settings: {
       birthdayEmail: { subject: DEFAULT_BDAY_SUBJECT, body: DEFAULT_BDAY_BODY, reminderDays: '7,1,0' },
       probation: { assessmentWebappUrl: 'https://hr-unified-system.vercel.app/probation' },
@@ -913,7 +914,7 @@ function migrateDB(raw){
 
   // Arrays: ต้องมีอยู่และเป็น array เสมอ ห้าม undefined ไม่งั้นทุก DB.xxx.push() จะพัง
   ['employees','performanceReviews','goals','jd','kpiDefinitions','competencies','competencyDictionary','kpiDictionary',
-   'orgChartSnapshots','positionRevisions','probationActions','trainingCourses','trainingEnrollments','attendanceRecords','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','trainingFollowupLinks','auditLog','leaveEntitlementDefaults','leaveEntitlementOverrides','importedRequestIds','employeeJdOverrides'
+   'orgChartSnapshots','positionRevisions','probationActions','trainingCourses','trainingEnrollments','attendanceRecords','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','trainingFollowupLinks','auditLog','contractDocs','leaveEntitlementDefaults','leaveEntitlementOverrides','importedRequestIds','employeeJdOverrides'
   ].forEach(k => {
     if(!Array.isArray(merged[k])) merged[k] = base[k];
   });
@@ -3452,7 +3453,7 @@ var v4OriginalMigrateDB = migrateDB;
 
 migrateDB = function(raw){
   var merged = v4OriginalMigrateDB(raw);
-  ['probationActions','trainingCourses','trainingEnrollments','positionRevisions','orgChartSnapshots','attendanceRecords','performanceReviews','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','trainingFollowupLinks','auditLog','leaveEntitlementOverrides','importedRequestIds'].forEach(function(k){ if(!Array.isArray(merged[k])) merged[k]=[]; });
+  ['probationActions','trainingCourses','trainingEnrollments','positionRevisions','orgChartSnapshots','attendanceRecords','performanceReviews','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','trainingFollowupLinks','auditLog','contractDocs','leaveEntitlementOverrides','importedRequestIds'].forEach(function(k){ if(!Array.isArray(merged[k])) merged[k]=[]; });
   if(!Array.isArray(merged.leaveEntitlementDefaults)||!merged.leaveEntitlementDefaults.length) merged.leaveEntitlementDefaults=defaultDB().leaveEntitlementDefaults;
   if(!merged.orgCharts || typeof merged.orgCharts!=='object') merged.orgCharts={};
   return merged;
@@ -9643,7 +9644,7 @@ html:not(.theme-soft) .side-sub button.on{background:rgba(255,255,255,.14);color
   function call(fn){ var a=[].slice.call(arguments,1); return function(){ var f=window[fn]; if(typeof f==='function') return f.apply(null,a); }; }
   var MODS = {
     employees:[['search','ค้นหาพนักงาน',call('showEmployeeSubtab','search')],['add','เพิ่มข้อมูลพนักงาน',call('showEmployeeSubtab','add')]],
-    onboarding:[['checklist','Checklist เริ่มงานใหม่',call('showOnboardingSubtab','checklist')],['birthday','วันเกิด',call('showOnboardingSubtab','birthday')],['anniversary','ครบรอบการทำงาน',call('showOnboardingSubtab','anniversary')],['probation','ทดลองงาน',call('showOnboardingSubtab','probation')],['namecard','นามบัตร QR',call('showOnboardingSubtab','namecard')]],
+    onboarding:[['checklist','Checklist เริ่มงานใหม่',call('showOnboardingSubtab','checklist')],['birthday','วันเกิด',call('showOnboardingSubtab','birthday')],['anniversary','ครบรอบการทำงาน',call('showOnboardingSubtab','anniversary')],['probation','ทดลองงาน',call('showOnboardingSubtab','probation')],['namecard','นามบัตร QR',call('showOnboardingSubtab','namecard')],['calendar','ปฏิทินอัตโนมัติ',call('showOnboardingSubtab','calendar')],['contracts','สัญญาจ้าง & NDA',call('showOnboardingSubtab','contracts')]],
     recruitment:[['dashboard','ภาพรวม',call('rcShowSub','dashboard')],['jobs','ตำแหน่ง/ใบขอ',call('rcShowSub','jobs')],['candidates','ผู้สมัคร',call('rcShowSub','candidates')],['pipeline','Pipeline',call('rcShowSub','pipeline')],['reports','KPI & SLA',call('rcShowSub','reports')],['settings','ตั้งค่าการสรรหา',call('rcOpenSettings')]],
     training:[['overview','ภาพรวม',call('showTrainingSubtab','overview')],['ojt','OJT (On-the-Job Training)',call('showTrainingSubtab','ojt')],['history','ประวัติการฝึกอบรม',call('showTrainingSubtab','history')],['budget','งบประมาณการฝึกอบรม',call('showTrainingSubtab','budget')],['dsd','ยื่นหลักสูตรกรมพัฒนาฝีมือแรงงาน',call('showTrainingSubtab','dsd')],['followup','ติดตามผลหลังอบรม',call('showTrainingSubtab','followup')],['need','Training Need & Roadmap',call('showTrainingSubtab','need')]],
     'performance-tracking':[['attendance','การขาด ลา มาสาย',call('setPerfSubTab','attendance')],['leavequota','โควตาวันลา',call('setPerfSubTab','leavequota')],['goals','เป้าหมาย / OKR',call('setPerfSubTab','goals')],['kpi','ประเมินผลรายเดือน',call('setPerfSubTab','kpi')]],
@@ -10054,5 +10055,276 @@ html:not(.theme-soft) body .badge{border-radius:99px!important}
 html:not(.theme-soft) body :is(thead th){text-transform:uppercase;letter-spacing:.04em;font-size:12px!important}
 html:not(.theme-soft) body .table-wrap{border-radius:16px!important}
 </style>
+<style id="contracts-style">
+.ct-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:14px 0}
+.ct-kind{display:flex;flex-direction:column;align-items:flex-start;border:1px solid var(--v4-border,#e2e8f3);border-radius:16px;padding:16px;background:#fff;cursor:pointer;transition:transform .2s,box-shadow .2s;text-align:left;font-family:inherit;color:inherit}
+.ct-kind:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(0,0,0,.10)}
+.ct-kind .ic{font-size:28px}.ct-kind b{display:block;margin:6px 0 2px;font-size:15px}.ct-kind span{font-size:12.5px;color:#6c6c70}
+.ct-warn{background:rgba(255,149,0,.12);border:1px solid rgba(255,149,0,.35);color:#8a4b00;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:12px}
+.ct-form{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}.ct-form .full{grid-column:1/-1}
+.ct-form label{display:block;font-size:12.5px;margin-bottom:3px;color:#6c6c70}
+.ct-form input,.ct-form select,.ct-form textarea{width:100%;box-sizing:border-box}
+.ct-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
+.ct-modal{background:#fff;border-radius:20px;max-width:760px;width:100%;max-height:92vh;overflow:auto;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.3)}
+html:not(.theme-soft) .ct-modal,html:not(.theme-soft) .ct-kind{background:#1c1c1e;color:#f2f2f7}
+@media(max-width:700px){.ct-grid,.ct-form{grid-template-columns:1fr}}
+</style>
+<script id="contracts-script">
+(function(){
+  var esc = function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
+  var attr = esc;
+  var CO = { CMN:{th:'บริษัท คอสเมเนีย แลบอราทอรี่ส์ จำกัด',en:'Cosmania Laboratories Co., Ltd.'}, CIL:{th:'บริษัท คอสซูติค อินโนเวชั่น แลบอราทอรี่ส์ จำกัด',en:'Cosceutic Innovation Laboratories Co., Ltd.'} };
+  var KINDS = {
+    contract:{label:'สัญญาจ้างพนักงานประจำ',icon:'📄',desc:'พนักงานประจำ มีช่วงทดลองงาน'},
+    fixed:{label:'สัญญาจ้างมีกำหนดระยะเวลา',icon:'⏳',desc:'ระบุวันเริ่มและวันสิ้นสุดสัญญา'},
+    nda:{label:'ข้อตกลงรักษาความลับ (NDA)',icon:'🔒',desc:'พนักงานยอมรับการรักษาความลับ'}
+  };
+  var STATUSES = ['ร่าง','ส่งให้ลงนามแล้ว','ลงนามแล้ว'];
+
+  /* ---------- แม่แบบเริ่มต้น (ข้อความตั้งต้น ควรให้ฝ่ายกฎหมายตรวจก่อนใช้จริง) ---------- */
+  var DEFAULT_TPL = {
+contract:
+"สัญญาจ้างแรงงาน\n"+
+"ทำที่ {{workplace}}\nวันที่ {{docDate}}\n\n"+
+"สัญญาฉบับนี้ทำขึ้นระหว่าง {{company}} ซึ่งต่อไปในสัญญานี้เรียกว่า \"นายจ้าง\" โดย {{signerName}} ตำแหน่ง {{signerTitle}} ผู้มีอำนาจลงนาม ฝ่ายหนึ่ง กับ {{empName}} เลขประจำตัวประชาชน/หนังสือเดินทาง {{idNumber}} ที่อยู่ {{address}} ซึ่งต่อไปในสัญญานี้เรียกว่า \"ลูกจ้าง\" อีกฝ่ายหนึ่ง คู่สัญญาตกลงกันดังต่อไปนี้\n\n"+
+"ข้อ 1. ตำแหน่งและหน้าที่\nนายจ้างตกลงจ้างลูกจ้างให้ทำงานในตำแหน่ง {{position}} แผนก {{department}} และลูกจ้างตกลงปฏิบัติหน้าที่ตามที่ได้รับมอบหมายตามคำบรรยายลักษณะงาน (JD) ของตำแหน่งดังกล่าว รวมถึงงานอื่นที่เกี่ยวข้องตามสมควร\n\n"+
+"ข้อ 2. ระยะเวลาการจ้างและการทดลองงาน\nสัญญานี้มีผลตั้งแต่วันที่ {{startDate}} โดยลูกจ้างอยู่ในระยะทดลองงานเป็นเวลา {{probationDays}} วัน นายจ้างจะประเมินผลการทดลองงานตามหลักเกณฑ์ของบริษัท\n\n"+
+"ข้อ 3. ค่าจ้าง\nนายจ้างตกลงจ่ายค่าจ้างให้ลูกจ้างเดือนละ {{salary}} บาท โดยจ่ายตามรอบการจ่ายเงินเดือนของบริษัท ทั้งนี้ หักภาษี เงินสมทบประกันสังคม และรายการอื่นตามที่กฎหมายกำหนด\n\n"+
+"ข้อ 4. เวลาทำงาน\nลูกจ้างทำงานตามเวลาทำงานปกติ {{hours}} สถานที่ทำงาน {{workplace}} ซึ่งนายจ้างอาจเปลี่ยนแปลงได้ตามความเหมาะสมของงาน\n\n"+
+"ข้อ 5. วันหยุดและวันลา\nลูกจ้างมีสิทธิวันหยุดและวันลาตามที่กฎหมายคุ้มครองแรงงานกำหนด และตามระเบียบของนายจ้าง\n\n"+
+"ข้อ 6. การรักษาความลับและทรัพย์สินทางปัญญา\nลูกจ้างต้องรักษาความลับของนายจ้างตามข้อตกลงรักษาความลับ (NDA) ที่ลงนามไว้ต่างหาก และงานสร้างสรรค์ที่ลูกจ้างทำขึ้นในการปฏิบัติงานให้นายจ้างเป็นสิทธิของนายจ้าง เว้นแต่กฎหมายกำหนดไว้เป็นอย่างอื่น\n\n"+
+"ข้อ 7. การปฏิบัติตามระเบียบ\nลูกจ้างต้องปฏิบัติตามข้อบังคับเกี่ยวกับการทำงานและระเบียบ คำสั่ง นโยบายของนายจ้างโดยเคร่งครัด\n\n"+
+"ข้อ 8. การสิ้นสุดสัญญา\nการเลิกจ้างและการลาออกเป็นไปตามกฎหมายคุ้มครองแรงงาน ข้อบังคับเกี่ยวกับการทำงาน และเงื่อนไขการบอกกล่าวล่วงหน้า\n\n"+
+"สัญญานี้ทำขึ้นสองฉบับ มีข้อความถูกต้องตรงกัน คู่สัญญาได้อ่านและเข้าใจข้อความโดยตลอดแล้ว จึงลงลายมือชื่อไว้เป็นสำคัญต่อหน้าพยาน",
+fixed:
+"สัญญาจ้างแรงงานมีกำหนดระยะเวลา\n"+
+"ทำที่ {{workplace}}\nวันที่ {{docDate}}\n\n"+
+"สัญญาฉบับนี้ทำขึ้นระหว่าง {{company}} ซึ่งต่อไปในสัญญานี้เรียกว่า \"นายจ้าง\" โดย {{signerName}} ตำแหน่ง {{signerTitle}} ผู้มีอำนาจลงนาม ฝ่ายหนึ่ง กับ {{empName}} เลขประจำตัวประชาชน/หนังสือเดินทาง {{idNumber}} ที่อยู่ {{address}} ซึ่งต่อไปในสัญญานี้เรียกว่า \"ลูกจ้าง\" อีกฝ่ายหนึ่ง คู่สัญญาตกลงกันดังต่อไปนี้\n\n"+
+"ข้อ 1. ตำแหน่งและหน้าที่\nนายจ้างตกลงจ้างลูกจ้างให้ทำงานในตำแหน่ง {{position}} แผนก {{department}} ตามคำบรรยายลักษณะงานของตำแหน่งดังกล่าว\n\n"+
+"ข้อ 2. ระยะเวลาการจ้าง\nสัญญานี้มีกำหนดตั้งแต่วันที่ {{startDate}} ถึงวันที่ {{contractEnd}} และสิ้นสุดลงเมื่อครบกำหนดโดยไม่ต้องบอกกล่าวล่วงหน้า หากคู่สัญญาประสงค์จะต่อสัญญาต้องตกลงเป็นหนังสืออีกครั้ง\n\n"+
+"ข้อ 3. ค่าจ้าง\nนายจ้างตกลงจ่ายค่าจ้างเดือนละ {{salary}} บาท ตามรอบการจ่ายเงินเดือนของบริษัท โดยหักภาษีและเงินสมทบตามที่กฎหมายกำหนด\n\n"+
+"ข้อ 4. เวลาทำงาน\nลูกจ้างทำงานตามเวลาทำงานปกติ {{hours}} สถานที่ทำงาน {{workplace}}\n\n"+
+"ข้อ 5. วันหยุดและวันลา\nเป็นไปตามกฎหมายคุ้มครองแรงงานและระเบียบของนายจ้าง\n\n"+
+"ข้อ 6. การรักษาความลับ\nลูกจ้างต้องรักษาความลับของนายจ้างตามข้อตกลงรักษาความลับ (NDA) ที่ลงนามไว้ต่างหาก\n\n"+
+"ข้อ 7. การปฏิบัติตามระเบียบ\nลูกจ้างต้องปฏิบัติตามข้อบังคับเกี่ยวกับการทำงานและระเบียบ นโยบายของนายจ้าง\n\n"+
+"สัญญานี้ทำขึ้นสองฉบับ มีข้อความถูกต้องตรงกัน คู่สัญญาได้อ่านและเข้าใจข้อความโดยตลอดแล้ว จึงลงลายมือชื่อไว้เป็นสำคัญต่อหน้าพยาน",
+nda:
+"ข้อตกลงรักษาความลับ (Non-Disclosure Agreement)\n"+
+"ทำที่ {{workplace}}\nวันที่ {{docDate}}\n\n"+
+"ข้อตกลงฉบับนี้ทำขึ้นระหว่าง {{company}} ซึ่งต่อไปเรียกว่า \"บริษัท\" กับ {{empName}} ตำแหน่ง {{position}} ซึ่งต่อไปเรียกว่า \"ผู้รับข้อมูล\" คู่ตกลงกันดังนี้\n\n"+
+"ข้อ 1. ข้อมูลที่เป็นความลับ\n\"ข้อมูลที่เป็นความลับ\" หมายถึง ข้อมูลทุกประเภทของบริษัทและลูกค้าของบริษัท ไม่ว่าจะอยู่ในรูปแบบใด ได้แก่ สูตรผลิตภัณฑ์ กรรมวิธีการผลิต ข้อมูลวิจัยและพัฒนา แผนการตลาด ข้อมูลลูกค้า ผู้ขาย ราคา ต้นทุน ข้อมูลทางการเงิน ข้อมูลบุคลากร และข้อมูลอื่นที่บริษัทระบุว่าเป็นความลับหรือโดยสภาพควรถือเป็นความลับ\n\n"+
+"ข้อ 2. หน้าที่ของผู้รับข้อมูล\nผู้รับข้อมูลตกลงว่า (ก) จะรักษาข้อมูลที่เป็นความลับไว้เป็นความลับอย่างเคร่งครัด (ข) จะใช้ข้อมูลเฉพาะเพื่อการปฏิบัติงานให้บริษัทเท่านั้น (ค) จะไม่เปิดเผย ทำสำเนา ถ่ายภาพ หรือส่งต่อให้บุคคลภายนอกโดยไม่ได้รับอนุญาตเป็นหนังสือจากบริษัท (ง) จะปฏิบัติตามมาตรการรักษาความปลอดภัยของข้อมูลที่บริษัทกำหนด\n\n"+
+"ข้อ 3. ข้อยกเว้น\nข้อตกลงนี้ไม่ใช้กับข้อมูลที่ (ก) เป็นที่รู้จักโดยทั่วไปโดยมิใช่ความผิดของผู้รับข้อมูล (ข) ผู้รับข้อมูลได้มาโดยชอบจากบุคคลที่สามที่ไม่มีหน้าที่รักษาความลับ หรือ (ค) ต้องเปิดเผยตามคำสั่งของหน่วยงานรัฐหรือศาลตามกฎหมาย โดยผู้รับข้อมูลต้องแจ้งบริษัททราบโดยเร็ว\n\n"+
+"ข้อ 4. ระยะเวลา\nหน้าที่รักษาความลับมีผลตั้งแต่วันที่ {{startDate}} ตลอดระยะเวลาการจ้าง และต่อเนื่องไปอีก 2 ปีนับจากวันที่สิ้นสุดการจ้าง เว้นแต่ข้อมูลที่เป็นความลับทางการค้าซึ่งต้องรักษาตราบเท่าที่ยังคงเป็นความลับ\n\n"+
+"ข้อ 5. การคืนข้อมูล\nเมื่อสิ้นสุดการจ้างหรือเมื่อบริษัทร้องขอ ผู้รับข้อมูลต้องส่งคืนหรือทำลายเอกสาร ไฟล์ และสื่อที่มีข้อมูลที่เป็นความลับทั้งหมดโดยไม่เก็บสำเนาไว้\n\n"+
+"ข้อ 6. ความรับผิด\nหากผู้รับข้อมูลฝ่าฝืนข้อตกลงนี้ บริษัทมีสิทธิเรียกให้ชดใช้ค่าเสียหายที่เกิดขึ้นจริง และดำเนินการทางวินัยและทางกฎหมายตามความเหมาะสม\n\n"+
+"ข้อ 7. กฎหมายที่ใช้บังคับ\nข้อตกลงนี้อยู่ภายใต้กฎหมายไทย\n\n"+
+"ข้อตกลงนี้ทำขึ้นสองฉบับ มีข้อความถูกต้องตรงกัน คู่ตกลงได้อ่านและเข้าใจข้อความโดยตลอดแล้ว จึงลงลายมือชื่อไว้เป็นสำคัญ"
+  };
+  var DEF_SIGNER = { CMN:{name:'',title:'กรรมการผู้จัดการ'}, CIL:{name:'',title:'กรรมการผู้จัดการ'} };
+
+  function settings(){ DB.settings = DB.settings||{}; var s = DB.settings.docTemplates = DB.settings.docTemplates||{}; s.signer = s.signer||{}; return s; }
+  function tpl(kind){ var s = settings(); return s[kind] || DEFAULT_TPL[kind]; }
+  function signerOf(co){ var s = settings().signer[co] || {}; return { name:s.name||DEF_SIGNER[co].name, title:s.title||DEF_SIGNER[co].title }; }
+  function longDate(v){ var d = v ? new Date(v) : null; if(!d || isNaN(d)) return '____________'; return d.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}); }
+  function who(){ return new Promise(function(res){ try{ supabaseClient.auth.getSession().then(function(r){ res((r&&r.data&&r.data.session&&r.data.session.user&&r.data.session.user.email)||'ไม่ทราบผู้ใช้'); }).catch(function(){res('ไม่ทราบผู้ใช้');}); }catch(e){ res('ไม่ทราบผู้ใช้'); } }); }
+
+  /* ---------- หน้าจอหลัก ---------- */
+  function render(){
+    var host = document.getElementById('contractsPanel'); if(!host) return;
+    DB.contractDocs = DB.contractDocs||[];
+    var docs = DB.contractDocs.slice().sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); });
+    var kindsHtml = Object.keys(KINDS).map(function(k){ return '<button class="ct-kind" onclick="ctNew(\''+k+'\')"><div class="ic">'+KINDS[k].icon+'</div><b>'+KINDS[k].label+'</b><span>'+KINDS[k].desc+'</span></button>'; }).join('');
+    var rows = docs.map(function(d){
+      var files = (d.files||[]).map(function(f,i){ return '<div class="small"><a href="#" onclick="ctFileOpen(\''+attr(d.id)+'\','+i+');return false">📎 '+esc(f.name)+'</a> <a href="#" title="ลบไฟล์" onclick="ctFileDel(\''+attr(d.id)+'\','+i+');return false">✕</a></div>'; }).join('');
+      var sel = '<select onchange="ctStatus(\''+attr(d.id)+'\',this.value)">'+STATUSES.map(function(s){ return '<option'+(s===d.status?' selected':'')+'>'+s+'</option>'; }).join('')+'</select>';
+      return '<tr><td><strong>'+esc(d.empName)+'</strong><div class="small">'+esc(d.empCode||'')+'</div></td><td>'+esc((KINDS[d.kind]||{}).label||d.kind)+'</td><td><span class="badge '+esc(d.company)+'">'+esc(d.company)+'</span></td><td>'+esc(longDate(d.createdAt))+'<div class="small">'+esc(d.by||'')+'</div></td><td>'+sel+'</td><td>'+files+'<button class="btn-ghost btn-sm" onclick="ctFileAdd(\''+attr(d.id)+'\')">+ แนบไฟล์ที่เซ็นแล้ว</button></td><td><button class="btn-ghost btn-sm" onclick="ctReprint(\''+attr(d.id)+'\')">🖨️ พิมพ์ซ้ำ</button> <button class="btn-danger btn-sm" onclick="ctDel(\''+attr(d.id)+'\')">ลบ</button></td></tr>';
+    }).join('');
+    host.innerHTML =
+      '<section class="card"><div class="toolbar"><div class="toolbar-left"><h2 style="margin:0">📝 สัญญาจ้าง & NDA</h2></div><div class="toolbar-right"><button class="btn-ghost" onclick="ctEditTpl()">⚙️ แก้ไขแม่แบบ / ผู้ลงนาม</button></div></div>'
+      +'<div class="sub">เลือกพนักงานแล้วระบบเติมข้อมูลลงเอกสารให้อัตโนมัติ พิมพ์หรือบันทึกเป็น PDF ได้ทันที</div>'
+      +'<div class="ct-warn">⚠️ ข้อความในแม่แบบเป็น<b>ข้อความตั้งต้น</b>เพื่อให้ใช้งานได้ทันที ควรให้ฝ่ายกฎหมายหรือที่ปรึกษาตรวจก่อนใช้จริง และแก้ไขได้ที่ปุ่ม "แก้ไขแม่แบบ" • เงินเดือนที่กรอกจะแสดงในเอกสารเท่านั้น ระบบ<b>ไม่บันทึก</b>เงินเดือนและเลขบัตร</div>'
+      +'<div class="ct-grid">'+kindsHtml+'</div></section>'
+      +'<section class="card"><h3 style="margin-top:0">เอกสารที่สร้างแล้ว ('+docs.length+')</h3><div class="table-wrap"><table><thead><tr><th>พนักงาน</th><th>เอกสาร</th><th>บริษัท</th><th>สร้างเมื่อ</th><th>สถานะ</th><th>ไฟล์ที่ลงนาม</th><th></th></tr></thead><tbody>'
+      +(rows||'<tr><td colspan="7"><div class="empty">ยังไม่มีเอกสาร — กดเลือกประเภทเอกสารด้านบนเพื่อเริ่ม</div></td></tr>')+'</tbody></table></div></section>';
+  }
+  window.renderContractsPanel = render;
+
+  /* ---------- สร้างเอกสาร ---------- */
+  function modal(html){
+    closeModal();
+    var bg = document.createElement('div'); bg.className='ct-modal-bg'; bg.id='ctModal';
+    bg.innerHTML = '<div class="ct-modal">'+html+'</div>';
+    bg.addEventListener('mousedown',function(e){ if(e.target===bg) closeModal(); });
+    document.body.appendChild(bg);
+  }
+  function closeModal(){ var m = document.getElementById('ctModal'); if(m) m.remove(); }
+  window.ctClose = closeModal;
+  function val(id){ var e = document.getElementById(id); return e ? e.value.trim() : ''; }
+  function employees(){ return (DB.employees||[]).filter(function(e){ return !e.status || e.status==='active' || e.status==='Active' || e.status==='ปฏิบัติงาน'; }); }
+
+  window.ctNew = function(kind){
+    var emps = employees().slice().sort(function(a,b){ return String(b.startDate||'').localeCompare(String(a.startDate||'')); });
+    var opts = '<option value="">— กรอกเอง (ผู้สมัครที่ยังไม่อยู่ในระบบ) —</option>'+emps.map(function(e){ return '<option value="'+attr(e.empCode)+'">'+esc(e.fullName)+' ('+esc(e.empCode)+(e.startDate?' · เริ่ม '+esc(e.startDate):'')+')</option>'; }).join('');
+    modal('<h3 style="margin-top:0">'+KINDS[kind].icon+' สร้าง'+KINDS[kind].label+'</h3>'
+      +'<div class="ct-form">'
+      +'<div class="full"><label>เลือกพนักงาน (ใหม่สุดอยู่บนสุด)</label><select id="ct_emp" onchange="ctFill()">'+opts+'</select></div>'
+      +'<div><label>บริษัท</label><select id="ct_co" onchange="ctFill(true)"><option value="CMN">CMN</option><option value="CIL">CIL</option></select></div>'
+      +'<div><label>ชื่อ-นามสกุล</label><input id="ct_name"></div>'
+      +'<div><label>เลขบัตรประชาชน/พาสปอร์ต</label><input id="ct_id"></div>'
+      +'<div class="full"><label>ที่อยู่ลูกจ้าง</label><input id="ct_addr" placeholder="กรอกตามบัตรประชาชน"></div>'
+      +'<div><label>ตำแหน่ง</label><input id="ct_pos"></div>'
+      +'<div><label>แผนก</label><input id="ct_dept"></div>'
+      +'<div><label>วันเริ่มงาน</label><input id="ct_start" type="date"></div>'
+      +(kind==='fixed'?'<div><label>วันสิ้นสุดสัญญา</label><input id="ct_end" type="date"></div>':'<div><label>ระยะทดลองงาน (วัน)</label><input id="ct_prob" type="number" value="120"></div>')
+      +'<div><label>เงินเดือน (บาท) — ไม่บันทึกในระบบ</label><input id="ct_sal" placeholder="เช่น 25,000"></div>'
+      +'<div><label>วันที่ทำสัญญา</label><input id="ct_date" type="date" value="'+new Date().toISOString().slice(0,10)+'"></div>'
+      +'<div><label>เวลาทำงาน</label><input id="ct_hours" value="จันทร์ถึงศุกร์ 08:30 – 17:30 น."></div>'
+      +'<div><label>สถานที่ทำงาน</label><input id="ct_place" value="47 ซอยสุขุมวิท 60/1"></div>'
+      +'<div><label>ผู้ลงนามฝ่ายบริษัท</label><input id="ct_sname"></div>'
+      +'<div><label>ตำแหน่งผู้ลงนาม</label><input id="ct_stitle"></div>'
+      +'</div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn-ghost" onclick="ctClose()">ยกเลิก</button><button class="btn-primary" onclick="ctGenerate(\''+kind+'\')">🖨️ สร้างและพิมพ์ / บันทึก PDF</button></div>');
+    window.ctFill(true);
+  };
+  window.ctFill = function(coOnly){
+    var code = val('ct_emp'), e = (DB.employees||[]).find(function(x){ return x.empCode===code; });
+    var set = function(id,v){ var el = document.getElementById(id); if(el) el.value = v==null?'':v; };
+    if(e && !coOnly){
+      set('ct_co', e.company||'CMN'); set('ct_name', e.fullName); set('ct_id', e.idNumber||''); set('ct_pos', e.position); set('ct_dept', e.department);
+      set('ct_start', (e.startDate||'').slice(0,10)); set('ct_prob', e.probationDays||120); set('ct_end', (e.contractEndDate||'').slice(0,10));
+    }
+    var co = val('ct_co')||'CMN', s = signerOf(co); set('ct_sname', s.name); set('ct_stitle', s.title);
+  };
+
+  function build(kind, f){
+    var vars = { company:(CO[f.company]||CO.CMN).th, empName:f.empName, idNumber:f.idNumber||'____________', address:f.address||'______________________________', position:f.position||'-', department:f.department||'-',
+      startDate:longDate(f.startDate), probationDays:f.probationDays||120, contractEnd:longDate(f.contractEnd), salary:f.salary||'__________', hours:f.hours, workplace:f.workplace, signerName:f.signerName||'__________________', signerTitle:f.signerTitle||'', docDate:longDate(f.docDate), empCode:f.empCode||'' };
+    var text = tpl(kind).replace(/\{\{(\w+)\}\}/g,function(m,k){ return vars[k]!=null ? vars[k] : m; });
+    var blocks = text.split(/\n\n+/).map(function(b,i){
+      var lines = b.split('\n');
+      if(i===0) return '<h1>'+esc(lines[0])+'</h1>'+(lines.length>1?'<p class="c">'+lines.slice(1).map(esc).join('<br>')+'</p>':'');
+      if(/^ข้อ\s*\d+/.test(lines[0])) return '<p><b>'+esc(lines[0])+'</b><br>'+lines.slice(1).map(esc).join('<br>')+'</p>';
+      return '<p>'+lines.map(esc).join('<br>')+'</p>';
+    }).join('');
+    var sig = '<table class="sig"><tr><td>ลงชื่อ ..............................................<br>('+esc(vars.signerName)+')<br>'+esc(vars.signerTitle)+' — '+esc(vars.company)+'<br><b>นายจ้าง / บริษัท</b></td>'
+      +'<td>ลงชื่อ ..............................................<br>('+esc(f.empName)+')<br>&nbsp;<br><b>'+(kind==='nda'?'ผู้รับข้อมูล':'ลูกจ้าง')+'</b></td></tr>'
+      +'<tr><td>ลงชื่อ .............................................. พยาน<br>(..............................................)</td><td>ลงชื่อ .............................................. พยาน<br>(..............................................)</td></tr></table>';
+    return blocks+sig;
+  }
+  var PRINT_CSS = '@page{size:A4;margin:20mm 18mm}body{font-family:"Sarabun","Tahoma",sans-serif;font-size:15px;line-height:1.7;color:#000}h1{font-size:21px;text-align:center;margin:0 0 6px}p{margin:0 0 10px;text-align:justify}p.c{text-align:center}table.sig{width:100%;margin-top:34px;border-collapse:collapse}table.sig td{width:50%;text-align:center;padding:16px 8px;vertical-align:top}';
+  function printDoc(title, body){
+    var w = window.open('','_blank'); if(!w){ toast('เบราว์เซอร์บล็อกหน้าต่างใหม่ กรุณาอนุญาต pop-up'); return; }
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title><link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet"><style>'+PRINT_CSS+'</style></head><body>'+body+'</body></html>');
+    w.document.close(); setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 700);
+  }
+  function readForm(kind){
+    return { company:val('ct_co')||'CMN', empCode:val('ct_emp'), empName:val('ct_name'), idNumber:val('ct_id'), address:val('ct_addr'), position:val('ct_pos'), department:val('ct_dept'),
+      startDate:val('ct_start'), contractEnd:val('ct_end'), probationDays:val('ct_prob'), salary:val('ct_sal'), docDate:val('ct_date'), hours:val('ct_hours'), workplace:val('ct_place'), signerName:val('ct_sname'), signerTitle:val('ct_stitle') };
+  }
+  window.ctGenerate = function(kind){
+    var f = readForm(kind);
+    if(!f.empName){ toast('กรุณากรอกชื่อ-นามสกุล'); return; }
+    if(kind==='fixed' && !f.contractEnd){ toast('กรุณาระบุวันสิ้นสุดสัญญา'); return; }
+    if(kind!=='nda' && !f.salary){ if(!confirm('ยังไม่ได้กรอกเงินเดือน เอกสารจะเว้นช่องว่างไว้ ต้องการสร้างต่อไหม?')) return; }
+    who().then(function(by){
+      DB.contractDocs = DB.contractDocs||[];
+      var rec = { id:uid('ctd_'), empCode:f.empCode, empName:f.empName, company:f.company, kind:kind, createdAt:new Date().toISOString(), by:by, status:'ร่าง', files:[],
+        snap:{ position:f.position, department:f.department, startDate:f.startDate, contractEnd:f.contractEnd, probationDays:f.probationDays, docDate:f.docDate, hours:f.hours, workplace:f.workplace, signerName:f.signerName, signerTitle:f.signerTitle } };
+      DB.contractDocs.push(rec); saveDB();
+      printDoc(KINDS[kind].label+' - '+f.empName, build(kind,f));
+      closeModal(); render(); toast('สร้างเอกสารแล้ว');
+    });
+  };
+  window.ctReprint = function(id){
+    var d = (DB.contractDocs||[]).find(function(x){ return x.id===id; }); if(!d) return;
+    var e = (DB.employees||[]).find(function(x){ return x.empCode===d.empCode; }) || {};
+    var f = Object.assign({ company:d.company, empCode:d.empCode, empName:d.empName, idNumber:e.idNumber||'', address:'', salary:'' }, d.snap||{});
+    toast('พิมพ์ซ้ำ: เงินเดือน เลขบัตร และที่อยู่ไม่ถูกบันทึกไว้ จะเป็นช่องว่างให้เขียนเอง');
+    printDoc(KINDS[d.kind].label+' - '+d.empName, build(d.kind,f));
+  };
+  window.ctStatus = function(id,s){ var d=(DB.contractDocs||[]).find(function(x){return x.id===id;}); if(!d) return; d.status=s; if(s==='ลงนามแล้ว') d.signedAt=new Date().toISOString(); saveDB(); render(); };
+  window.ctDel = function(id){ if(!confirm('ลบรายการเอกสารนี้ใช่ไหม? (ไฟล์ที่แนบไว้จะถูกลบด้วย กู้คืนไม่ได้)')) return;
+    var d=(DB.contractDocs||[]).find(function(x){return x.id===id;}); if(d&&d.files&&d.files.length){ try{ supabaseClient.storage.from('resumes').remove(d.files.map(function(f){return f.path;})); }catch(e){} }
+    DB.contractDocs=(DB.contractDocs||[]).filter(function(x){return x.id!==id;}); saveDB(); render(); };
+
+  /* ---------- ไฟล์ที่ลงนาม ---------- */
+  window.ctFileAdd = function(id){
+    var inp=document.createElement('input'); inp.type='file'; inp.multiple=true; inp.accept='.pdf,image/*,.doc,.docx';
+    inp.onchange=function(){
+      var files=Array.from(inp.files||[]); if(!files.length) return;
+      supabaseClient.auth.getSession().then(function(r){
+        if(!r||!r.data||!r.data.session){ toast('ต้องล็อกอินก่อนจึงจะแนบไฟล์ได้'); return; }
+        var d=(DB.contractDocs||[]).find(function(x){return x.id===id;}); if(!d) return; d.files=d.files||[];
+        Promise.all(files.map(function(f){
+          if(f.size>10*1024*1024){ toast('ไฟล์ '+f.name+' ใหญ่เกิน 10 MB'); return Promise.resolve(); }
+          var path='hrd/cdoc/'+id+'/'+Date.now()+'_'+Math.random().toString(36).slice(2,6)+'_'+f.name.replace(/[^\w.\-]+/g,'_');
+          return supabaseClient.storage.from('resumes').upload(path,f,{contentType:f.type||'application/octet-stream'}).then(function(u){
+            if(u.error) toast('แนบไฟล์ไม่สำเร็จ: '+u.error.message+' (ต้องรัน recruit_setup.sql ใน Supabase ก่อน)');
+            else d.files.push({name:f.name,path:path,size:f.size,at:new Date().toISOString()});
+          });
+        })).then(function(){ if(d.files.length && d.status!=='ลงนามแล้ว'){ d.status='ลงนามแล้ว'; d.signedAt=new Date().toISOString(); } saveDB(); render(); toast('แนบไฟล์แล้ว'); });
+      });
+    };
+    inp.click();
+  };
+  window.ctFileOpen = function(id,i){
+    var d=(DB.contractDocs||[]).find(function(x){return x.id===id;}), f=d&&d.files&&d.files[i]; if(!f) return;
+    var w=window.open('','_blank');
+    supabaseClient.storage.from('resumes').createSignedUrl(f.path,3600).then(function(r){
+      if(r.error){ if(w) w.close(); toast('เปิดไฟล์ไม่สำเร็จ: '+r.error.message); } else if(w) w.location.href=r.data.signedUrl; else toast('เบราว์เซอร์บล็อกหน้าต่างใหม่');
+    });
+  };
+  window.ctFileDel = function(id,i){
+    var d=(DB.contractDocs||[]).find(function(x){return x.id===id;}), f=d&&d.files&&d.files[i]; if(!f) return;
+    if(!confirm('ลบไฟล์ "'+f.name+'" ใช่ไหม? (กู้คืนไม่ได้)')) return;
+    try{ supabaseClient.storage.from('resumes').remove([f.path]); }catch(e){}
+    d.files.splice(i,1); saveDB(); render();
+  };
+
+  /* ---------- แก้ไขแม่แบบ / ผู้ลงนาม ---------- */
+  window.ctEditTpl = function(){
+    var ph = ['company','empName','idNumber','address','position','department','startDate','probationDays','contractEnd','salary','hours','workplace','signerName','signerTitle','docDate'];
+    var sg = settings().signer;
+    modal('<h3 style="margin-top:0">⚙️ แก้ไขแม่แบบเอกสาร</h3>'
+      +'<div class="ct-warn">ตัวแปรที่ใช้ได้ (พิมพ์ในรูปแบบ <code>{{ชื่อตัวแปร}}</code> ระบบจะเติมข้อมูลให้อัตโนมัติ):<br><code>'+ph.map(function(p){return '{{'+p+'}}';}).join(' ')+'</code><br>บรรทัดแรกเป็นหัวเรื่อง เว้นบรรทัดว่างเพื่อแยกย่อหน้า ขึ้นต้นด้วย "ข้อ 1." เพื่อทำหัวข้อตัวหนา</div>'
+      +'<div class="ct-form"><div><label>CMN ผู้ลงนาม</label><input id="st_cmn_n" value="'+attr((sg.CMN||{}).name||'')+'"></div><div><label>CMN ตำแหน่ง</label><input id="st_cmn_t" value="'+attr((sg.CMN||{}).title||DEF_SIGNER.CMN.title)+'"></div>'
+      +'<div><label>CIL ผู้ลงนาม</label><input id="st_cil_n" value="'+attr((sg.CIL||{}).name||'')+'"></div><div><label>CIL ตำแหน่ง</label><input id="st_cil_t" value="'+attr((sg.CIL||{}).title||DEF_SIGNER.CIL.title)+'"></div>'
+      +['contract','fixed','nda'].map(function(k){ return '<div class="full"><label>'+KINDS[k].label+' <a href="#" onclick="ctResetTpl(\''+k+'\');return false">รีเซ็ตเป็นค่าเริ่มต้น</a></label><textarea id="tp_'+k+'" rows="9">'+esc(tpl(k))+'</textarea></div>'; }).join('')
+      +'</div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn-ghost" onclick="ctClose()">ยกเลิก</button><button class="btn-primary" onclick="ctSaveTpl()">บันทึก</button></div>');
+  };
+  window.ctResetTpl = function(k){ var t=document.getElementById('tp_'+k); if(t && confirm('กลับไปใช้ข้อความเริ่มต้น?')) t.value = DEFAULT_TPL[k]; };
+  window.ctSaveTpl = function(){
+    var s = settings();
+    ['contract','fixed','nda'].forEach(function(k){ var v = document.getElementById('tp_'+k).value; if(v.trim() && v!==DEFAULT_TPL[k]) s[k]=v; else delete s[k]; });
+    s.signer.CMN = { name:val('st_cmn_n'), title:val('st_cmn_t') }; s.signer.CIL = { name:val('st_cil_n'), title:val('st_cil_t') };
+    saveDB(); closeModal(); toast('บันทึกแม่แบบแล้ว');
+  };
+
+  /* ---------- ติดตั้งแท็บย่อยใน "ติดตามการเริ่มงาน" ---------- */
+  function install(){
+    var ref = document.getElementById('onboardSubBtnCalendar') || document.getElementById('onboardSubBtnNamecard');
+    var refView = document.getElementById('onboarding-sub-calendar') || document.getElementById('onboarding-sub-namecard');
+    if(!ref || !refView || document.getElementById('onboarding-sub-contracts')) return;
+    var btn = document.createElement('button'); btn.className='subnav-btn'; btn.id='onboardSubBtnContracts';
+    btn.setAttribute('onclick',"showOnboardingSubtab('contracts')"); btn.textContent='📝 สัญญาจ้าง & NDA';
+    ref.insertAdjacentElement('afterend', btn);
+    var view = document.createElement('div'); view.className='subview'; view.id='onboarding-sub-contracts'; view.innerHTML='<div id="contractsPanel"></div>';
+    refView.insertAdjacentElement('afterend', view);
+    var prev = window.showOnboardingSubtab;
+    window.showOnboardingSubtab = function(name){
+      var on = name==='contracts';
+      prev(name);
+      view.classList.toggle('active', on); btn.classList.toggle('active', on);
+      if(on){
+        ['onboarding-sub-calendar'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove('active'); });
+        ['onboardSubBtnCalendar'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove('active'); });
+        render();
+      }
+    };
+    showOnboardingSubtab = window.showOnboardingSubtab;
+  }
+  install();
+})();
+</script>
 </body>
 </html>
