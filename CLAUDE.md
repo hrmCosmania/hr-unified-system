@@ -80,6 +80,18 @@ Users log in with email and password (`supabaseClient.auth.signInWithPassword`),
 - Vercel serves every file in the repo as a static file. `.vercelignore` keeps `CLAUDE.md` and local secrets off the site, so add any other internal-only file there.
 - Commit message style: `Module: what changed in plain words`. Example: `Recruitment: keep local copy of resumes so attached files always open`.
 
+## Syncing between computers (pull / push)
+
+`sync.js` wraps git for the owner (Node only, no install). Run from this folder:
+
+```bash
+node sync.js status          # is this machine up to date?
+node sync.js pull            # fetch latest work from GitHub (fast-forward only; refuses if local edits are unsaved)
+node sync.js push "Module: what changed"   # commit + rebase onto GitHub + push (production deploys automatically)
+```
+
+Flags: `--yes` (no prompts, includes new files) and `--dry-run` (show only). Double-click launchers: `pull.cmd` / `push.cmd` (Windows), `pull.command` / `push.command` (Mac; first time `chmod +x *.command`). All of these are listed in `.vercelignore`. When the owner says "pull" or "push", run these.
+
 ## Checking changes
 
 There are no automated tests. Serve the folder and open it in a browser:
