@@ -8535,7 +8535,7 @@ window.refreshPerfEmployeeSelects=function(){
 <script id="employee-profile-script">
 (function(){
   var currentCode = '', currentTab = 'all';
-  var TABS = [['all','ข้อมูลพื้นฐาน'],['person','ประวัติส่วนตัว'],['work','ประวัติการทำงาน'],['leave','การลา & สายงาน'],['train','การฝึกอบรม'],['perf','การประเมินผล'],['jd','JD / KPI'],['assets','สินทรัพย์'],['custom','ข้อมูลกำหนดเอง'],['miles','ไทม์ไลน์'],['audit','ประวัติการแก้ไข']];
+  var TABS = [['all','ข้อมูลพื้นฐาน'],['person','ประวัติส่วนตัว'],['pay','💰 เงินเดือน & การจ่าย'],['work','ประวัติการทำงาน'],['leave','การลา & สายงาน'],['train','การฝึกอบรม'],['perf','การประเมินผล'],['jd','JD / KPI'],['assets','สินทรัพย์'],['custom','ข้อมูลกำหนดเอง'],['miles','ไทม์ไลน์'],['audit','ประวัติการแก้ไข']];
 
   function esc(s){ return escapeHtml(String(s == null ? '' : s)); }
   function attr(s){ return v4EscapeAttr(s); }
@@ -9643,7 +9643,7 @@ html:not(.theme-soft) .side-sub button.on{background:rgba(255,255,255,.14);color
 (function(){
   function call(fn){ var a=[].slice.call(arguments,1); return function(){ var f=window[fn]; if(typeof f==='function') return f.apply(null,a); }; }
   var MODS = {
-    employees:[['search','ค้นหาพนักงาน',call('showEmployeeSubtab','search')],['add','เพิ่มข้อมูลพนักงาน',call('showEmployeeSubtab','add')]],
+    employees:[['search','ค้นหาพนักงาน',call('showEmployeeSubtab','search')],['add','เพิ่มข้อมูลพนักงาน',call('showEmployeeSubtab','add')],['paysettings','ตั้งค่า (เงินเดือน/เวลา)',call('showEmployeeSubtab','paysettings')]],
     onboarding:[['checklist','Checklist เริ่มงานใหม่',call('showOnboardingSubtab','checklist')],['birthday','วันเกิด',call('showOnboardingSubtab','birthday')],['anniversary','ครบรอบการทำงาน',call('showOnboardingSubtab','anniversary')],['probation','ทดลองงาน',call('showOnboardingSubtab','probation')],['namecard','นามบัตร QR',call('showOnboardingSubtab','namecard')],['calendar','ปฏิทินอัตโนมัติ',call('showOnboardingSubtab','calendar')],['contracts','สัญญาจ้าง & NDA',call('showOnboardingSubtab','contracts')]],
     recruitment:[['dashboard','ภาพรวม',call('rcShowSub','dashboard')],['jobs','ตำแหน่ง/ใบขอ',call('rcShowSub','jobs')],['candidates','ผู้สมัคร',call('rcShowSub','candidates')],['pipeline','Pipeline',call('rcShowSub','pipeline')],['reports','KPI & SLA',call('rcShowSub','reports')],['settings','ตั้งค่าการสรรหา',call('rcOpenSettings')]],
     training:[['overview','ภาพรวม',call('showTrainingSubtab','overview')],['ojt','OJT (On-the-Job Training)',call('showTrainingSubtab','ojt')],['history','ประวัติการฝึกอบรม',call('showTrainingSubtab','history')],['budget','งบประมาณการฝึกอบรม',call('showTrainingSubtab','budget')],['dsd','ยื่นหลักสูตรกรมพัฒนาฝีมือแรงงาน',call('showTrainingSubtab','dsd')],['followup','ติดตามผลหลังอบรม',call('showTrainingSubtab','followup')],['need','Training Need & Roadmap',call('showTrainingSubtab','need')]],
@@ -9723,8 +9723,8 @@ html:not(.theme-soft) .side-sub button.on{background:rgba(255,255,255,.14);color
 
   /* ---------- Audit log ---------- */
   var LABELS = { fullName:'ชื่อ-นามสกุล', nickname:'ชื่อเล่น', company:'บริษัท', employmentType:'ประเภทการจ้าง', division:'ฝ่าย', department:'แผนก', position:'ตำแหน่ง', jobCode:'รหัสตำแหน่ง', level:'ระดับ', parentId:'หัวหน้างาน', supervisorEmail:'อีเมลหัวหน้างาน', phone:'เบอร์โทร', email:'อีเมล', birthDate:'วันเกิด', startDate:'วันเริ่มงาน', probationDays:'วันทดลองงาน', status:'สถานะ', endDate:'วันที่สิ้นสุดงาน', contractEndDate:'วันสิ้นสุดสัญญา', note:'หมายเหตุ', emergencyName:'ผู้ติดต่อฉุกเฉิน', emergencyPhone:'เบอร์ฉุกเฉิน', emergencyRelation:'ความสัมพันธ์ฉุกเฉิน', idNumber:'เลขบัตรประชาชน', empCode:'รหัสพนักงาน',
-    titleName:'คำนำหน้า', gender:'เพศ', nationality:'สัญชาติ', maritalStatus:'สถานภาพสมรส', nameEnFirst:'ชื่อ (ENG)', nameEnLast:'นามสกุล (ENG)', nickEn:'ชื่อเล่น (ENG)', passportNo:'เลขหนังสือเดินทาง', workPermitNo:'เลขใบอนุญาตทำงาน', ssoNo:'เลขประกันสังคม', fingerprintCode:'รหัสลายนิ้วมือ', payType:'ประเภทพนักงาน (รายเดือน/เหมาจ่าย)', regularDate:'วันที่บรรจุ', retirementYear:'ปีที่เกษียณ', hashtags:'Hashtag', hospital:'โรงพยาบาลตามสิทธิ', hospitalRight:'สิทธิรักษา', approvers:'ผู้อนุมัติ' };
-  var SENSITIVE = { idNumber:1, passportNo:1, workPermitNo:1, ssoNo:1 };
+    statelessId:'เลขประจำตัวคนไม่มีสัญชาติไทย',titleName:'คำนำหน้า', gender:'เพศ', nationality:'สัญชาติ', maritalStatus:'สถานภาพสมรส', nameEnFirst:'ชื่อ (ENG)', nameEnLast:'นามสกุล (ENG)', nickEn:'ชื่อเล่น (ENG)', passportNo:'เลขหนังสือเดินทาง', workPermitNo:'เลขใบอนุญาตทำงาน', ssoNo:'เลขประกันสังคม', fingerprintCode:'รหัสลายนิ้วมือ', payType:'ประเภทพนักงาน (รายเดือน/เหมาจ่าย)', regularDate:'วันที่บรรจุ', retirementYear:'ปีที่เกษียณ', hashtags:'Hashtag', hospital:'โรงพยาบาลตามสิทธิ', hospitalRight:'สิทธิรักษา', approvers:'ผู้อนุมัติ' };
+  var SENSITIVE = { statelessId:1, idNumber:1, passportNo:1, workPermitNo:1, ssoNo:1 };
   function show(field,v){ if(v==null||v==='') return ''; if(Array.isArray(v)) v=v.join(', '); v=String(v); return SENSITIVE[field] ? mask(v) : v; }
   window.hrdAudit = function(code, changes, note){
     DB.auditLog = DB.auditLog || [];
@@ -9784,6 +9784,10 @@ html:not(.theme-soft) .side-sub button.on{background:rgba(255,255,255,.14);color
   var LISTS = {
     family:{ title:'👪 ครอบครัว', tab:'person', fields:[{k:'name',label:'ชื่อ-สกุล',req:1},{k:'relation',label:'ความสัมพันธ์',type:'select',options:['บิดา','มารดา','คู่สมรส','บุตร','พี่น้อง','อื่นๆ']},{k:'birthDate',label:'วันเกิด',type:'date'},{k:'occupation',label:'อาชีพ'},{k:'phone',label:'เบอร์โทร'}],
       main:function(x){return '<b>'+esc(x.name)+'</b> <span class="hx-tag">'+esc(x.relation||'-')+'</span>';}, sub:function(x){return [x.occupation,x.phone,x.birthDate?dfmt(x.birthDate):''].filter(Boolean).map(esc).join(' · ');} },
+    address:{ title:'🏠 ที่อยู่', tab:'person', fields:[{k:'type',label:'ประเภทที่อยู่',type:'select',options:['ที่อยู่ตามทะเบียนบ้าน','ที่อยู่ปัจจุบัน','ที่อยู่ที่ติดต่อได้']},{k:'line',label:'บ้านเลขที่ / ถนน / ตำบล / อำเภอ',req:1,span:1},{k:'province',label:'จังหวัด'},{k:'zip',label:'รหัสไปรษณีย์'},{k:'phone',label:'โทรศัพท์'}],
+      main:function(x){return '<b>'+esc(x.type||'ที่อยู่')+'</b> · '+esc(x.line);}, sub:function(x){return [x.province,x.zip,x.phone].filter(Boolean).map(esc).join(' · ');} },
+    typing:{ title:'⌨️ ความสามารถทางด้านพิมพ์ดีด', tab:'person', fields:[{k:'lang',label:'ภาษา',type:'select',options:['ไทย','อังกฤษ']},{k:'wpm',label:'ความเร็ว (คำ/นาที)',type:'number'},{k:'note',label:'หมายเหตุ'}],
+      main:function(x){return '<b>พิมพ์ดีด'+esc(x.lang||'')+'</b> '+(x.wpm?'<span class="hx-tag">'+esc(x.wpm)+' คำ/นาที</span>':'');}, sub:function(x){return esc(x.note||'');} },
     workHistory:{ title:'💼 ประวัติการทำงานก่อนเข้าบริษัท', tab:'person', fields:[{k:'company',label:'บริษัท',req:1},{k:'position',label:'ตำแหน่ง'},{k:'from',label:'ตั้งแต่',type:'date'},{k:'to',label:'ถึง',type:'date'},{k:'reason',label:'เหตุผลที่ออก',span:1}],
       main:function(x){return '<b>'+esc(x.company)+'</b> · '+esc(x.position||'-');}, sub:function(x){return esc(dfmt(x.from)||'-')+' – '+esc(dfmt(x.to)||'-')+(x.reason?' · '+esc(x.reason):'');} },
     education:{ title:'🎓 ประวัติการศึกษา', tab:'person', fields:[{k:'level',label:'ระดับ',type:'select',options:['','ม.ต้น','ม.ปลาย/ปวช.','ปวส.','ปริญญาตรี','ปริญญาโท','ปริญญาเอก','อื่นๆ']},{k:'institute',label:'สถาบัน',req:1},{k:'major',label:'สาขา/วิชาเอก'},{k:'year',label:'ปีที่จบ (พ.ศ.)'},{k:'gpa',label:'เกรดเฉลี่ย'}],
@@ -9859,7 +9863,7 @@ html:not(.theme-soft) .side-sub button.on{background:rgba(255,255,255,.14);color
     {k:'payType',label:'ประเภทพนักงาน',type:'select',options:['','พนักงานรายเดือน','พนักงานเหมาจ่าย']},
     {k:'regularDate',label:'วันที่บรรจุ',type:'date'},{k:'retirementYear',label:'ปีที่เกษียณ (ค.ศ.)',type:'number'},
     {k:'fingerprintCode',label:'รหัสลายนิ้วมือ/สแกนเวลา'},
-    {k:'ssoNo',label:'เลขประกันสังคม'},{k:'passportNo',label:'เลขหนังสือเดินทาง'},{k:'workPermitNo',label:'เลขใบอนุญาตทำงาน (ต่างชาติ)'},
+    {k:'ssoNo',label:'เลขประกันสังคม'},{k:'statelessId',label:'เลขประจำตัวคนซึ่งไม่มีสัญชาติไทย'},{k:'passportNo',label:'เลขหนังสือเดินทาง'},{k:'workPermitNo',label:'เลขใบอนุญาตทำงาน (ต่างชาติ)'},
     {k:'hospitalRight',label:'สิทธิรักษา',type:'select',options:['','ประกันสังคม','ประกันกลุ่มบริษัท','บัตรทอง','อื่นๆ']},{k:'hospital',label:'โรงพยาบาลตามสิทธิ'},
     {k:'hashtags',label:'Hashtag (คั่นด้วยเว้นวรรค เช่น #ใหม่ #โรงงาน)',span:1}
   ];
@@ -9882,7 +9886,7 @@ html:not(.theme-soft) .side-sub button.on{background:rgba(255,255,255,.14);color
       + r('คำนำหน้า / เพศ', esc([e.titleName,e.gender].filter(Boolean).join(' / '))) + r('สัญชาติ', esc(e.nationality)) + r('สถานภาพ', esc(e.maritalStatus))
       + r('ชื่อ-สกุล (ENG)', esc([e.nameEnFirst,e.nameEnLast].filter(Boolean).join(' ')+(e.nickEn?' ('+e.nickEn+')':'')))
       + r('ประเภทพนักงาน', esc(e.payType)) + r('วันที่บรรจุ', esc(dfmt(e.regularDate))) + r('ปีที่เกษียณ', esc(e.retirementYear))
-      + r('รหัสลายนิ้วมือ', esc(e.fingerprintCode)) + r('เลขประกันสังคม', sens(e,'ssoNo','hxSso')) + r('หนังสือเดินทาง', sens(e,'passportNo','hxPass')) + r('ใบอนุญาตทำงาน', sens(e,'workPermitNo','hxWp'))
+      + r('รหัสลายนิ้วมือ', esc(e.fingerprintCode)) + r('เลขประกันสังคม', sens(e,'ssoNo','hxSso')) + r('เลขประจำตัว (ไม่มีสัญชาติไทย)', sens(e,'statelessId','hxStl')) + r('หนังสือเดินทาง', sens(e,'passportNo','hxPass')) + r('ใบอนุญาตทำงาน', sens(e,'workPermitNo','hxWp'))
       + r('สิทธิรักษา', esc([e.hospitalRight,e.hospital].filter(Boolean).join(' · '))) + r('Hashtag', tags)
       + '</div></section>';
   }
@@ -9938,7 +9942,7 @@ html:not(.theme-soft) .side-sub button.on{background:rgba(255,255,255,.14);color
   window.hrdEmpExt = { cards:function(e){
     return extCard(e) + approverCard(e)
       + '<section class="card ep-card ep-span4" data-sec="person" data-only-tab="1"><div class="hx-warn">🔒 หน้านี้มีข้อมูลส่วนบุคคล ระบบยังไม่มีการจำกัดสิทธิ์ตามบทบาท ผู้ที่ล็อกอินได้ทุกคนเห็นข้อมูลนี้ได้ — ควรให้เฉพาะ HR ใช้ระบบ</div></section>'
-      + ['family','workHistory','education','languages','skills','licenses','documents'].map(function(k){ var c=listCard(e,k); return c.replace('data-sec="person"','data-sec="person" data-only-tab="1"'); }).join('')
+      + ['address','family','workHistory','education','languages','typing','skills','licenses','documents'].map(function(k){ var c=listCard(e,k); return c.replace('data-sec="person"','data-sec="person" data-only-tab="1"'); }).join('')
       + listCard(e,'assets') + customCard(e) + auditCard(e);
   }};
 })();
@@ -10322,6 +10326,376 @@ nda:
       }
     };
     showOnboardingSubtab = window.showOnboardingSubtab;
+  }
+  install();
+})();
+</script>
+<style id="payroll-ext-style">
+.py-lock{background:rgba(255,149,0,.12);border:1px solid rgba(255,149,0,.35);color:#8a4b00;border-radius:14px;padding:16px;line-height:1.7}
+.py-lock code{background:rgba(0,0,0,.06);padding:1px 6px;border-radius:6px}
+.py-badge{display:inline-block;background:rgba(52,199,89,.15);color:#1d8a3a;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:600}
+.ps-wrap{display:grid;grid-template-columns:260px minmax(0,1fr);gap:16px;align-items:start}
+.ps-menu{position:sticky;top:100px;display:flex;flex-direction:column;gap:2px;background:#fff;border:.5px solid rgba(60,60,67,.12);border-radius:16px;padding:8px}
+.ps-menu button{text-align:left;border:0;background:transparent;font-family:inherit;font-size:13.5px;padding:9px 12px;border-radius:10px;cursor:pointer;color:inherit}
+.ps-menu button:hover{background:rgba(118,118,128,.12)}
+.ps-menu button.on{background:rgba(0,122,255,.12);color:#007aff;font-weight:600}
+.ps-menu .grp{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#8e8e93;padding:10px 12px 4px}
+.ps-body .card{margin-bottom:14px}
+.ps-note{font-size:12.5px;color:#6c6c70;margin:4px 0 10px}
+.py-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 10px}
+.py-tools select,.py-tools input{width:auto}
+.py-sum{font-size:13px;margin-top:8px;font-weight:600}
+@media(max-width:900px){.ps-wrap{grid-template-columns:1fr}.ps-menu{position:static}}
+html:not(.theme-soft) .ps-menu{background:#1c1c1e}
+</style>
+<script id="payroll-ext-script">
+(function(){
+  function esc(s){ return escapeHtml(String(s==null?'':s)); }
+  function attr(v){ return v4EscapeAttr(v); }
+  function cur(){ return window.epCurrentCode ? window.epCurrentCode() : ''; }
+  function emp(c){ return getEmployeeByCode(c); }
+  function dfmt(v){ return v ? formatThaiDate(v) : '-'; }
+  function money(n){ if(n===''||n==null||isNaN(Number(n))) return '-'; return Number(n).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function rerender(){ if(window.epRerender) window.epRerender(); }
+  function mask(v){ var s=String(v||''); if(!s) return ''; if(s.length<=4) return '••••'; return '•'.repeat(s.length-3)+s.slice(-3); }
+
+  /* =====================================================================
+     ที่เก็บข้อมูลเงินเดือน: ตาราง hr_payroll แยกจากข้อมูลหลัก (hr_db)
+     เฉพาะอีเมลใน payroll_admins เท่านั้นที่อ่าน/เขียนได้ (บังคับที่ฝั่งฐานข้อมูล RLS)
+     ===================================================================== */
+  var PAY = { state:'loading', ver:null, data:null, admins:[], msg:'' };
+  function defaults(){
+    var leave = (DB.leaveEntitlementDefaults||[]).map(function(r,i){ return {code:'LV'+String(i+1).padStart(2,'0'),name:r.leaveType,paid:'จ่ายเงินเดือน',visible:'ALL'}; });
+    return { settings:{
+      general:{ cycle:'รายเดือน', cutoffDay:'25', payDay:'สิ้นเดือน', daysPerMonth:'30', hoursPerDay:'8', rounding:'ทศนิยม 2 ตำแหน่ง' },
+      sso:{ rate:'5', minBase:'1650', maxBase:'15000', note:'ตรวจสอบอัตราและเพดานฐานเงินเดือนกับประกาศสำนักงานประกันสังคมล่าสุดก่อนใช้งานทุกปี' },
+      empTypes:[ {code:'ET0001',name:'พนักงานรายเดือน',basis:'รายเดือน',sso:'คิด',tax:'คิด'}, {code:'ET0002',name:'พนักงานเหมาจ่าย',basis:'เหมาจ่าย',sso:'ไม่คิด',tax:'หัก ณ ที่จ่าย'} ],
+      companyAccounts:[], incomeItems:[ {code:'IN01',name:'ค่าครองชีพ',kind:'รายรับ',taxable:'เสียภาษี',ssoBase:'รวมฐาน ปกส.'}, {code:'IN02',name:'ค่าตำแหน่ง',kind:'รายรับ',taxable:'เสียภาษี',ssoBase:'รวมฐาน ปกส.'}, {code:'IN03',name:'ค่าเดินทาง',kind:'รายรับ',taxable:'เสียภาษี',ssoBase:'ไม่รวม'}, {code:'IN04',name:'ค่าเบี้ยเลี้ยง',kind:'รายรับ',taxable:'เสียภาษี',ssoBase:'ไม่รวม'} ],
+      autoItems:[ {code:'AU01',name:'ประกันสังคม',kind:'รายจ่าย'}, {code:'AU02',name:'ภาษี',kind:'รายจ่าย'}, {code:'AU03',name:'ภาษีลาออก',kind:'รายจ่าย'}, {code:'AU04',name:'หัก ณ ที่จ่าย',kind:'รายจ่าย'}, {code:'AU05',name:'เงินสดย่อย',kind:'รายรับ'} ],
+      fundTypes:[ {code:'FD01',name:'กองทุนสงเคราะห์ลูกจ้าง',method:'เปอร์เซ็นต์ของเงินเดือน',empRate:'',coRate:''}, {code:'FD02',name:'กองทุนสำรองเลี้ยงชีพ 1',method:'เปอร์เซ็นต์ของเงินเดือน',empRate:'',coRate:''}, {code:'FD03',name:'กองทุนสำรองเลี้ยงชีพ 2',method:'เปอร์เซ็นต์ของเงินเดือน',empRate:'',coRate:''}, {code:'FD04',name:'กองทุนสำรองเลี้ยงชีพ 3',method:'เปอร์เซ็นต์ของเงินเดือน',empRate:'',coRate:''} ],
+      welfareTypes:[], shifts:[], holidays:[],
+      workweek:{ CMN:'จันทร์–ศุกร์', CIL:'จันทร์–ศุกร์' },
+      otTypes:[ {code:'OT1',name:'OT วันทำงานปกติ',mult:'1.5',max:'',visible:'ALL'}, {code:'OT2',name:'ทำงานในวันหยุด',mult:'1',max:'',visible:'ALL'}, {code:'OT3',name:'OT ในวันหยุด',mult:'3',max:'',visible:'ALL'} ],
+      leaveTypes:leave, timeRules:{ graceMin:'0', lateMethod:'หักตามนาที', absentMethod:'หักตามอัตราค่าจ้างรายวัน', otRoundMin:'15', otMinMin:'30' },
+      face:{ enabled:'ปิด', threshold:'80', requirePhoto:'ต้องมีรูปถ่าย' },
+      periodLabels:[], costCenters:[], costAlloc:[], dutyLabels:[]
+    }, emp:{} };
+  }
+  function ensure(){
+    var d = PAY.data, b = defaults();
+    d.settings = d.settings||{}; d.emp = d.emp||{};
+    Object.keys(b.settings).forEach(function(k){ if(d.settings[k]==null) d.settings[k]=b.settings[k]; });
+    return d;
+  }
+  function S(){ return PAY.data.settings; }
+  function pe(code){
+    var m = PAY.data.emp; if(!m[code]) m[code] = {};
+    var x = m[code]; ['salaryHistory','fixedItems','autoItems','funds','deposits','welfare','taxYears'].forEach(function(k){ if(!Array.isArray(x[k])) x[k]=[]; });
+    return x;
+  }
+  var saveTimer=null, loading=false;
+  function savePay(){ clearTimeout(saveTimer); saveTimer=setTimeout(doSave,800); }
+  function doSave(){
+    if(PAY.state!=='ok') return;
+    var now=new Date().toISOString();
+    supabaseClient.from('hr_payroll').update({data:PAY.data,updated_at:now}).eq('id','main').eq('updated_at',PAY.ver).select('updated_at').then(function(r){
+      if(r.error){ toast('บันทึกข้อมูลเงินเดือนไม่สำเร็จ: '+r.error.message); return; }
+      if(!r.data||!r.data.length){ toast('⚠️ มีผู้ใช้อื่นแก้ข้อมูลเงินเดือนไปก่อน — โหลดข้อมูลล่าสุดแล้ว กรุณาทำรายการล่าสุดซ้ำอีกครั้ง'); loadPay(); return; }
+      PAY.ver = r.data[0].updated_at;
+    });
+  }
+  function loadPay(){
+    if(loading) return Promise.resolve(); loading=true; PAY.state='loading';
+    return supabaseClient.from('payroll_admins').select('email').then(function(r){
+      if(r.error){ PAY.state = /does not exist|schema cache|relation/i.test(r.error.message)?'nosetup':'error'; PAY.msg=r.error.message; return; }
+      PAY.admins=(r.data||[]).map(function(x){return x.email;});
+      if(!PAY.admins.length){ PAY.state='denied'; return; }
+      return supabaseClient.from('hr_payroll').select('data,updated_at').eq('id','main').maybeSingle().then(function(q){
+        if(q.error){ PAY.state='error'; PAY.msg=q.error.message; return; }
+        if(!q.data){ PAY.data={}; ensure(); var now=new Date().toISOString();
+          return supabaseClient.from('hr_payroll').insert({id:'main',data:PAY.data,updated_at:now}).select('updated_at').then(function(i){ if(i.error){ PAY.state='error'; PAY.msg=i.error.message; } else { PAY.ver=i.data[0].updated_at; PAY.state='ok'; } }); }
+        PAY.data=q.data.data||{}; ensure(); PAY.ver=q.data.updated_at; PAY.state='ok';
+      });
+    }).catch(function(e){ PAY.state='error'; PAY.msg=String(e&&e.message||e); }).then(function(){ loading=false; rerender(); refreshSettings(); });
+  }
+  try{
+    supabaseClient.auth.getSession().then(function(r){ if(r&&r.data&&r.data.session) loadPay(); });
+    supabaseClient.auth.onAuthStateChange(function(ev,sess){ if(sess&&sess.user && PAY.state!=='ok') loadPay(); if(!sess){ PAY={state:'loading',ver:null,data:null,admins:[],msg:''}; } });
+  }catch(e){}
+  window.PayrollData = {
+    get state(){ return PAY.state; },
+    get settings(){ return PAY.data ? PAY.data.settings : null; },
+    employee:function(code){ return PAY.state==='ok' ? pe(code) : null; },
+    all:function(){ return PAY.state==='ok' ? PAY.data.emp : null; },
+    reload:loadPay
+  };
+  function lockCard(){
+    var m = {
+      loading:'<b>กำลังโหลดข้อมูลเงินเดือน…</b> ถ้าค้างนานให้รีเฟรชหน้า',
+      nosetup:'<b>ยังไม่ได้ตั้งค่าที่เก็บข้อมูลเงินเดือน</b><br>ข้อมูลเงินเดือน/บัญชีธนาคารต้องเก็บแยกและจำกัดสิทธิ์ ไม่เก็บรวมกับข้อมูลทั่วไป<br>ให้เปิด Supabase Dashboard → SQL Editor แล้วรันไฟล์ <code>payroll_setup.sql</code> (แก้อีเมลของ HR ที่มีสิทธิ์ในไฟล์ก่อนรัน) จากนั้นรีเฟรชหน้านี้',
+      denied:'<b>🔒 คุณไม่มีสิทธิ์ดูข้อมูลเงินเดือน</b><br>เฉพาะอีเมลที่ถูกเพิ่มใน <code>payroll_admins</code> เท่านั้นที่เห็นแท็บนี้ได้ ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์',
+      error:'<b>โหลดข้อมูลเงินเดือนไม่สำเร็จ</b><br>'+esc(PAY.msg)
+    }[PAY.state] || '';
+    return '<section class="card ep-card ep-span4" data-sec="pay" data-only-tab="1"><div class="py-lock">'+m+'</div></section>';
+  }
+  function audit(code,label){ if(window.hrdAudit) hrdAudit(code,[{field:'pay_'+label,label:label+' (ข้อมูลเงินเดือน)',from:'(ปกปิด)',to:'(ปกปิด)'}],'แก้ไขข้อมูลเงินเดือน'); saveDB(); }
+
+  /* ---------- ตัวช่วยรายการ (ตาราง) ---------- */
+  var LS = {};  // key -> {title, fields:function, cols:[[head,fn]], scope:'s'|'e'}
+  function arr(key){
+    var sc=key.charAt(0), k=key.slice(2);
+    if(sc==='s'){ var a=S()[k]; if(!Array.isArray(a)) a=S()[k]=[]; return a; }
+    return pe(cur())[k];
+  }
+  function tableHtml(key, rows, opts){
+    var d=LS[key]; opts=opts||{};
+    var head='<tr>'+d.cols.map(function(c){return '<th>'+esc(c[0])+'</th>';}).join('')+'<th></th></tr>';
+    var body=rows.length ? rows.map(function(x){ var i=x._i;
+      return '<tr>'+d.cols.map(function(c){return '<td>'+c[1](x)+'</td>';}).join('')+'<td style="white-space:nowrap"><button class="btn-ghost btn-sm" type="button" onclick="pyEdit(\''+key+'\','+i+')">แก้ไข</button> <button class="btn-danger btn-sm" type="button" onclick="pyDel(\''+key+'\','+i+')">ลบ</button></td></tr>'; }).join('')
+      : '<tr><td colspan="'+(d.cols.length+1)+'"><div class="hx-empty">'+esc(opts.empty||'ยังไม่มีข้อมูล')+'</div></td></tr>';
+    return '<div class="table-wrap"><table><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>';
+  }
+  function indexed(key, filter){ return arr(key).map(function(x,i){ var c=Object.assign({},x); c._i=i; return c; }).filter(filter||function(){return true;}); }
+  window.pyAdd = function(key){
+    var d=LS[key]; var seed = d.seed ? d.seed() : {};
+    hxForm('เพิ่ม — '+d.title, d.fields(), seed, function(v){ var o=d.onSave?d.onSave(v,null):v; if(o===false) return; arr(key).push(o); finish(key,'เพิ่ม'+d.title); });
+  };
+  window.pyEdit = function(key,i){
+    var d=LS[key], a=arr(key); hxForm('แก้ไข — '+d.title, d.fields(), a[i], function(v){ var o=d.onSave?d.onSave(v,a[i]):v; if(o===false) return; a[i]=Object.assign({},a[i],o); finish(key,'แก้ไข'+d.title); });
+  };
+  window.pyDel = function(key,i){
+    var d=LS[key]; if(!confirm('ลบรายการนี้ใช่ไหม? (กู้คืนไม่ได้)')) return; arr(key).splice(i,1); finish(key,'ลบ'+d.title);
+  };
+  function finish(key,label){
+    if(key.charAt(0)==='e') audit(cur(),label); else saveDB();
+    savePay(); rerender(); refreshSettings();
+  }
+  function head(title,btn){ return '<div class="hx-sec-head"><h3>'+title+'</h3>'+(btn||'')+'</div>'; }
+  function addBtn(key,label){ return '<button class="btn-ghost btn-sm" type="button" onclick="pyAdd(\''+key+'\')">'+(label||'+ เพิ่ม')+'</button>'; }
+  function card(title,btn,body,extra){ return '<section class="card ep-card ep-span4" data-sec="pay" data-only-tab="1">'+head(title,btn)+(extra||'')+body+'</section>'; }
+  function opts(list,name){ return ['']. concat((list||[]).map(function(x){return x[name||'name'];})); }
+  function rr(k,v){ return '<div class="ep-row"><span class="ep-k">'+esc(k)+'</span><span class="ep-v">'+(v==null||v===''?'-':v)+'</span></div>'; }
+
+  /* ---------- รายการต่อพนักงาน ---------- */
+  var YEARS = function(){ var y=new Date().getFullYear(),a=['']; for(var i=y+1;i>=y-8;i--) a.push(String(i)); return a; };
+  var HIST_TYPES = ['ปรับเงินเดือน','ปรับเงินเดือนประจำปี','ปรับประเภทพนักงาน','ปรับตำแหน่ง','ผ่านทดลองงาน','อื่นๆ'];
+  LS['e:salaryHistory'] = { title:'ประวัติปรับเงินเดือน/ปรับประเภท',
+    fields:function(){ return [{k:'date',label:'วันที่มีผล',type:'date',req:1},{k:'type',label:'ประเภทการปรับ',type:'select',options:HIST_TYPES},{k:'oldValue',label:'ค่าเดิม (บาท / ประเภท)'},{k:'newValue',label:'ค่าใหม่ (บาท / ประเภท)',req:1},{k:'reason',label:'เหตุผล / เลขที่เอกสาร',span:1}]; },
+    seed:function(){ var w=pe(cur()).wage; return {date:new Date().toISOString().slice(0,10),type:'ปรับเงินเดือน',oldValue:w||''}; },
+    onSave:function(v){ if(/เงินเดือน|ทดลอง/.test(v.type) && v.newValue!=='' && !isNaN(Number(String(v.newValue).replace(/,/g,'')))){ var p=pe(cur()); p.wage=String(v.newValue).replace(/,/g,''); } return v; },
+    cols:[['วันที่มีผล',function(x){return esc(dfmt(x.date));}],['ประเภท',function(x){return esc(x.type);}],['ค่าเดิม',function(x){return esc(isNaN(Number(x.oldValue))||x.oldValue===''?(x.oldValue||'-'):money(x.oldValue));}],['ค่าใหม่',function(x){return '<b>'+esc(isNaN(Number(x.newValue))||x.newValue===''?(x.newValue||'-'):money(x.newValue))+'</b>';}],['เหตุผล/เอกสาร',function(x){return esc(x.reason||'');}]] };
+  LS['e:fixedItems'] = { title:'รายรับ/รายจ่ายคงที่',
+    fields:function(){ return [{k:'item',label:'รายการ',type:'select',options:opts(S().incomeItems),req:1},{k:'amount',label:'มูลค่า (บาท/เดือน)',type:'number',req:1},{k:'start',label:'วันที่เริ่ม',type:'date'},{k:'end',label:'วันที่สิ้นสุด',type:'date'}]; },
+    onSave:function(v){ var m=S().incomeItems.find(function(x){return x.name===v.item;}); v.kind=m?m.kind:'รายรับ'; return v; },
+    cols:[['ประเภท',function(x){ return '<span class="badge '+(x.kind==='รายจ่าย'?'inactive':'active')+'">'+esc(x.kind||'รายรับ')+'</span>'; }],['รายการ',function(x){return esc(x.item);}],['มูลค่า',function(x){return money(x.amount);}],['เริ่ม',function(x){return esc(dfmt(x.start));}],['สิ้นสุด',function(x){return esc(dfmt(x.end));}]] };
+  LS['e:autoItems'] = { title:'รายรับ/รายจ่ายอัตโนมัติ',
+    fields:function(){ return [{k:'item',label:'รายการ',type:'select',options:opts(S().autoItems),req:1},{k:'note',label:'หมายเหตุ',span:1}]; },
+    onSave:function(v){ var m=S().autoItems.find(function(x){return x.name===v.item;}); v.kind=m?m.kind:''; return v; },
+    cols:[['ประเภท',function(x){ return '<span class="badge '+(x.kind==='รายจ่าย'?'inactive':'active')+'">'+esc(x.kind||'-')+'</span>'; }],['รายการ',function(x){return esc(x.item);}],['หมายเหตุ',function(x){return esc(x.note||'');}]] };
+  LS['e:funds'] = { title:'กองทุน',
+    fields:function(){ return [{k:'name',label:'ชื่อกองทุน',type:'select',options:opts(S().fundTypes),req:1},{k:'fundNo',label:'เลขที่กองทุน'},{k:'contractDate',label:'วันที่สัญญา',type:'date'},{k:'method',label:'วิธีการหักเงิน',type:'select',options:['','เปอร์เซ็นต์ของเงินเดือน','จำนวนเงินคงที่']},{k:'rate',label:'เรทกองทุน (% หรือ บาท)'},{k:'coMethod',label:'วิธีการสมทบ',type:'select',options:['','เปอร์เซ็นต์ของเงินเดือน','จำนวนเงินคงที่']},{k:'coRate',label:'บริษัทสมทบ (% หรือ บาท)'},{k:'balance',label:'ยอดสะสม',type:'number'},{k:'coBalance',label:'ยอดสะสมบริษัทสมทบ',type:'number'},{k:'beneficiary',label:'ผู้ได้รับผลประโยชน์'},{k:'note',label:'หมายเหตุ',span:1}]; },
+    cols:[['กองทุน',function(x){return '<b>'+esc(x.name)+'</b><div class="small">'+esc(x.fundNo||'')+'</div>';}],['วันที่สัญญา',function(x){return esc(dfmt(x.contractDate));}],['หัก / สมทบ',function(x){return esc((x.rate||'-')+' / '+(x.coRate||'-'));}],['ยอดสะสม',function(x){return money(x.balance);}],['สะสม (บริษัท)',function(x){return money(x.coBalance);}],['ผู้รับผลประโยชน์',function(x){return esc(x.beneficiary||'');}]] };
+  LS['e:deposits'] = { title:'เงินประกันการทำงาน',
+    fields:function(){ return [{k:'month',label:'เดือน',type:'month',req:1},{k:'channel',label:'ช่องทาง',type:'select',options:['','หักเงินเดือน','โอนเงิน','เงินสด']},{k:'amount',label:'มูลค่า (บาท)',type:'number',req:1},{k:'note',label:'หมายเหตุ'}]; },
+    cols:[['เดือน',function(x){return esc(x.month||'');}],['ช่องทาง',function(x){return esc(x.channel||'');}],['มูลค่า',function(x){return money(x.amount);}],['หมายเหตุ',function(x){return esc(x.note||'');}]] };
+  LS['e:welfare'] = { title:'สวัสดิการ',
+    fields:function(){ return [{k:'year',label:'ปี',type:'select',options:YEARS().slice(1),req:1},{k:'item',label:'รายการ',type:'select',options:opts(S().welfareTypes),req:1},{k:'carry',label:'ยกมา',type:'number'},{k:'limit',label:'วงเงิน',type:'number'},{k:'perClaim',label:'วงเงินต่อฉบับ',type:'number'},{k:'used',label:'ใช้ไป',type:'number'}]; },
+    seed:function(){ return {year:String(new Date().getFullYear())}; },
+    cols:[['ปี',function(x){return esc(x.year);}],['รายการ',function(x){return esc(x.item);}],['ยกมา',function(x){return money(x.carry||0);}],['วงเงิน',function(x){return money(x.limit);}],['ต่อฉบับ',function(x){return money(x.perClaim);}],['ใช้ไป',function(x){return money(x.used||0);}],['คงเหลือ',function(x){var r=Number(x.carry||0)+Number(x.limit||0)-Number(x.used||0); return '<b style="color:'+(r<0?'#d70015':'inherit')+'">'+money(r)+'</b>';}]] };
+  LS['e:taxYears'] = { title:'ภาษีรายปี',
+    fields:function(){ return [{k:'year',label:'ปี',type:'select',options:YEARS().slice(1),req:1},{k:'months',label:'จำนวนเดือน',type:'number'},{k:'amount',label:'มูลค่าภาษี (บาท)',type:'number',req:1}]; },
+    seed:function(){ return {year:String(new Date().getFullYear()),months:'12'}; },
+    cols:[['ปี',function(x){return esc(x.year);}],['จำนวนเดือน',function(x){return esc(x.months||'');}],['มูลค่า',function(x){return money(x.amount);}]] };
+
+  /* ---------- การ์ดในโปรไฟล์ ---------- */
+  var hf = { type:'', year:'', month:'' };
+  window.pyHistFilter = function(k,v){ hf[k]=v; rerender(); };
+  window.pyHistExport = function(){
+    var e=emp(cur()); var rows=pe(cur()).salaryHistory;
+    var csv=['วันที่มีผล,ประเภท,ค่าเดิม,ค่าใหม่,เหตุผล'].concat(rows.map(function(x){ return [x.date,x.type,x.oldValue,x.newValue,x.reason].map(function(c){return '"'+String(c==null?'':c).replace(/"/g,'""')+'"';}).join(','); })).join('\r\n');
+    downloadFile('salary_history_'+(e?e.empCode:'')+'.csv','﻿'+csv,'text/csv;charset=utf-8');
+  };
+  window.pyEditPay = function(){
+    var p=pe(cur()), before=JSON.stringify(p);
+    var accs=['']. concat((S().companyAccounts||[]).map(function(a){return a.code+' · '+a.bank+' '+a.accountNo;}));
+    hxForm('ค่าจ้างและการจ่ายเงิน',[
+      {k:'wage',label:'ค่าจ้าง (บาท/เดือน)',type:'number'},
+      {k:'advanceOn',label:'กำหนดวงเงินเบิกล่วงหน้า',type:'select',options:['ไม่กำหนด','กำหนด']},{k:'advanceLimit',label:'วงเงินเบิกล่วงหน้า (บาท)',type:'number'},
+      {k:'ssoMode',label:'ประกันสังคม — วิธีคิด',type:'select',options:['คิดตามฐานเงินเดือนจริงที่ได้รับ','ค่าคงที่']},{k:'ssoFixed',label:'ค่าคงที่ของประกันสังคม (บาท)',type:'number'},{k:'ssoStart',label:'เดือนที่เริ่มคำนวณประกันสังคม',type:'month'},
+      {k:'taxMode',label:'ภาษี ภงด.1',type:'select',options:['คำนวณตามจริง','คงที่ทุกเดือน']},{k:'taxFixed',label:'จำนวนภาษีคงที่ต่อเดือน (บาท)',type:'number'},{k:'taxStart',label:'เดือนที่เริ่มคำนวณภาษี',type:'month'},
+      {k:'payChannel',label:'ช่องทางการชำระเงิน',type:'select',options:['','โอนเข้าบัญชี','เงินสด','เช็ค']},{k:'payAccount',label:'บัญชีบริษัทนำจ่าย',type:'select',options:accs},
+      {k:'bank',label:'ธนาคาร'},{k:'branch',label:'รหัสสาขาธนาคาร'},{k:'accountNo',label:'เลขที่บัญชี'}
+    ], p, function(v){
+      Object.keys(v).forEach(function(k){ p[k]=v[k]; });
+      if(String(p.wage||'')!==String(JSON.parse(before).wage||'')) audit(cur(),'ค่าจ้าง'); else audit(cur(),'ค่าจ้าง/การจ่ายเงิน');
+      savePay(); rerender();
+    });
+  };
+  window.pyShowAcc = function(id){ var s=document.getElementById(id); if(!s) return; var on=s.getAttribute('data-on')==='1'; s.textContent=on?mask(pe(cur()).accountNo):(pe(cur()).accountNo||'-'); s.setAttribute('data-on',on?'0':'1'); var b=s.nextElementSibling; if(b) b.textContent=on?'แสดง':'ซ่อน'; };
+  function payInfoCards(e){
+    var p=pe(e.empCode);
+    var ssoTxt = (p.ssoMode||'คิดตามฐานเงินเดือนจริงที่ได้รับ') + (p.ssoMode==='ค่าคงที่' ? ' · '+money(p.ssoFixed)+' บาท' : '') + (p.ssoStart?' · เริ่ม '+esc(p.ssoStart):'');
+    var taxTxt = (p.taxMode||'คำนวณตามจริง') + (p.taxMode==='คงที่ทุกเดือน' ? ' · '+money(p.taxFixed)+' บาท/เดือน' : '') + (p.taxStart?' · เริ่ม '+esc(p.taxStart):'');
+    var acc = p.accountNo ? '<span id="pyAcc" data-on="0">'+esc(mask(p.accountNo))+'</span> <button class="btn-ghost btn-sm" type="button" onclick="pyShowAcc(\'pyAcc\')">แสดง</button>' : '-';
+    return '<section class="card ep-card ep-span4" data-sec="pay" data-only-tab="1">'+head('💰 ค่าจ้างและการจ่ายเงิน','<span class="py-badge">เฉพาะผู้มีสิทธิ์</span> <button class="btn-ghost btn-sm" type="button" onclick="pyEditPay()">✏️ แก้ไข</button>')
+      +'<div class="ep-rows">'+rr('ค่าจ้าง (บาท/เดือน)','<b>'+money(p.wage)+'</b>')+rr('เงินเบิกล่วงหน้า',p.advanceOn==='กำหนด'?'วงเงิน '+money(p.advanceLimit)+' บาท':'ไม่กำหนดวงเงิน')+rr('ประกันสังคม',ssoTxt)+rr('ภาษี ภงด.1',taxTxt)
+      +rr('ช่องทางจ่ายเงิน',esc(p.payChannel))+rr('บัญชีบริษัทนำจ่าย',esc(p.payAccount))+rr('ธนาคาร / สาขา',esc([p.bank,p.branch].filter(Boolean).join(' / ')))+rr('เลขที่บัญชี',acc)
+      +rr('ประเภทพนักงาน',esc(e.payType))+rr('วันที่เริ่มงาน',esc(dfmt(e.startDate)))+rr('วันที่บรรจุ',esc(dfmt(e.regularDate)))+rr('วันที่หมดสัญญาจ้าง',esc(dfmt(e.contractEndDate)))+'</div></section>';
+  }
+  function histCard(e){
+    var d=LS['e:salaryHistory'];
+    var rows=indexed('e:salaryHistory',function(x){ return (!hf.type||x.type===hf.type)&&(!hf.year||String(x.date||'').slice(0,4)===hf.year)&&(!hf.month||String(x.date||'').slice(5,7)===hf.month); }).sort(function(a,b){return String(b.date).localeCompare(String(a.date));});
+    var tools='<div class="py-tools"><select onchange="pyHistFilter(\'type\',this.value)"><option value="">ทุกประเภทการปรับ</option>'+HIST_TYPES.map(function(t){return '<option'+(hf.type===t?' selected':'')+'>'+t+'</option>';}).join('')+'</select>'
+      +'<select onchange="pyHistFilter(\'year\',this.value)">'+YEARS().map(function(y){return '<option value="'+y+'"'+(hf.year===y?' selected':'')+'>'+(y||'ทุกปี')+'</option>';}).join('')+'</select>'
+      +'<select onchange="pyHistFilter(\'month\',this.value)"><option value="">ทุกเดือน</option>'+['01','02','03','04','05','06','07','08','09','10','11','12'].map(function(m){return '<option value="'+m+'"'+(hf.month===m?' selected':'')+'>เดือน '+m+'</option>';}).join('')+'</select>'
+      +'<button class="btn-ghost btn-sm" type="button" onclick="pyHistExport()">📥 Excel (CSV)</button></div>';
+    return card('📈 ประวัติการปรับเงินเดือน/ปรับประเภท',addBtn('e:salaryHistory','+ เพิ่ม'),tableHtml('e:salaryHistory',rows),tools);
+  }
+  function simpleCard(title,key,sumFn,empty){
+    var rows=indexed(key); var s=sumFn?'<div class="py-sum">'+sumFn(rows)+'</div>':'';
+    return card(title,addBtn(key,'+ เพิ่ม'),tableHtml(key,rows,{empty:empty})+s);
+  }
+  function payCards(e){
+    if(PAY.state!=='ok') return lockCard();
+    return payInfoCards(e)+histCard(e)
+      +simpleCard('➕ รายรับ/รายจ่ายคงที่','e:fixedItems',function(r){ var i=0,o=0; r.forEach(function(x){ if(x.kind==='รายจ่าย') o+=Number(x.amount||0); else i+=Number(x.amount||0); }); return 'รวมรายรับคงที่ '+money(i)+' · รวมรายจ่ายคงที่ '+money(o)+' บาท'; })
+      +simpleCard('⚙️ รายรับ/รายจ่ายอัตโนมัติ','e:autoItems',null,'ยังไม่ได้กำหนดรายการอัตโนมัติ (เช่น ประกันสังคม ภาษี)')
+      +simpleCard('🏦 กองทุน','e:funds')
+      +simpleCard('🔐 เงินประกันการทำงาน','e:deposits',function(r){ return 'รวมเงินประกัน '+money(r.reduce(function(s,x){return s+Number(x.amount||0);},0))+' บาท'; })
+      +simpleCard('🎁 สวัสดิการ','e:welfare')
+      +simpleCard('🧾 ภาษี (สรุปรายปี)','e:taxYears');
+  }
+  var prevCards = window.hrdEmpExt && window.hrdEmpExt.cards;
+  if(prevCards){ window.hrdEmpExt.cards = function(e){ return prevCards(e) + payCards(e); }; }
+
+  /* =====================================================================
+     หน้า "ตั้งค่า" (เงินเดือน / เวลาทำงาน) — 14 เมนูตามโครงสร้าง Humansoft + รายการหลัก
+     ===================================================================== */
+  function ownCard(title,btn,body){ return '<section class="card">'+head(title,btn)+body+'</section>'; }
+  function kvEdit(title,key,fields){
+    var o=S()[key]; var rows=fields.map(function(f){ return rr(f.label, esc(o[f.k])); }).join('');
+    return ownCard(title,'<button class="btn-ghost btn-sm" type="button" onclick="psEditObj(\''+key+'\')">✏️ แก้ไข</button>','<div class="ep-rows">'+rows+'</div>');
+  }
+  var OBJ = {
+    general:[{k:'cycle',label:'รอบการจ่ายเงินเดือน',type:'select',options:['รายเดือน','ราย 2 สัปดาห์','รายสัปดาห์']},{k:'cutoffDay',label:'วันตัดรอบ (วันที่ของเดือน)',type:'number'},{k:'payDay',label:'วันจ่ายเงินเดือน',type:'text'},{k:'daysPerMonth',label:'จำนวนวันต่อเดือน (หารค่าจ้างรายวัน)',type:'number'},{k:'hoursPerDay',label:'ชั่วโมงทำงานต่อวัน',type:'number'},{k:'rounding',label:'การปัดเศษ',type:'select',options:['ทศนิยม 2 ตำแหน่ง','ปัดเป็นบาท','ปัดขึ้นเป็นบาท']}],
+    sso:[{k:'rate',label:'อัตราประกันสังคม (%)',type:'number'},{k:'minBase',label:'ฐานเงินเดือนต่ำสุด (บาท)',type:'number'},{k:'maxBase',label:'ฐานเงินเดือนสูงสุด (บาท)',type:'number'},{k:'note',label:'หมายเหตุ',span:1}],
+    timeRules:[{k:'graceMin',label:'ผ่อนผันการมาสาย (นาที)',type:'number'},{k:'lateMethod',label:'วิธีหักมาสาย',type:'select',options:['ไม่หัก','หักตามนาที','หักเป็นครั้ง']},{k:'absentMethod',label:'วิธีหักขาดงาน',type:'select',options:['ไม่หัก','หักตามอัตราค่าจ้างรายวัน']},{k:'otRoundMin',label:'ปัดเศษเวลา OT (นาที)',type:'number'},{k:'otMinMin',label:'OT ขั้นต่ำที่นับ (นาที)',type:'number'}],
+    face:[{k:'enabled',label:'การสแกนใบหน้า',type:'select',options:['ปิด','เปิด']},{k:'threshold',label:'ค่าความเหมือนขั้นต่ำ (%)',type:'number'},{k:'requirePhoto',label:'รูปถ่ายพนักงาน',type:'select',options:['ต้องมีรูปถ่าย','ไม่บังคับ']}]
+  };
+  window.psEditObj = function(key){ var o=S()[key]; hxForm('แก้ไขการตั้งค่า',OBJ[key],o,function(v){ Object.assign(o,v); savePay(); refreshSettings(); }); };
+  var COS=['ALL','CMN','CIL']; var COL={ALL:'ทั้งสองบริษัท',CMN:'CMN',CIL:'CIL',NONE:'ซ่อน'};
+  function def(key,title,fields,cols,extra){ LS[key]=Object.assign({title:title,fields:fields,cols:cols},extra||{}); }
+  def('s:empTypes','ประเภทพนักงาน',function(){return [{k:'code',label:'รหัส (เช่น ET0001)',req:1},{k:'name',label:'ชื่อประเภท',req:1},{k:'basis',label:'ฐานการจ่าย',type:'select',options:['รายเดือน','รายวัน','เหมาจ่าย']},{k:'sso',label:'ประกันสังคม',type:'select',options:['คิด','ไม่คิด']},{k:'tax',label:'ภาษี',type:'select',options:['คิด','หัก ณ ที่จ่าย','ไม่คิด']}];},
+    [['รหัส',function(x){return esc(x.code);}],['ชื่อ',function(x){return '<b>'+esc(x.name)+'</b>';}],['ฐานจ่าย',function(x){return esc(x.basis);}],['ปกส.',function(x){return esc(x.sso);}],['ภาษี',function(x){return esc(x.tax);}]]);
+  def('s:companyAccounts','บัญชีบริษัทนำจ่าย',function(){return [{k:'code',label:'รหัส',req:1},{k:'company',label:'บริษัท',type:'select',options:['CMN','CIL']},{k:'bank',label:'ธนาคาร',req:1},{k:'accountNo',label:'เลขที่บัญชี',req:1}];},
+    [['รหัส',function(x){return esc(x.code);}],['บริษัท',function(x){return esc(x.company);}],['ธนาคาร',function(x){return esc(x.bank);}],['เลขที่บัญชี',function(x){return esc(x.accountNo);}]]);
+  def('s:incomeItems','รายการรายรับ/รายจ่ายคงที่ (รายการหลัก)',function(){return [{k:'code',label:'รหัส',req:1},{k:'name',label:'ชื่อรายการ',req:1},{k:'kind',label:'ประเภท',type:'select',options:['รายรับ','รายจ่าย']},{k:'taxable',label:'ภาษี',type:'select',options:['เสียภาษี','ไม่เสียภาษี']},{k:'ssoBase',label:'ฐานประกันสังคม',type:'select',options:['รวมฐาน ปกส.','ไม่รวม']}];},
+    [['รหัส',function(x){return esc(x.code);}],['รายการ',function(x){return '<b>'+esc(x.name)+'</b>';}],['ประเภท',function(x){return esc(x.kind);}],['ภาษี',function(x){return esc(x.taxable||'');}],['ฐาน ปกส.',function(x){return esc(x.ssoBase||'');}]]);
+  def('s:autoItems','รายการรายรับ/รายจ่ายอัตโนมัติ (รายการหลัก)',function(){return [{k:'code',label:'รหัส',req:1},{k:'name',label:'ชื่อรายการ',req:1},{k:'kind',label:'ประเภท',type:'select',options:['รายรับ','รายจ่าย']}];},
+    [['รหัส',function(x){return esc(x.code);}],['รายการ',function(x){return '<b>'+esc(x.name)+'</b>';}],['ประเภท',function(x){return esc(x.kind);}]]);
+  def('s:fundTypes','กองทุน (รายการหลัก)',function(){return [{k:'code',label:'รหัส',req:1},{k:'name',label:'ชื่อกองทุน',req:1},{k:'method',label:'วิธีหักเงิน',type:'select',options:['เปอร์เซ็นต์ของเงินเดือน','จำนวนเงินคงที่']},{k:'empRate',label:'เรทพนักงาน (%/บาท)'},{k:'coRate',label:'เรทบริษัทสมทบ (%/บาท)'}];},
+    [['รหัส',function(x){return esc(x.code);}],['กองทุน',function(x){return '<b>'+esc(x.name)+'</b>';}],['วิธีหัก',function(x){return esc(x.method||'');}],['พนักงาน / บริษัท',function(x){return esc((x.empRate||'-')+' / '+(x.coRate||'-'));}]]);
+  def('s:welfareTypes','สวัสดิการ (รายการหลัก)',function(){return [{k:'code',label:'รหัส',req:1},{k:'name',label:'ชื่อสวัสดิการ',req:1},{k:'limit',label:'วงเงินต่อปี (บาท)',type:'number'},{k:'perClaim',label:'วงเงินต่อฉบับ (บาท)',type:'number'}];},
+    [['รหัส',function(x){return esc(x.code);}],['สวัสดิการ',function(x){return '<b>'+esc(x.name)+'</b>';}],['วงเงิน/ปี',function(x){return money(x.limit);}],['ต่อฉบับ',function(x){return money(x.perClaim);}]]);
+  def('s:shifts','กะการทำงาน',function(){return [{k:'code',label:'รหัสกะ',req:1},{k:'name',label:'ชื่อกะ',req:1},{k:'start',label:'เวลาเข้า',type:'time'},{k:'end',label:'เวลาออก',type:'time'},{k:'breakMin',label:'พัก (นาที)',type:'number'},{k:'otAfter',label:'OT เริ่มหลังเวลา',type:'time'},{k:'night',label:'กะข้ามคืน',type:'select',options:['ไม่ใช่','ใช่']},{k:'visible',label:'มองเห็นสำหรับ',type:'select',options:[['ALL','ทั้งสองบริษัท'],['CMN','CMN'],['CIL','CIL'],['NONE','ซ่อน']]}];},
+    [['รหัส',function(x){return esc(x.code);}],['กะ',function(x){return '<b>'+esc(x.name)+'</b>';}],['เวลา',function(x){return esc((x.start||'-')+' – '+(x.end||'-'));}],['พัก',function(x){return esc(x.breakMin||'-');}],['ข้ามคืน',function(x){return esc(x.night||'');}]],{seed:function(){return {visible:'ALL',night:'ไม่ใช่'};}});
+  def('s:holidays','วันหยุด',function(){return [{k:'date',label:'วันที่',type:'date',req:1},{k:'name',label:'ชื่อวันหยุด',req:1},{k:'company',label:'บริษัท',type:'select',options:[['ALL','ทั้งสองบริษัท'],['CMN','CMN'],['CIL','CIL']]},{k:'kind',label:'ประเภท',type:'select',options:['วันหยุดนักขัตฤกษ์','วันหยุดตามบริษัทกำหนด','วันหยุดชดเชย']}];},
+    [['วันที่',function(x){return esc(dfmt(x.date));}],['วันหยุด',function(x){return '<b>'+esc(x.name)+'</b>';}],['บริษัท',function(x){return esc(COL[x.company]||x.company);}],['ประเภท',function(x){return esc(x.kind||'');}]],{seed:function(){return {company:'ALL',kind:'วันหยุดนักขัตฤกษ์'};}});
+  def('s:otTypes','ประเภทโอที',function(){return [{k:'code',label:'รหัส',req:1},{k:'name',label:'ชื่อประเภท OT',req:1},{k:'mult',label:'อัตราคูณ (เท่า)',type:'number'},{k:'max',label:'ชั่วโมงสูงสุด/วัน',type:'number'},{k:'visible',label:'มองเห็นสำหรับ',type:'select',options:[['ALL','ทั้งสองบริษัท'],['CMN','CMN'],['CIL','CIL'],['NONE','ซ่อน']]}];},
+    [['รหัส',function(x){return esc(x.code);}],['ประเภท',function(x){return '<b>'+esc(x.name)+'</b>';}],['อัตรา',function(x){return esc(x.mult||'')+' เท่า';}],['สูงสุด/วัน',function(x){return esc(x.max||'-');}],['มองเห็น',function(x){return esc(COL[x.visible||'ALL']);}]],{seed:function(){return {visible:'ALL'};}});
+  def('s:leaveTypes','ประเภทการลา',function(){return [{k:'code',label:'รหัส',req:1},{k:'name',label:'ชื่อประเภทการลา',req:1},{k:'paid',label:'การจ่ายเงิน',type:'select',options:['จ่ายเงินเดือน','ไม่จ่ายเงินเดือน','จ่ายบางส่วน']},{k:'visible',label:'มองเห็นสำหรับ',type:'select',options:[['ALL','ทั้งสองบริษัท'],['CMN','CMN'],['CIL','CIL'],['NONE','ซ่อน']]}];},
+    [['รหัส',function(x){return esc(x.code);}],['ประเภทการลา',function(x){return '<b>'+esc(x.name)+'</b>';}],['การจ่ายเงิน',function(x){return esc(x.paid||'');}],['มองเห็น',function(x){return esc(COL[x.visible||'ALL']);}]],{seed:function(){return {visible:'ALL',paid:'จ่ายเงินเดือน'};}});
+  def('s:periodLabels','ป้ายกำกับช่วงเวลา',function(){return [{k:'name',label:'ชื่อป้าย (เช่น เช้า / บ่าย / ล่วงเวลา)',req:1},{k:'from',label:'ตั้งแต่เวลา',type:'time'},{k:'to',label:'ถึงเวลา',type:'time'}];},
+    [['ป้ายกำกับ',function(x){return '<b>'+esc(x.name)+'</b>';}],['ช่วงเวลา',function(x){return esc((x.from||'-')+' – '+(x.to||'-'));}]]);
+  def('s:costCenters','ศูนย์ต้นทุน',function(){return [{k:'code',label:'รหัส',req:1},{k:'name',label:'ชื่อศูนย์ต้นทุน',req:1}];},
+    [['รหัส',function(x){return esc(x.code);}],['ศูนย์ต้นทุน',function(x){return '<b>'+esc(x.name)+'</b>';}]]);
+  def('s:costAlloc','การปันส่วนต้นทุน (Cost Allocation)',function(){
+      var deps=['']. concat(Array.from(new Set((DB.employees||[]).map(function(e){return e.department;}).filter(Boolean))).sort());
+      return [{k:'department',label:'แผนก',type:'select',options:deps,req:1},{k:'center',label:'ศูนย์ต้นทุน',type:'select',options:opts(S().costCenters),req:1},{k:'percent',label:'สัดส่วน (%)',type:'number',req:1}];},
+    [['แผนก',function(x){return esc(x.department);}],['ศูนย์ต้นทุน',function(x){return esc(x.center);}],['สัดส่วน',function(x){return esc(x.percent)+'%';}]]);
+  def('s:dutyLabels','ป้ายกำกับหน้าที่ปฏิบัติงาน',function(){return [{k:'code',label:'รหัส',req:1},{k:'name',label:'ชื่อหน้าที่ (เช่น หัวหน้ากะ, QC)',req:1}];},
+    [['รหัส',function(x){return esc(x.code);}],['หน้าที่',function(x){return '<b>'+esc(x.name)+'</b>';}]]);
+
+  function tbl(key,extraBtn,note){ var rows=indexed(key); return ownCard(LS[key].title,addBtn(key,'+ เพิ่ม')+(extraBtn||''),(note?'<div class="ps-note">'+note+'</div>':'')+tableHtml(key,rows)); }
+  function visTable(key,title){
+    var rows=indexed(key);
+    var body=rows.length?'<div class="table-wrap"><table><thead><tr><th>รายการ</th><th>มองเห็นสำหรับ</th></tr></thead><tbody>'+rows.map(function(x){
+      return '<tr><td><b>'+esc(x.name)+'</b></td><td><select onchange="psVis(\''+key+'\','+x._i+',this.value)">'+['ALL','CMN','CIL','NONE'].map(function(v){return '<option value="'+v+'"'+((x.visible||'ALL')===v?' selected':'')+'>'+COL[v]+'</option>';}).join('')+'</select></td></tr>'; }).join('')+'</tbody></table></div>':'<div class="hx-empty">ยังไม่มีรายการ — เพิ่มได้ที่เมนูประเภทที่เกี่ยวข้อง</div>';
+    return ownCard(title,'',body);
+  }
+  window.psVis = function(key,i,v){ arr(key)[i].visible=v; savePay(); };
+
+  var WEEK=['จันทร์–ศุกร์','จันทร์–เสาร์','อาทิตย์–ศุกร์','กำหนดเองตามกะ'];
+  window.psEditWeek = function(){ var w=S().workweek; hxForm('วันทำงานปกติ',[{k:'CMN',label:'CMN',type:'select',options:WEEK},{k:'CIL',label:'CIL',type:'select',options:WEEK}],w,function(v){ Object.assign(w,v); savePay(); refreshSettings(); }); };
+
+  window.psApprover = function(code){
+    var e=emp(code); if(!e) return; var a=e.approvers||[], before=a.slice();
+    hxForm('ผู้อนุมัติ — '+e.fullName,[{k:'a1',label:'ขั้นที่ 1',type:'emp'},{k:'a2',label:'ขั้นที่ 2',type:'emp'},{k:'a3',label:'ขั้นที่ 3',type:'emp'}],{a1:a[0]||'',a2:a[1]||'',a3:a[2]||''},function(v){
+      var nu=[v.a1,v.a2,v.a3].filter(Boolean), bad=nu.filter(function(c){return !emp(c);}); if(bad.length){ toast('ไม่พบรหัสพนักงาน: '+bad.join(', ')); return; }
+      e.approvers=nu; e.updatedAt=v4Now(); if(window.hrdAudit) hrdAudit(e.empCode,[{field:'approvers',label:'ผู้อนุมัติ',from:before.join(' → '),to:nu.join(' → ')}],'กำหนดผู้อนุมัติ (หน้าตั้งค่า)'); saveDB(); refreshSettings();
+    });
+  };
+  window.psAdminAdd = function(){ hxForm('เพิ่มผู้มีสิทธิ์ข้อมูลเงินเดือน',[{k:'email',label:'อีเมลที่ใช้ล็อกอิน',req:1}],{},function(v){
+    supabaseClient.from('payroll_admins').insert({email:v.email.toLowerCase()}).then(function(r){ if(r.error) toast('เพิ่มไม่สำเร็จ: '+r.error.message); else { PAY.admins.push(v.email.toLowerCase()); refreshSettings(); toast('เพิ่มแล้ว'); } }); }); };
+  window.psAdminDel = function(email){ if(PAY.admins.length<=1){ toast('ต้องมีผู้มีสิทธิ์อย่างน้อย 1 คน'); return; } if(!confirm('ถอนสิทธิ์ '+email+' ใช่ไหม?')) return;
+    supabaseClient.from('payroll_admins').delete().eq('email',email).then(function(r){ if(r.error) toast('ลบไม่สำเร็จ: '+r.error.message); else { PAY.admins=PAY.admins.filter(function(x){return x!==email;}); refreshSettings(); } }); };
+
+  window.psExport = function(){
+    var H=['รหัสพนักงาน','ชื่อ-นามสกุล','บริษัท','ประเภทพนักงาน','ค่าจ้าง','วงเงินเบิกล่วงหน้า','วิธีคิดประกันสังคม','ประกันสังคมคงที่','เดือนเริ่มประกันสังคม','วิธีคิดภาษี','ภาษีคงที่/เดือน','เดือนเริ่มภาษี','ช่องทางจ่าย','ธนาคาร','สาขา','เลขบัญชี','รายรับคงที่รวม','รายจ่ายคงที่รวม','รายการอัตโนมัติ','กองทุน','เงินประกันสะสม','ผู้อนุมัติ'];
+    var rows=(DB.employees||[]).map(function(e){ var p=pe(e.empCode), inc=0, out=0;
+      p.fixedItems.forEach(function(x){ if(x.kind==='รายจ่าย') out+=Number(x.amount||0); else inc+=Number(x.amount||0); });
+      return [e.empCode,e.fullName,e.company,e.payType||'',p.wage||'',p.advanceOn==='กำหนด'?p.advanceLimit:'',p.ssoMode||'',p.ssoFixed||'',p.ssoStart||'',p.taxMode||'',p.taxFixed||'',p.taxStart||'',p.payChannel||'',p.bank||'',p.branch||'',p.accountNo||'',inc,out,p.autoItems.map(function(x){return x.item;}).join('; '),p.funds.map(function(x){return x.name;}).join('; '),p.deposits.reduce(function(s,x){return s+Number(x.amount||0);},0),(e.approvers||[]).join('>')]; });
+    var csv=[H].concat(rows).map(function(r){return r.map(function(c){return '"'+String(c==null?'':c).replace(/"/g,'""')+'"';}).join(',');}).join('\r\n');
+    downloadFile('payroll_employee_data.csv','﻿'+csv,'text/csv;charset=utf-8'); toast('ส่งออกแล้ว — ไฟล์นี้มีข้อมูลเงินเดือน/บัญชีธนาคาร เก็บรักษาให้ปลอดภัย');
+  };
+
+  var SET = [
+    ['grp','ตั้งค่าพื้นฐาน'],
+    ['general','1. ตั้งค่าทั่วไป',function(){ return kvEdit('รอบการจ่ายเงินเดือน','general',OBJ.general)+kvEdit('ประกันสังคม (ค่ากลางของบริษัท)','sso',OBJ.sso)
+      +ownCard('ส่งออกข้อมูลสำหรับคำนวณเงินเดือน','<button class="btn-primary btn-sm" type="button" onclick="psExport()">⬇️ ส่งออก CSV</button>','<div class="ps-note">รวมค่าจ้าง วิธีคิดประกันสังคม/ภาษี บัญชีธนาคาร และรายการคงที่ของพนักงานทุกคนไว้ในไฟล์เดียว ใช้เป็นข้อมูลนำเข้าฟังก์ชันคำนวณเงินเดือน หรือเรียกใช้ในโค้ดผ่าน <code>PayrollData</code> — ไฟล์นี้มีข้อมูลอ่อนไหว</div>'); }],
+    ['approver','2. กำหนดผู้อนุมัติรายบุคคล',function(){ var rows=(DB.employees||[]).filter(function(e){return !e.status||/active|ปฏิบัติ/i.test(e.status);}).map(function(e){ var a=(e.approvers&&e.approvers.length)?e.approvers:(e.parentId?[e.parentId]:[]);
+        return '<tr><td><b>'+esc(e.fullName)+'</b><div class="small">'+esc(e.empCode)+'</div></td>'+[0,1,2].map(function(i){var m=emp(a[i]); return '<td>'+esc(m?m.fullName:'-')+'</td>';}).join('')+'<td><button class="btn-ghost btn-sm" onclick="psApprover(\''+attr(e.empCode)+'\')">กำหนด</button></td></tr>'; }).join('');
+      return ownCard('กำหนดผู้อนุมัติรายบุคคล','','<div class="ps-note">ไม่กำหนดไว้ = ใช้หัวหน้าสายงานตามผังองค์กรเป็นขั้นที่ 1</div><div class="table-wrap"><table><thead><tr><th>พนักงาน</th><th>ขั้นที่ 1</th><th>ขั้นที่ 2</th><th>ขั้นที่ 3</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'); }],
+    ['users','3. ตั้งค่าผู้ใช้ (สิทธิ์ข้อมูลเงินเดือน)',function(){ var rows=PAY.admins.map(function(m){ return '<tr><td>'+esc(m)+'</td><td><button class="btn-danger btn-sm" onclick="psAdminDel(\''+attr(m)+'\')">ถอนสิทธิ์</button></td></tr>'; }).join('');
+      return ownCard('ผู้มีสิทธิ์ดู/แก้ข้อมูลเงินเดือน','<button class="btn-ghost btn-sm" onclick="psAdminAdd()">+ เพิ่มผู้มีสิทธิ์</button>','<div class="ps-note">สิทธิ์นี้บังคับที่ฐานข้อมูลจริง (RLS) ผู้ใช้อื่นที่ล็อกอินได้จะอ่านข้อมูลเงินเดือน บัญชีธนาคาร และหน้าตั้งค่านี้ไม่ได้</div><div class="table-wrap"><table><thead><tr><th>อีเมล</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'); }],
+    ['grp','เวลาทำงานและการลา'],
+    ['shifts','4. ตั้งค่ากะการทำงาน',function(){ return tbl('s:shifts'); }],
+    ['shiftvis','5. ตั้งค่าการมองเห็นกะการทำงาน',function(){ return visTable('s:shifts','การมองเห็นกะการทำงาน'); }],
+    ['workdays','6. ตั้งค่าวันทำงาน–วันหยุด',function(){ var w=S().workweek; return ownCard('วันทำงานปกติ','<button class="btn-ghost btn-sm" onclick="psEditWeek()">✏️ แก้ไข</button>','<div class="ep-rows">'+rr('CMN',esc(w.CMN))+rr('CIL',esc(w.CIL))+'</div>')+tbl('s:holidays',null,'ระบบไม่เติมวันหยุดนักขัตฤกษ์ให้อัตโนมัติ เพราะวันหยุดบางวันเปลี่ยนทุกปี กรุณาเพิ่มตามประกาศประจำปีของบริษัท'); }],
+    ['otvis','7. ตั้งค่าประเภทโอที / การมองเห็น',function(){ return tbl('s:otTypes',null,'อัตราตั้งต้นเป็นค่าทั่วไปตามกฎหมายคุ้มครองแรงงาน ตรวจสอบและแก้ให้ตรงกับนโยบายบริษัท')+visTable('s:otTypes','การมองเห็นประเภทโอที'); }],
+    ['leavevis','8. ตั้งค่าประเภทการลา / การมองเห็น',function(){ return tbl('s:leaveTypes')+visTable('s:leaveTypes','การมองเห็นประเภทการลา'); }],
+    ['quota','9. ตั้งค่าโควตาการลา',function(){ return ownCard('โควตาการลา','<button class="btn-primary btn-sm" onclick="showTab(\'performance-tracking\');setPerfSubTab(\'leavequota\')">เปิดหน้าโควตาการลา</button>','<div class="ps-note">โควตาการลามีหน้าจัดการอยู่แล้วที่เมนู ติดตามผลการปฏิบัติงาน › โควตาการลา (ตั้งค่าตั้งต้นและรายบุคคลได้)</div>'); }],
+    ['timerules','10. ตั้งค่าเวลาการทำงาน',function(){ return kvEdit('กติกามาสาย / ขาดงาน / OT','timeRules',OBJ.timeRules); }],
+    ['face','11. ตั้งค่าใบหน้า',function(){ return kvEdit('การสแกนใบหน้า','face',OBJ.face)+'<div class="ps-note">บันทึกค่าไว้สำหรับอุปกรณ์/ระบบสแกนเวลาที่ใช้ ระบบนี้ยังไม่มีฟังก์ชันสแกนใบหน้าในตัว</div>'; }],
+    ['periodlabel','12. ตั้งค่าป้ายกำกับช่วงเวลา',function(){ return tbl('s:periodLabels'); }],
+    ['cost','13. Cost Allocation',function(){ var tot={}; (S().costAlloc||[]).forEach(function(x){ tot[x.department]=(tot[x.department]||0)+Number(x.percent||0); }); var bad=Object.keys(tot).filter(function(d){return Math.abs(tot[d]-100)>0.001;});
+      return tbl('s:costCenters')+tbl('s:costAlloc',null,bad.length?'<span style="color:#d70015">⚠️ สัดส่วนรวมไม่ครบ 100%: '+bad.map(function(d){return esc(d)+' ('+tot[d]+'%)';}).join(', ')+'</span>':'ผลรวมสัดส่วนของแต่ละแผนกต้องเท่ากับ 100%'); }],
+    ['duty','14. ตั้งค่าป้ายกำกับหน้าที่ปฏิบัติงาน',function(){ return tbl('s:dutyLabels'); }],
+    ['grp','รายการหลักสำหรับเงินเดือน'],
+    ['masters','15. รายการหลัก (ประเภทพนักงาน / รายรับ-รายจ่าย / กองทุน / สวัสดิการ / บัญชีนำจ่าย)',function(){ return tbl('s:empTypes')+tbl('s:companyAccounts')+tbl('s:incomeItems')+tbl('s:autoItems')+tbl('s:fundTypes')+tbl('s:welfareTypes'); }]
+  ];
+  var setCur = 'general';
+  function settingsHtml(){
+    if(PAY.state!=='ok') return '<section class="card"><div class="py-lock">'+(lockCard().replace(/^.*?<div class="py-lock">/,'').replace(/<\/div><\/section>$/,''))+'</div></section>';
+    var menu=SET.map(function(s){ return s[0]==='grp' ? '<div class="grp">'+esc(s[1])+'</div>' : '<button class="'+(s[0]===setCur?'on':'')+'" onclick="psGo(\''+s[0]+'\')">'+esc(s[1])+'</button>'; }).join('');
+    var it=SET.find(function(s){return s[0]===setCur;}) || SET[1];
+    return '<div class="ps-wrap"><div class="ps-menu">'+menu+'</div><div class="ps-body">'+it[2]()+'</div></div>';
+  }
+  function refreshSettings(){ var v=document.getElementById('employee-sub-paysettings'); if(v && v.classList.contains('active')) v.innerHTML='<section class="card"><h2 style="margin:0 0 4px">⚙️ ตั้งค่าเงินเดือน & เวลาทำงาน</h2><div class="sub">ตั้งค่ากลางสำหรับฟังก์ชันคำนวณเงินเดือน ตามโครงสร้างระบบ HRS-Humansoft</div></section>'+settingsHtml(); }
+  window.psGo = function(id){ setCur=id; refreshSettings(); window.scrollTo({top:0}); };
+
+  function install(){
+    var after=document.getElementById('employee-sub-search'); if(!after || document.getElementById('employee-sub-paysettings')) return;
+    var v=document.createElement('div'); v.className='subview'; v.id='employee-sub-paysettings'; after.insertAdjacentElement('afterend',v);
+    var prev=window.showEmployeeSubtab;
+    window.showEmployeeSubtab=function(name){
+      prev(name);
+      var on=name==='paysettings'; v.classList.toggle('active',on);
+      if(on){ ['employee-sub-search','employee-sub-add'].forEach(function(id){var e=document.getElementById(id); if(e) e.classList.remove('active');}); if(PAY.state!=='ok' && PAY.state!=='loading') loadPay(); refreshSettings(); }
+    };
+    showEmployeeSubtab=window.showEmployeeSubtab;
+    var po=window.openEmployeeProfile;
+    window.openEmployeeProfile=function(){ v.classList.remove('active'); return po.apply(this,arguments); };
   }
   install();
 })();
