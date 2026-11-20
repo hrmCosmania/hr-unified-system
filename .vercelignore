@@ -2,3 +2,9 @@
 CLAUDE.md
 .env*
 .vercel
+sync.js
+pull.cmd
+push.cmd
+pull.command
+push.command
+SETUP-NEW-COMPUTER.md
