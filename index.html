@@ -407,7 +407,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <button class="tab-btn" data-tab="orgchart" onclick="showTab('orgchart')">🏢 ผังองค์กร</button>
 <button class="tab-btn" data-tab="onboarding" onclick="showTab('onboarding')">🧭 Tracking Onboarding</button>
 <button class="tab-btn" data-tab="jobpositions" onclick="showTab('jobpositions')">🗂️ จัดการตำแหน่งงาน</button>
-<button class="tab-btn" data-tab="training" onclick="showTab('training')">🎓 ประวัติการฝึกอบรม</button>
+<button class="tab-btn" data-tab="training" onclick="showTab('training')">🎓 การฝึกอบรม (HRD)</button>
 <button class="tab-btn" data-tab="reports" onclick="showTab('reports')">📊 รายงาน</button>
 <button class="tab-btn" data-tab="settings" onclick="showTab('settings')">⚙️ Setting</button>
 <div class="sidebar-profile" id="sidebarProfile"><div class="sidebar-avatar">HR</div><div><div class="sidebar-profile-name">HR Admin</div><div class="sidebar-profile-role" id="sidebarProfileRole">-</div></div></div></div>
@@ -561,7 +561,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 <!-- ============ JOB POSITION MANAGEMENT ============ -->
 <div class="view" id="view-jobpositions"><section class="summary-grid" id="jobPositionSummaryGrid"></section><section class="card"><div class="module-intro"><div><h2>จัดการตำแหน่งงาน</h2><div class="sub">เลือกพนักงานด้านซ้าย (เรียงตามฝ่าย แผนก ระดับ และรหัสพนักงาน) เพื่อดู JD, KPI, Competency ด้านขวา</div></div></div></section><div class="job-master-detail"><section class="card job-master"><div class="field"><label>ค้นหาพนักงาน</label><input id="jobPositionSearch" oninput="renderJobPositionModule()" placeholder="ชื่อ รหัสพนักงาน ตำแหน่ง หรือแผนก"/></div><div class="form-grid two" style="margin-top:10px"><div class="field"><label>แผนก</label><select id="jobDepartmentFilter" onchange="renderJobPositionModule()"><option value="">ทุกแผนก</option></select></div></div><button class="btn-ghost btn-sm" style="margin-top:10px;width:100%" onclick="confirmApplyJdTemplateImport()">⬆️ นำเข้า/อัปเดต JD Template มาตรฐานสากล (CIL/CMN)</button><div class="position-list" id="jobPositionListV4" style="margin-top:14px"></div></section><section class="card job-detail" id="jobPositionDetailV4"><div class="position-detail-empty">เลือกตำแหน่งงานจากรายการด้านซ้าย</div></section></div></div>
 <!-- ============ TRAINING HISTORY ============ -->
-<div class="view" id="view-training"><section class="summary-grid" id="trainingSummaryGrid"></section><section class="card"><div class="module-intro"><div><h2>ประวัติการฝึกอบรม</h2><div class="sub">ขั้นตอนที่ 1 สร้างหลักสูตร แล้วขั้นตอนที่ 2 เพิ่มรายชื่อพนักงานและติดตามผล</div></div></div><div class="subnav"><button class="subnav-btn active" id="trainingSubBtnManage" onclick="showTrainingSubtab('manage')">🗂️ จัดการหลักสูตร</button><button class="subnav-btn" id="trainingSubBtnBudget" onclick="showTrainingSubtab('budget')">💰 ภาพรวม/งบประมาณ</button></div></section><div class="subview active" id="training-sub-manage"><div class="training-layout"><div><section class="card"><h2>1. เพิ่มหลักสูตรฝึกอบรม</h2><form id="trainingCourseForm" onsubmit="saveTrainingCourse(event)"><input id="course_id" type="hidden"/><div class="form-grid two"><div class="field span2"><label>ชื่อหลักสูตร *</label><input id="course_title" required=""/></div><div class="field span2"><label>รายละเอียด</label><textarea id="course_description"></textarea></div><div class="field"><label>หมวดหมู่</label><input id="course_category"/></div><div class="field"><label>ผู้จัด/สถาบัน</label><input id="course_provider"/></div><div class="field"><label>ชื่อวิทยากร</label><input id="course_instructor"/></div><div class="field"><label>สถานที่</label><input id="course_location"/></div><div class="field"><label>รูปแบบ</label><select id="course_format"><option value="Onsite">Onsite</option><option value="Online">Online</option><option value="Hybrid">Hybrid</option></select></div><div class="field"><label>วันที่เริ่ม</label><input id="course_startDate" type="date"/></div><div class="field"><label>วันที่สิ้นสุด</label><input id="course_endDate" type="date"/></div><div class="field"><label>เวลาเริ่ม</label><input id="course_startTime" type="time"/></div><div class="field"><label>เวลาสิ้นสุด</label><input id="course_endTime" type="time"/></div><div class="field"><label>จำนวนชั่วโมง</label><input id="course_hours" min="0" step="0.5" type="number"/></div><div class="field"><label>ค่าวิทยากร (ค่าใช้จ่ายหลักสูตร)</label><input id="course_cost" min="0" step="0.01" type="number"/></div><div class="field"><label>ค่าสถานที่</label><input id="course_costVenue" min="0" step="0.01" type="number"/></div><div class="field"><label>ค่าอาหาร/เครื่องดื่ม</label><input id="course_costFood" min="0" step="0.01" type="number"/></div><div class="field"><label>ค่าเอกสาร/อุปกรณ์</label><input id="course_costMaterials" min="0" step="0.01" type="number"/></div><div class="field"><label>ค่าใช้จ่ายอื่นๆ</label><input id="course_logisticsCost" min="0" step="0.01" type="number"/></div><div class="field span2"><label>วัตถุประสงค์</label><textarea id="course_objectives"></textarea></div><div class="field span2"><label>ปิด Gap ด้าน KPI/Competency (ระบุรหัส เช่น KPI-XXX, ชื่อ Competency)</label><input id="course_kpiCompetencyLink" placeholder="เช่น KPI-CILPUR003-01, การสื่อสาร"/></div><div class="field span2"><label>เอกสาร/ลิงก์</label><input id="course_documents"/></div><div class="field span2"><label>หมายเหตุ</label><textarea id="course_note"></textarea></div></div><div class="inline-error" id="trainingFormError"></div><div class="actions"><button class="btn-primary" id="trainingCourseSaveBtn" type="submit">บันทึกหลักสูตร</button><button class="btn-ghost" onclick="resetTrainingCourseForm()" type="button">ล้างฟอร์ม</button></div></form></section><section class="card"><div class="field"><label>ค้นหาหลักสูตร</label><input id="trainingCourseSearch" oninput="renderTrainingModuleV4()" placeholder="ชื่อ ผู้จัด หมวดหมู่"/></div><div class="course-list" id="trainingCourseList" style="margin-top:12px"></div></section></div><div><section class="card" id="trainingCourseDetail"><div class="position-detail-empty">สร้างหรือเลือกหลักสูตร</div></section><section class="card"><h2>2. เพิ่มรายชื่อพนักงานในหลักสูตร</h2><div class="form-grid"><div class="field span2"><label>ค้นหาพนักงาน</label><input id="trainingParticipantSearch" oninput="renderTrainingParticipantPicker()" placeholder="ชื่อ รหัส ชื่อเล่น"/></div><div class="field"><label>แผนก</label><select id="trainingParticipantDepartment" onchange="renderTrainingParticipantPicker()"><option value="">ทุกแผนก</option></select></div><div class="field"><label>ตำแหน่ง</label><select id="trainingParticipantPosition" onchange="renderTrainingParticipantPicker()"><option value="">ทุกตำแหน่ง</option></select></div></div><div class="participant-picker" id="trainingParticipantPicker" style="margin-top:12px"></div><div class="actions"><button class="btn-primary" id="trainingAddParticipantsBtn" onclick="addCourseParticipants()">เพิ่มพนักงานที่เลือก</button></div><div class="table-wrap" style="margin-top:14px"><table><thead><tr><th>พนักงาน</th><th>การเข้าอบรม</th><th>ผล</th><th>คะแนน</th><th>ใบรับรอง</th><th>วันหมดอายุใบรับรอง</th><th>หมายเหตุ</th><th></th></tr></thead><tbody id="trainingEnrollmentTbody"></tbody></table></div></section></div></div></div><div class="subview" id="training-sub-budget"><section class="card"><h2>3. งบประมาณอบรมเทียบค่าใช้จ่ายจริง (ตามแผนก/ปี)</h2><div class="sub">ค่าใช้จ่ายจริงคำนวณจากต้นทุนหลักสูตรหารตามสัดส่วนผู้เข้าร่วมของแต่ละแผนก</div><div class="form-grid"><div class="field"><label>แผนก</label><select id="tb_department"></select></div><div class="field"><label>ปี (ค.ศ.)</label><input id="tb_year" onchange="renderTrainingDeptDevelopmentSummary()" type="number"/></div><div class="field"><label>งบประมาณ (บาท)</label><input id="tb_amount" min="0" type="number"/></div><div class="field" style="align-self:end"><button class="btn-primary" onclick="saveTrainingBudget()" type="button">บันทึกงบประมาณ</button></div></div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>แผนก</th><th>ปี</th><th>งบประมาณ</th><th>ใช้จริง (ประมาณการ)</th><th>คงเหลือ</th><th></th></tr></thead><tbody id="trainingBudgetTbody"></tbody></table></div><div class="empty hidden" id="trainingBudgetEmpty">ยังไม่มีการตั้งงบประมาณ</div><div class="clean-note" style="margin-top:8px">ค่าใช้จ่ายจริงทั้งหมดบันทึกไว้ที่แผนก HR (ทรัพยากรบุคคล) แผนกเดียว ไม่เฉลี่ยไปแผนกอื่น</div></section><section class="card"><h2>สรุปแยกงบพัฒนาพนักงานแต่ละแผนก (ตามปีที่เลือกด้านบน)</h2><div class="sub">ประมาณการค่าใช้จ่ายพัฒนาบุคลากรของแต่ละแผนก เฉลี่ยตามสัดส่วนผู้เข้าร่วมอบรม — ใช้เพื่อการวิเคราะห์เท่านั้น ไม่ใช่ตัวเลขงบประมาณที่ใช้จ่ายจริงจากแผนกนั้น</div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>แผนก</th><th>ประมาณการค่าใช้จ่ายพัฒนาบุคลากร (บาท)</th></tr></thead><tbody id="trainingDeptDevTbody"></tbody></table></div><div class="empty hidden" id="trainingDeptDevEmpty">ไม่มีข้อมูลการอบรมในปีนี้</div></section></div></div>
+<div class="view" id="view-training"><section class="summary-grid" id="trainingSummaryGrid"></section><section class="card"><div class="module-intro"><div><h2>การฝึกอบรม (HRD)</h2><div class="sub">ขั้นตอนที่ 1 สร้างหลักสูตร แล้วขั้นตอนที่ 2 เพิ่มรายชื่อพนักงานและติดตามผล</div></div></div><div class="subnav"><button class="subnav-btn active" id="trainingSubBtnManage" onclick="showTrainingSubtab('manage')">🗂️ จัดการหลักสูตร</button><button class="subnav-btn" id="trainingSubBtnBudget" onclick="showTrainingSubtab('budget')">💰 ภาพรวม/งบประมาณ</button></div></section><div class="subview active" id="training-sub-manage"><div class="training-layout"><div><section class="card"><h2>1. เพิ่มหลักสูตรฝึกอบรม</h2><form id="trainingCourseForm" onsubmit="saveTrainingCourse(event)"><input id="course_id" type="hidden"/><div class="form-grid two"><div class="field span2"><label>ชื่อหลักสูตร *</label><input id="course_title" required=""/></div><div class="field span2"><label>รายละเอียด</label><textarea id="course_description"></textarea></div><div class="field"><label>ประเภทการฝึกอบรม</label><select id="course_type"><option value="">— เลือก —</option><option>OJT</option><option>หลักสูตรภายใน</option><option>หลักสูตรภายนอก</option><option>E-Learning</option><option>อื่นๆ</option></select></div><div class="field"><label>สถานะหลักสูตร</label><select id="course_status"><option value="">— เลือก —</option><option>วางแผน</option><option>รออนุมัติ</option><option>เปิดรับสมัคร</option><option>กำลังดำเนินการ</option><option>เสร็จสิ้น</option></select></div><div class="field"><label>หมวดหมู่</label><input id="course_category"/></div><div class="field"><label>ผู้จัด/สถาบัน</label><input id="course_provider"/></div><div class="field"><label>ชื่อวิทยากร</label><input id="course_instructor"/></div><div class="field"><label>สถานที่</label><input id="course_location"/></div><div class="field"><label>รูปแบบ</label><select id="course_format"><option value="Onsite">Onsite</option><option value="Online">Online</option><option value="Hybrid">Hybrid</option></select></div><div class="field"><label>วันที่เริ่ม</label><input id="course_startDate" type="date"/></div><div class="field"><label>วันที่สิ้นสุด</label><input id="course_endDate" type="date"/></div><div class="field"><label>เวลาเริ่ม</label><input id="course_startTime" type="time"/></div><div class="field"><label>เวลาสิ้นสุด</label><input id="course_endTime" type="time"/></div><div class="field"><label>จำนวนชั่วโมง</label><input id="course_hours" min="0" step="0.5" type="number"/></div><div class="field"><label>ค่าวิทยากร (ค่าใช้จ่ายหลักสูตร)</label><input id="course_cost" min="0" step="0.01" type="number"/></div><div class="field"><label>ค่าสถานที่</label><input id="course_costVenue" min="0" step="0.01" type="number"/></div><div class="field"><label>ค่าอาหาร/เครื่องดื่ม</label><input id="course_costFood" min="0" step="0.01" type="number"/></div><div class="field"><label>ค่าเอกสาร/อุปกรณ์</label><input id="course_costMaterials" min="0" step="0.01" type="number"/></div><div class="field"><label>ค่าใช้จ่ายอื่นๆ</label><input id="course_logisticsCost" min="0" step="0.01" type="number"/></div><div class="field span2"><label>วัตถุประสงค์</label><textarea id="course_objectives"></textarea></div><div class="field span2"><label>ปิด Gap ด้าน KPI/Competency (ระบุรหัส เช่น KPI-XXX, ชื่อ Competency)</label><input id="course_kpiCompetencyLink" placeholder="เช่น KPI-CILPUR003-01, การสื่อสาร"/></div><div class="field span2"><label>เอกสาร/ลิงก์</label><input id="course_documents"/></div><div class="field span2"><label>หมายเหตุ</label><textarea id="course_note"></textarea></div></div><div class="inline-error" id="trainingFormError"></div><div class="actions"><button class="btn-primary" id="trainingCourseSaveBtn" type="submit">บันทึกหลักสูตร</button><button class="btn-ghost" onclick="resetTrainingCourseForm()" type="button">ล้างฟอร์ม</button></div></form></section><section class="card"><div class="field"><label>ค้นหาหลักสูตร</label><input id="trainingCourseSearch" oninput="renderTrainingModuleV4()" placeholder="ชื่อ ผู้จัด หมวดหมู่"/></div><div class="course-list" id="trainingCourseList" style="margin-top:12px"></div></section></div><div><section class="card" id="trainingCourseDetail"><div class="position-detail-empty">สร้างหรือเลือกหลักสูตร</div></section><section class="card"><h2>2. เพิ่มรายชื่อพนักงานในหลักสูตร</h2><div class="form-grid"><div class="field span2"><label>ค้นหาพนักงาน</label><input id="trainingParticipantSearch" oninput="renderTrainingParticipantPicker()" placeholder="ชื่อ รหัส ชื่อเล่น"/></div><div class="field"><label>แผนก</label><select id="trainingParticipantDepartment" onchange="renderTrainingParticipantPicker()"><option value="">ทุกแผนก</option></select></div><div class="field"><label>ตำแหน่ง</label><select id="trainingParticipantPosition" onchange="renderTrainingParticipantPicker()"><option value="">ทุกตำแหน่ง</option></select></div></div><div class="participant-picker" id="trainingParticipantPicker" style="margin-top:12px"></div><div class="actions"><button class="btn-primary" id="trainingAddParticipantsBtn" onclick="addCourseParticipants()">เพิ่มพนักงานที่เลือก</button></div><div class="table-wrap" style="margin-top:14px"><table><thead><tr><th>พนักงาน</th><th>การเข้าอบรม</th><th>ผล</th><th>คะแนน</th><th>ใบรับรอง</th><th>วันหมดอายุใบรับรอง</th><th>หมายเหตุ</th><th></th></tr></thead><tbody id="trainingEnrollmentTbody"></tbody></table></div></section></div></div></div><div class="subview" id="training-sub-budget"><section class="card"><h2>3. งบประมาณอบรมเทียบค่าใช้จ่ายจริง (ตามแผนก/ปี)</h2><div class="sub">ค่าใช้จ่ายจริงคำนวณจากต้นทุนหลักสูตรหารตามสัดส่วนผู้เข้าร่วมของแต่ละแผนก</div><div class="form-grid"><div class="field"><label>แผนก</label><select id="tb_department"></select></div><div class="field"><label>ปี (ค.ศ.)</label><input id="tb_year" onchange="renderTrainingDeptDevelopmentSummary()" type="number"/></div><div class="field"><label>งบประมาณ (บาท)</label><input id="tb_amount" min="0" type="number"/></div><div class="field" style="align-self:end"><button class="btn-primary" onclick="saveTrainingBudget()" type="button">บันทึกงบประมาณ</button></div></div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>แผนก</th><th>ปี</th><th>งบประมาณ</th><th>ใช้จริง (ประมาณการ)</th><th>คงเหลือ</th><th></th></tr></thead><tbody id="trainingBudgetTbody"></tbody></table></div><div class="empty hidden" id="trainingBudgetEmpty">ยังไม่มีการตั้งงบประมาณ</div><div class="clean-note" style="margin-top:8px">ค่าใช้จ่ายจริงทั้งหมดบันทึกไว้ที่แผนก HR (ทรัพยากรบุคคล) แผนกเดียว ไม่เฉลี่ยไปแผนกอื่น</div></section><section class="card"><h2>สรุปแยกงบพัฒนาพนักงานแต่ละแผนก (ตามปีที่เลือกด้านบน)</h2><div class="sub">ประมาณการค่าใช้จ่ายพัฒนาบุคลากรของแต่ละแผนก เฉลี่ยตามสัดส่วนผู้เข้าร่วมอบรม — ใช้เพื่อการวิเคราะห์เท่านั้น ไม่ใช่ตัวเลขงบประมาณที่ใช้จ่ายจริงจากแผนกนั้น</div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>แผนก</th><th>ประมาณการค่าใช้จ่ายพัฒนาบุคลากร (บาท)</th></tr></thead><tbody id="trainingDeptDevTbody"></tbody></table></div><div class="empty hidden" id="trainingDeptDevEmpty">ไม่มีข้อมูลการอบรมในปีนี้</div></section></div></div>
 <!-- ============ REPORTS ============ -->
 <div class="view" id="view-reports"><section class="summary-grid" id="reportSummaryGrid"></section><section class="card"><div class="module-intro"><div><h2>รายงานและ Artifact</h2><div class="sub">สร้างรายงานจากฐานข้อมูลจริง พร้อมตารางอ่านค่าและ Export Excel</div></div><button class="btn-primary" id="reportExportExcel" onclick="exportReportWorkbook()">Export Excel</button></div><div class="report-filter-grid" style="margin-top:16px"><div class="field"><label>วันที่เริ่ม</label><input id="reportDateFrom" onchange="renderReportWorkspace()" type="date"/></div><div class="field"><label>วันที่สิ้นสุด</label><input id="reportDateTo" onchange="renderReportWorkspace()" type="date"/></div><div class="field"><label>บริษัท</label><select id="reportCompanyFilter" onchange="renderReportWorkspace()"><option value="ALL">ทุกบริษัท</option><option value="CMN">CMN</option><option value="CIL">CIL</option></select></div><div class="field"><label>ฝ่าย</label><select id="reportDivisionFilter" onchange="renderReportWorkspace()"><option value="">ทุกฝ่าย</option></select></div><div class="field"><label>แผนก</label><select id="reportDepartmentFilter" onchange="renderReportWorkspace()"><option value="">ทุกแผนก</option></select></div><div class="filter-actions"><button class="btn-ghost" onclick="['reportDateFrom','reportDateTo','reportDivisionFilter','reportDepartmentFilter'].forEach(id=&gt;document.getElementById(id).value='');document.getElementById('reportCompanyFilter').value='ALL';renderReportWorkspace()">ล้างตัวกรอง</button></div></div></section><div class="report-layout"><section class="card report-menu"><button class="btn-ghost report-topic-btn active" data-report="headcount" onclick="showReportTopic('headcount')">อัตรากำลัง</button><button class="btn-ghost report-topic-btn" data-report="tenure" onclick="showReportTopic('tenure')">อายุงาน/อายุคน</button><button class="btn-ghost report-topic-btn" data-report="lifecycle" onclick="showReportTopic('lifecycle')">สถานะพนักงาน</button><button class="btn-ghost report-topic-btn" data-report="turnover" onclick="showReportTopic('turnover')">การลาออก (Turnover)</button><button class="btn-ghost report-topic-btn" data-report="onboarding" onclick="showReportTopic('onboarding')">Onboarding</button><button class="btn-ghost report-topic-btn" data-report="positions" onclick="showReportTopic('positions')">ตำแหน่งงาน</button><button class="btn-ghost report-topic-btn" data-report="training" onclick="showReportTopic('training')">การฝึกอบรม</button><button class="btn-ghost report-topic-btn" data-report="orgquality" onclick="showReportTopic('orgquality')">ผังองค์กรและ Data Quality</button></section><section class="card report-panel" id="reportContent"></section></div></div>
 <!-- ============ SETTINGS ============ -->
@@ -3953,8 +3953,8 @@ function courseById(id){return DB.trainingCourses.find(function(c){return c.id==
 function courseTotalCost(c){return Number(c.cost||0)+Number(c.costVenue||0)+Number(c.costFood||0)+Number(c.costMaterials||0)+Number(c.logisticsCost||0);}
 function courseEnrollments(id){return DB.trainingEnrollments.filter(function(e){return e.courseId===id;});}
 function resetTrainingCourseForm(){var f=document.getElementById('trainingCourseForm');if(f)f.reset();var id=document.getElementById('course_id');if(id)id.value='';}
-function saveTrainingCourse(event){if(event)event.preventDefault();var id=document.getElementById('course_id').value||uid('course_');var title=document.getElementById('course_title').value.trim();if(!title){v4SetInlineMessage('trainingFormError','กรุณากรอกชื่อหลักสูตร');return;}var rec={id:id,title:title,description:document.getElementById('course_description').value.trim(),category:document.getElementById('course_category').value.trim(),provider:document.getElementById('course_provider').value.trim(),instructor:document.getElementById('course_instructor').value.trim(),location:document.getElementById('course_location').value.trim(),format:document.getElementById('course_format').value,startDate:document.getElementById('course_startDate').value,endDate:document.getElementById('course_endDate').value,startTime:document.getElementById('course_startTime').value,endTime:document.getElementById('course_endTime').value,hours:Number(document.getElementById('course_hours').value)||0,cost:Number(document.getElementById('course_cost').value)||0,costVenue:Number(document.getElementById('course_costVenue').value)||0,costFood:Number(document.getElementById('course_costFood').value)||0,costMaterials:Number(document.getElementById('course_costMaterials').value)||0,logisticsCost:Number(document.getElementById('course_logisticsCost').value)||0,objectives:document.getElementById('course_objectives').value.trim(),kpiCompetencyLink:document.getElementById('course_kpiCompetencyLink').value.trim(),documents:document.getElementById('course_documents').value.trim(),note:document.getElementById('course_note').value.trim(),company:companyFilter==='ALL'?'':companyFilter,updatedAt:v4Now()};var idx=DB.trainingCourses.findIndex(function(c){return c.id===id;});if(idx>=0){rec.createdAt=DB.trainingCourses[idx].createdAt||v4Now();DB.trainingCourses[idx]=rec;}else{rec.createdAt=v4Now();DB.trainingCourses.push(rec);}v4SelectedCourseId=id;saveDB();resetTrainingCourseForm();v4SetInlineMessage('trainingFormError','');renderTrainingModuleV4();}
-function editTrainingCourse(id){var c=courseById(id);if(!c)return;v4SelectedCourseId=id;['id','title','description','category','provider','instructor','location','format','startDate','endDate','startTime','endTime','hours','cost','costVenue','costFood','costMaterials','logisticsCost','objectives','kpiCompetencyLink','documents','note'].forEach(function(f){var el=document.getElementById('course_'+f);if(el)el.value=c[f]??'';});renderTrainingModuleV4();document.getElementById('trainingCourseForm').scrollIntoView({behavior:'smooth'});}
+function saveTrainingCourse(event){if(event)event.preventDefault();var id=document.getElementById('course_id').value||uid('course_');var title=document.getElementById('course_title').value.trim();if(!title){v4SetInlineMessage('trainingFormError','กรุณากรอกชื่อหลักสูตร');return;}var rec={id:id,title:title,description:document.getElementById('course_description').value.trim(),category:document.getElementById('course_category').value.trim(),type:document.getElementById('course_type').value,status:document.getElementById('course_status').value,provider:document.getElementById('course_provider').value.trim(),instructor:document.getElementById('course_instructor').value.trim(),location:document.getElementById('course_location').value.trim(),format:document.getElementById('course_format').value,startDate:document.getElementById('course_startDate').value,endDate:document.getElementById('course_endDate').value,startTime:document.getElementById('course_startTime').value,endTime:document.getElementById('course_endTime').value,hours:Number(document.getElementById('course_hours').value)||0,cost:Number(document.getElementById('course_cost').value)||0,costVenue:Number(document.getElementById('course_costVenue').value)||0,costFood:Number(document.getElementById('course_costFood').value)||0,costMaterials:Number(document.getElementById('course_costMaterials').value)||0,logisticsCost:Number(document.getElementById('course_logisticsCost').value)||0,objectives:document.getElementById('course_objectives').value.trim(),kpiCompetencyLink:document.getElementById('course_kpiCompetencyLink').value.trim(),documents:document.getElementById('course_documents').value.trim(),note:document.getElementById('course_note').value.trim(),company:companyFilter==='ALL'?'':companyFilter,updatedAt:v4Now()};var idx=DB.trainingCourses.findIndex(function(c){return c.id===id;});if(idx>=0){rec.createdAt=DB.trainingCourses[idx].createdAt||v4Now();DB.trainingCourses[idx]=rec;}else{rec.createdAt=v4Now();DB.trainingCourses.push(rec);}v4SelectedCourseId=id;saveDB();resetTrainingCourseForm();v4SetInlineMessage('trainingFormError','');renderTrainingModuleV4();}
+function editTrainingCourse(id){var c=courseById(id);if(!c)return;v4SelectedCourseId=id;['id','title','description','type','status','category','provider','instructor','location','format','startDate','endDate','startTime','endTime','hours','cost','costVenue','costFood','costMaterials','logisticsCost','objectives','kpiCompetencyLink','documents','note'].forEach(function(f){var el=document.getElementById('course_'+f);if(el)el.value=c[f]??'';});renderTrainingModuleV4();document.getElementById('trainingCourseForm').scrollIntoView({behavior:'smooth'});}
 function deleteTrainingCourse(id){DB.trainingCourses=DB.trainingCourses.filter(function(c){return c.id!==id;});DB.trainingEnrollments=DB.trainingEnrollments.filter(function(e){return e.courseId!==id;});if(v4SelectedCourseId===id)v4SelectedCourseId='';saveDB();renderTrainingModuleV4();}
 /* ---------- FM-HR 026: Training approval request print document ---------- */
 function buildTrainingApprovalFormHtml(course){
@@ -5681,9 +5681,9 @@ function installPerformanceTrackingV42(){
 }
 function applyBilingualHeadersV42(){
   var brand=document.querySelector('.brand h1');if(brand&&!brand.querySelector('.brand-en'))brand.insertAdjacentHTML('beforeend','<span class="brand-en">Unified Human Resources System</span>');
-  var labels={employees:['👥','ฐานข้อมูลพนักงาน','Employee Database'],orgchart:['🏢','ผังองค์กร','Organization Chart'],onboarding:['🧭','ติดตามการเริ่มงาน','Tracking Onboarding'],jobpositions:['🗂️','จัดการตำแหน่งงาน','Job Position Management'],training:['🎓','ประวัติการฝึกอบรม','Training History'],reports:['📊','รายงาน','Reports & Artifacts'],settings:['⚙️','ตั้งค่าระบบ','Settings']};
+  var labels={employees:['👥','ฐานข้อมูลพนักงาน','Employee Database'],orgchart:['🏢','ผังองค์กร','Organization Chart'],onboarding:['🧭','ติดตามการเริ่มงาน','Tracking Onboarding'],jobpositions:['🗂️','จัดการตำแหน่งงาน','Job Position Management'],training:['🎓','การฝึกอบรม (HRD)','Training & Development'],reports:['📊','รายงาน','Reports & Artifacts'],settings:['⚙️','ตั้งค่าระบบ','Settings']};
   Object.keys(labels).forEach(function(key){var button=document.querySelector('.tab-btn[data-tab="'+key+'"]'),data=labels[key];setTabLabelV42(button,data[0],data[1],data[2]);});
-  moduleHeadingV42('view-employees','ฐานข้อมูลพนักงาน','Employee Database');moduleHeadingV42('view-orgchart','ผังองค์กร','Organization Chart');moduleHeadingV42('view-onboarding','ติดตามการเริ่มงาน','Tracking Onboarding');moduleHeadingV42('view-jobpositions','จัดการตำแหน่งงาน','Job Position Management');moduleHeadingV42('view-training','ประวัติการฝึกอบรม','Training History');moduleHeadingV42('view-reports','รายงานและ Artifact','Reports & Artifacts');moduleHeadingV42('view-settings','ตั้งค่าระบบ','Settings');
+  moduleHeadingV42('view-employees','ฐานข้อมูลพนักงาน','Employee Database');moduleHeadingV42('view-orgchart','ผังองค์กร','Organization Chart');moduleHeadingV42('view-onboarding','ติดตามการเริ่มงาน','Tracking Onboarding');moduleHeadingV42('view-jobpositions','จัดการตำแหน่งงาน','Job Position Management');moduleHeadingV42('view-training','การฝึกอบรม (HRD)','Training & Development');moduleHeadingV42('view-reports','รายงานและ Artifact','Reports & Artifacts');moduleHeadingV42('view-settings','ตั้งค่าระบบ','Settings');
 }
 function enhanceOrgToolbarV42(){var toolbar=document.querySelector('#view-orgchart .org-canvas-toolbar');if(!toolbar)return;var buttons=toolbar.querySelectorAll('button');buttons.forEach(function(button){if(button.textContent.trim()==='พิมพ์'){button.remove();}});var actions=toolbar.querySelectorAll('.actions')[1]||toolbar;var a4=document.createElement('button');a4.className='btn-ghost btn-sm';a4.textContent='พิมพ์ A4';a4.onclick=function(){printOrgChartV42('A4');};var a3=document.createElement('button');a3.className='btn-ghost btn-sm';a3.textContent='พิมพ์ A3';a3.onclick=function(){printOrgChartV42('A3');};actions.appendChild(a4);actions.appendChild(a3);var note=document.createElement('span');note.className='org-drop-help';note.textContent='ลากกล่องไปวางเพื่อเปลี่ยนสายบังคับบัญชา';toolbar.insertBefore(note,toolbar.firstChild);}
 function installDocumentAutomationModule(){
@@ -8623,6 +8623,211 @@ window.refreshPerfEmployeeSelects=function(){
     return prevSubtab.apply(this, arguments);
   };
   showEmployeeSubtab = window.showEmployeeSubtab;
+})();
+</script>
+<style id="hrd-style">
+#view-training.hrd-ov #trainingSummaryGrid{display:none}
+#view-training.hrd-need #trainingSummaryGrid{display:none}
+.hrd-sub{margin-bottom:12px}
+.hrd-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.hrd-head h2{font-size:34px;font-weight:800;margin:0;letter-spacing:.5px}
+.hrd-head .hrd-tag{font-size:15px;opacity:.8}
+.hrd-quote{font-style:italic;opacity:.8;font-size:14px}
+.hrd-tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.hrd-tile{min-width:0;width:100%;border:0;border-radius:16px;padding:16px 12px;text-align:left;cursor:pointer;color:#1f2a44!important;min-height:112px;display:flex;flex-direction:column;justify-content:space-between;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.08)!important;transition:transform .15s}
+.hrd-tile:hover{transform:translateY(-2px)}
+.hrd-tile .ic{font-size:30px;line-height:1}
+.hrd-tile b{font-size:15px;line-height:1.3;display:block;margin-top:6px}
+.hrd-tile small{font-size:12px;opacity:.75;display:block;margin-top:2px}
+.hrd-t1{background:#dcecff!important}.hrd-t2{background:#d6f4e6!important}.hrd-t3{background:#ffe9cf!important}.hrd-t4{background:#e6dcfa!important}.hrd-t5{background:#fddcdf!important}
+.hrd-card{border-radius:16px;padding:16px 18px;margin-bottom:16px}
+.hrd-card h3{margin:0 0 12px;font-size:18px}
+.hrd-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.hrd-bar select{width:auto;min-width:110px}
+.hrd-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.hrd-kpi{border:1px solid rgba(120,130,150,.25);border-radius:12px;padding:12px 14px}
+.hrd-kpi .l{font-size:13px;opacity:.85}
+.hrd-kpi .v{font-size:30px;font-weight:800;line-height:1.2;margin:4px 0}
+.hrd-kpi .v small{font-size:14px;font-weight:600}
+.hrd-kpi .d{font-size:13px;font-weight:600}
+.hrd-up{color:#0a8a4f}.hrd-down{color:#c53030}.hrd-flat{opacity:.65}
+.hrd-two{display:grid;grid-template-columns:1.1fr 1fr;gap:16px}
+.hrd-donut{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.hrd-donut svg{width:180px;height:180px;flex:none}
+.hrd-legend div{display:flex;align-items:center;gap:8px;font-size:14px;margin:6px 0}
+.hrd-legend i{width:12px;height:12px;border-radius:50%;display:inline-block}
+.hrd-legend span.p{margin-left:auto;padding-left:18px;font-weight:700}
+.hrd-alert{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(120,130,150,.18);cursor:pointer;font-size:14px}
+.hrd-alert:last-child{border-bottom:0}
+.hrd-alert .n{margin-left:auto;min-width:26px;height:26px;border-radius:50%;color:#fff;font-weight:700;display:inline-flex;align-items:center;justify-content:center;font-size:13px}
+.hrd-pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:600;background:#e8ebf2;color:#33405a}
+.hrd-pill.s-open{background:#d4f3e1;color:#0a6e4b}.hrd-pill.s-run{background:#d9e8ff;color:#1f4fb8}.hrd-pill.s-wait{background:#ffe6c7;color:#9a5300}.hrd-pill.s-plan{background:#e8ebf2;color:#33405a}.hrd-pill.s-done{background:#e0e0e0;color:#444}
+.hrd-up-row{cursor:pointer}
+@media(max-width:1100px){.hrd-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}.hrd-kpis{grid-template-columns:repeat(2,1fr)}.hrd-two{grid-template-columns:1fr}}
+@media(max-width:600px){.hrd-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.hrd-kpis{grid-template-columns:1fr}}
+</style>
+<script id="hrd-script">
+(function(){
+  var hrdYear = new Date().getFullYear();
+  var TYPES = ['OJT','หลักสูตรภายใน','หลักสูตรภายนอก','E-Learning','อื่นๆ'];
+  var COLORS = ['#3b82f6','#22b573','#f5a524','#8b6fd6','#a8adb8'];
+  function esc(x){ return escapeHtml(String(x==null?'':x)); }
+  function fmt(n){ return Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:0}); }
+  function yearOf(c){ var d = parseDate(c.startDate); return d ? d.getFullYear() : null; }
+  function typeOf(c){ return TYPES.indexOf(c.type)>=0 ? c.type : 'อื่นๆ'; }
+  function coursesOf(year){
+    return (DB.trainingCourses||[]).filter(function(c){ return yearOf(c)===year && courseInCompany(c,companyFilter); });
+  }
+  function enrollsOf(courses){
+    var ids = {}; courses.forEach(function(c){ ids[c.id]=1; });
+    return (DB.trainingEnrollments||[]).filter(function(e){ return ids[e.courseId] && empInCompany(e.employeeCode,companyFilter); });
+  }
+  function stats(year){
+    var cs = coursesOf(year), en = enrollsOf(cs), ppl = {};
+    en.forEach(function(e){ ppl[e.employeeCode]=1; });
+    var pass = en.filter(function(e){return e.result==='ผ่าน';}).length;
+    var fail = en.filter(function(e){return e.result==='ไม่ผ่าน';}).length;
+    return { courses:cs, enrolls:en, people:Object.keys(ppl).length, count:cs.length,
+      cost: cs.reduce(function(s,c){return s+courseTotalCost(c);},0),
+      rate: (pass+fail) ? Math.round(pass*100/(pass+fail)) : null };
+  }
+  function delta(cur,prev,unit){
+    if(prev==null || cur==null) return '<span class="d hrd-flat">—</span>';
+    if(!prev) return '<span class="d hrd-flat">ไม่มีข้อมูลปีก่อน</span>';
+    var pct = Math.round((cur-prev)*100/prev);
+    if(unit==='pt'){ var df=cur-prev; return '<span class="d '+(df>0?'hrd-up':df<0?'hrd-down':'hrd-flat')+'">'+(df>0?'▲ ':df<0?'▼ ':'')+Math.abs(df)+'% จากปีก่อน</span>'; }
+    return '<span class="d '+(pct>0?'hrd-up':pct<0?'hrd-down':'hrd-flat')+'">'+(pct>0?'▲ ':pct<0?'▼ ':'')+Math.abs(pct)+'% จากปีก่อน</span>';
+  }
+  function pillClass(st){ return st==='เปิดรับสมัคร'?'s-open':st==='กำลังดำเนินการ'?'s-run':st==='รออนุมัติ'?'s-wait':st==='เสร็จสิ้น'?'s-done':'s-plan'; }
+  function ensureDom(){
+    var view = document.getElementById('view-training'); if(!view || document.getElementById('training-sub-overview')) return;
+    var nav = view.querySelector('.subnav');
+    nav.insertAdjacentHTML('afterbegin','<button class="subnav-btn active" id="trainingSubBtnOverview" onclick="showTrainingSubtab(\'overview\')">📊 ภาพรวม HRD</button>');
+    nav.insertAdjacentHTML('beforeend','<button class="subnav-btn" id="trainingSubBtnNeed" onclick="showTrainingSubtab(\'need\')">🎯 Training Need & Roadmap</button>');
+    document.getElementById('trainingSubBtnManage').textContent='🗂️ หลักสูตร / OJT';
+    document.getElementById('trainingSubBtnBudget').textContent='💰 ประวัติ & งบประมาณ';
+    var manage = document.getElementById('training-sub-manage');
+    manage.insertAdjacentHTML('beforebegin','<div class="subview active" id="training-sub-overview"></div>');
+    view.appendChild(Object.assign(document.createElement('div'),{id:'training-sub-need',className:'subview'}));
+    manage.classList.remove('active');
+  }
+  function yearOptions(){
+    var set = {}; set[new Date().getFullYear()]=1; set[hrdYear]=1;
+    (DB.trainingCourses||[]).forEach(function(c){ var y=yearOf(c); if(y) set[y]=1; });
+    return Object.keys(set).map(Number).sort(function(a,b){return b-a;}).map(function(y){
+      return '<option value="'+y+'"'+(y===hrdYear?' selected':'')+'>'+(y+543)+' (ม.ค. - ธ.ค.)</option>'; }).join('');
+  }
+  function renderOverview(){
+    var box = document.getElementById('training-sub-overview'); if(!box) return;
+    var cur = stats(hrdYear), prev = stats(hrdYear-1);
+    var today = todayStart(), in30 = new Date(today.getTime()+30*86400000);
+    // donut
+    var counts = TYPES.map(function(t){ return cur.courses.filter(function(c){return typeOf(c)===t;}).length; });
+    var total = cur.count, R=70, C=2*Math.PI*R, off=0, arcs='';
+    if(total){ counts.forEach(function(n,i){ if(!n) return; var len=C*n/total; arcs+='<circle r="'+R+'" cx="90" cy="90" fill="none" stroke="'+COLORS[i]+'" stroke-width="26" stroke-dasharray="'+len+' '+(C-len)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 90 90)"/>'; off+=len; }); }
+    else arcs='<circle r="'+R+'" cx="90" cy="90" fill="none" stroke="#d6d9e0" stroke-width="26"/>';
+    var donut='<svg viewBox="0 0 180 180">'+arcs+'<text x="90" y="88" text-anchor="middle" font-size="32" font-weight="800" fill="currentColor">'+total+'</text><text x="90" y="108" text-anchor="middle" font-size="13" fill="currentColor" opacity=".7">หลักสูตร</text></svg>';
+    var legend = TYPES.map(function(t,i){ return '<div><i style="background:'+COLORS[i]+'"></i>'+esc(t)+'<span class="p">'+(total?Math.round(counts[i]*100/total):0)+'%</span></div>'; }).join('');
+    // alerts
+    var allCourses = (DB.trainingCourses||[]).filter(function(c){return courseInCompany(c,companyFilter);});
+    var waitApprove = allCourses.filter(function(c){return c.status==='รออนุมัติ';}).length;
+    var ojtSoon = allCourses.filter(function(c){ if(typeOf(c)!=='OJT'||c.status==='เสร็จสิ้น') return false; var d=parseDate(c.endDate); return d && d>=today && d<=in30; }).length;
+    var allEn = enrollsOf(allCourses);
+    var waitEval = allEn.filter(function(e){return e.attendance==='Attended' && e.result==='รอผล';}).length;
+    var needCnt = needList().filter(function(r){return r.count===0;}).length;
+    function alertRow(ic,txt,n,color,fn){ return '<div class="hrd-alert" onclick="'+fn+'"><span style="font-size:20px">'+ic+'</span><span>'+txt+'</span><span class="n" style="background:'+color+'">'+n+'</span></div>'; }
+    var alerts = alertRow('📋','รออนุมัติหลักสูตร',waitApprove,'#e5484d',"hrdGo('manage')")
+      + alertRow('⏰','OJT ที่ใกล้ครบกำหนด (30 วัน)',ojtSoon,'#f5a524',"hrdGo('manage')")
+      + alertRow('📝','รอประเมินผลหลังอบรม',waitEval,'#e08a1e',"hrdGo('manage')")
+      + alertRow('🎯','พนักงานที่ยังไม่มีแผนอบรม (Training Need)',needCnt,'#3b82f6',"showTrainingSubtab('need')");
+    // upcoming
+    var up = allCourses.filter(function(c){ var d=parseDate(c.startDate); return d && d>=today && c.status!=='เสร็จสิ้น'; })
+      .sort(function(a,b){return parseDate(a.startDate)-parseDate(b.startDate);}).slice(0,8);
+    var upRows = up.map(function(c){
+      var d = parseDate(c.startDate);
+      var target = (function(){ var deps={}; enrollsOf([c]).forEach(function(e){ var m=getEmployeeByCode(e.employeeCode); if(m&&m.department) deps[m.department]=1; }); var k=Object.keys(deps); return k.length? (k.length>2? k.slice(0,2).join(', ')+' +'+(k.length-2):k.join(', ')) : '-'; })();
+      return '<tr class="hrd-up-row" onclick="hrdOpenCourse(\''+v4EscapeAttr(c.id)+'\')"><td>'+d.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})+'</td><td><strong>'+esc(c.title)+'</strong></td><td>'+esc(c.type||'-')+'</td><td>'+esc(target)+'</td><td><span class="hrd-pill '+pillClass(c.status)+'">'+esc(c.status||'วางแผน')+'</span></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="empty">ยังไม่มีหลักสูตรที่กำลังจะจัดขึ้น — เพิ่มหลักสูตรพร้อมวันที่เริ่มในเมนู "หลักสูตร / OJT"</td></tr>';
+    box.innerHTML =
+      '<div class="hrd-head"><div><h2>HRD</h2><div class="hrd-tag">พัฒนาคน พัฒนาองค์กร สู่ความสำเร็จอย่างยั่งยืน</div></div><div class="hrd-quote">“การลงทุนในคน คือการลงทุนที่คุ้มค่าที่สุด” 🌱</div></div>'
+      + '<div class="hrd-tiles">'
+      + '<button class="hrd-tile hrd-t1" onclick="hrdNewCourse(\'OJT\')"><span class="ic">🧑‍💻</span><span><b>1. สร้าง OJT ให้พนักงาน</b><small>On-the-Job Training</small></span></button>'
+      + '<button class="hrd-tile hrd-t2" onclick="hrdGo(\'budget\')"><span class="ic">🎓</span><span><b>2. ประวัติการฝึกอบรมและงบประมาณ</b><small>Training History & Budget</small></span></button>'
+      + '<button class="hrd-tile hrd-t3" onclick="hrdGo(\'manage\')"><span class="ic">🏅</span><span><b>3. ติดตามสถานะการยื่นหลักสูตร</b><small>กรมพัฒนาฝีมือแรงงาน</small></span></button>'
+      + '<button class="hrd-tile hrd-t4" onclick="hrdGo(\'manage\')"><span class="ic">📈</span><span><b>4. ติดตามผลการปฏิบัติงาน</b><small>หลังฝึกอบรม</small></span></button>'
+      + '<button class="hrd-tile hrd-t5" onclick="showTrainingSubtab(\'need\')"><span class="ic">🎯</span><span><b>5. Training Need และ Training Roadmap</b><small>ของแต่ละตำแหน่ง</small></span></button>'
+      + '</div>'
+      + '<section class="card hrd-card"><div class="hrd-bar"><h3 style="margin:0">ภาพรวมการพัฒนาบุคลากร</h3><label class="small">ช่วงเวลา: <select onchange="hrdSetYear(this.value)">'+yearOptions()+'</select></label></div><div class="hrd-kpis">'
+      + '<div class="hrd-kpi"><div class="l">จำนวนพนักงานที่ได้รับการฝึกอบรม</div><div class="v">'+fmt(cur.people)+' <small>คน</small></div>'+delta(cur.people,prev.people)+'</div>'
+      + '<div class="hrd-kpi"><div class="l">จำนวนหลักสูตรทั้งหมด</div><div class="v">'+fmt(cur.count)+' <small>หลักสูตร</small></div>'+delta(cur.count,prev.count)+'</div>'
+      + '<div class="hrd-kpi"><div class="l">งบประมาณที่ใช้</div><div class="v">'+fmt(cur.cost)+' <small>บาท</small></div>'+delta(cur.cost,prev.cost)+'</div>'
+      + '<div class="hrd-kpi"><div class="l">อัตราการผ่านอบรม</div><div class="v">'+(cur.rate==null?'—':cur.rate+'%')+'</div>'+delta(cur.rate,prev.rate,'pt')+'</div>'
+      + '</div></section>'
+      + '<div class="hrd-two"><section class="card hrd-card"><h3>สรุปประเภทการฝึกอบรม</h3><div class="hrd-donut">'+donut+'<div class="hrd-legend" style="flex:1;min-width:170px">'+legend+'</div></div></section>'
+      + '<section class="card hrd-card"><h3>กิจกรรม / แจ้งเตือนที่ต้องดำเนินการ</h3>'+alerts+'</section></div>'
+      + '<section class="card hrd-card"><h3>หลักสูตรที่กำลังจะจัดขึ้น</h3><div class="table-wrap"><table><thead><tr><th>วันที่จัด</th><th>หลักสูตร</th><th>ประเภท</th><th>กลุ่มเป้าหมาย</th><th>สถานะ</th></tr></thead><tbody>'+upRows+'</tbody></table></div></section>';
+  }
+  function needList(){
+    var rows = (DB.employees||[]).filter(function(e){ return e.status==='Active' && (companyFilter==='ALL'||e.company===companyFilter); });
+    var cs = coursesOf(hrdYear), ids = {}; cs.forEach(function(c){ids[c.id]=c;});
+    return rows.map(function(e){
+      var en = (DB.trainingEnrollments||[]).filter(function(x){ return x.employeeCode===e.empCode && ids[x.courseId]; });
+      return { emp:e, count:en.length, hours:en.reduce(function(s,x){return s+Number(ids[x.courseId].hours||0);},0), titles:en.map(function(x){return ids[x.courseId].title;}) };
+    }).sort(function(a,b){ return a.count-b.count || String(a.emp.department||'').localeCompare(String(b.emp.department||''),'th'); });
+  }
+  function renderNeed(){
+    var box = document.getElementById('training-sub-need'); if(!box) return;
+    var q = ((document.getElementById('hrdNeedSearch')||{}).value||'').trim().toLowerCase();
+    var all = needList();
+    var rows = all.filter(function(r){ return !q || (r.emp.fullName+' '+r.emp.empCode+' '+(r.emp.department||'')+' '+(r.emp.position||'')).toLowerCase().indexOf(q)>=0; });
+    var none = all.filter(function(r){return r.count===0;}).length;
+    box.innerHTML = '<section class="card hrd-card"><div class="hrd-bar"><div><h3 style="margin:0">Training Need & Roadmap</h3><div class="small">เรียงจากพนักงานที่ยังไม่มีแผนอบรมในปี '+(hrdYear+543)+' ไว้ก่อน — ยังไม่มีแผน '+none+' คน จากทั้งหมด '+all.length+' คน</div></div><label class="small">ปี <select onchange="hrdSetYear(this.value)">'+yearOptions()+'</select></label></div>'
+      + '<div class="field"><input id="hrdNeedSearch" value="'+esc(q)+'" oninput="hrdNeedSearchChange()" placeholder="ค้นหา ชื่อ รหัส แผนก ตำแหน่ง"/></div>'
+      + '<div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>พนักงาน</th><th>แผนก</th><th>ตำแหน่ง</th><th>จำนวนหลักสูตร</th><th>ชั่วโมงรวม</th><th>หลักสูตรที่วางแผน/เข้าร่วม</th></tr></thead><tbody>'
+      + (rows.slice(0,300).map(function(r){ return '<tr><td><strong>'+esc(r.emp.fullName)+'</strong><div class="small">'+esc(r.emp.empCode)+'</div></td><td>'+esc(r.emp.department||'-')+'</td><td>'+esc(r.emp.position||'-')+'</td><td>'+(r.count?r.count:'<span class="hrd-pill s-wait">ยังไม่มีแผน</span>')+'</td><td>'+fmt(r.hours)+'</td><td>'+(esc(r.titles.join(', '))||'-')+'</td></tr>'; }).join('')||'<tr><td colspan="6" class="empty">ไม่พบข้อมูล</td></tr>')
+      + '</tbody></table></div>'+(rows.length>300?'<div class="small">แสดง 300 รายการแรก จาก '+rows.length+' — พิมพ์ค้นหาเพื่อกรอง</div>':'')+'</section>';
+    var s = document.getElementById('hrdNeedSearch');
+    if(s && q){ s.focus(); s.setSelectionRange(q.length,q.length); }
+  }
+  var prevSub = window.showTrainingSubtab;
+  window.showTrainingSubtab = function(name){
+    ensureDom();
+    var ids = ['overview','manage','budget','need'];
+    ids.forEach(function(k){
+      var v = document.getElementById('training-sub-'+k); if(v) v.classList.toggle('active',k===name);
+      var b = document.getElementById('trainingSubBtn'+k.charAt(0).toUpperCase()+k.slice(1)); if(b) b.classList.toggle('active',k===name);
+    });
+    var view = document.getElementById('view-training');
+    view.classList.toggle('hrd-ov',name==='overview'); view.classList.toggle('hrd-need',name==='need');
+    if(name==='overview') renderOverview();
+    if(name==='need') renderNeed();
+  };
+  showTrainingSubtab = window.showTrainingSubtab;
+  window.hrdGo = function(name){ showTrainingSubtab(name); window.scrollTo({top:0,behavior:'smooth'}); };
+  window.hrdSetYear = function(v){ hrdYear = Number(v)||hrdYear; renderOverview(); renderNeed(); };
+  window.hrdNeedSearchChange = function(){ renderNeed(); };
+  window.hrdNewCourse = function(type){
+    showTrainingSubtab('manage'); resetTrainingCourseForm();
+    var t = document.getElementById('course_type'); if(t) t.value = type||'';
+    var el = document.getElementById('course_title'); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.focus(); }
+  };
+  window.hrdOpenCourse = function(id){ showTrainingSubtab('manage'); selectTrainingCourse(id); };
+  var prevRender = window.renderTrainingModuleV4;
+  var firstShow = true;
+  window.renderTrainingModuleV4 = function(){
+    var r = prevRender.apply(this, arguments);
+    ensureDom();
+    if(firstShow){ firstShow = false; showTrainingSubtab('overview'); }
+    else {
+      var ov = document.getElementById('training-sub-overview'), nd = document.getElementById('training-sub-need');
+      if(ov && ov.classList.contains('active')) renderOverview();
+      if(nd && nd.classList.contains('active')) renderNeed();
+    }
+    return r;
+  };
+  renderTrainingModuleV4 = window.renderTrainingModuleV4;
+  TAB_RENDERERS.training = window.renderTrainingModuleV4;
+  ensureDom();
 })();
 </script>
 </body>
