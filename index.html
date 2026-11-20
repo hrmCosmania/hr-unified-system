@@ -1217,6 +1217,7 @@ document.getElementById('employeeForm').addEventListener('submit', function(ev){
   if(editCode){
     const idx = DB.employees.findIndex(x => x.empCode === editCode);
     if(idx >= 0){
+      if(DB.employees[idx].photo) rec.photo = DB.employees[idx].photo;
       DB.employees[idx] = rec;
       if(editCode !== empCode) DB.employees.forEach(x => { if(x.parentId === editCode) x.parentId = empCode; });
     }
@@ -3709,7 +3710,7 @@ function renderEmployeesTable(){
     var grad=gsAvatarGradient(e.company);
     var statusKey=e.status==='Inactive'?'inactive':'active';
     var statusLabel=e.status==='Inactive'?'พ้นสภาพ':'ใช้งานอยู่';
-    return '<tr><td><div class="gs-person" ondblclick="showEmployeeJdKpiModal(\''+v4EscapeAttr(e.empCode)+'\')" title="ดับเบิลคลิกเพื่อดู JD/KPI"><div class="gs-avatar" style="background:'+grad+'">'+escapeHtml(initials)+'</div><div class="gs-info"><b>'+escapeHtml(e.fullName)+'</b><span>'+escapeHtml(e.empCode)+(e.nickname?' · '+escapeHtml(e.nickname):'')+'</span></div></div></td>'
+    return '<tr><td><div class="gs-person" style="cursor:pointer" onclick="openEmployeeProfile(\''+v4EscapeAttr(e.empCode)+'\')" title="คลิกเพื่อดูโปรไฟล์พนักงาน"><div class="gs-avatar" style="background:'+grad+'">'+escapeHtml(initials)+'</div><div class="gs-info"><b>'+escapeHtml(e.fullName)+'</b><span>'+escapeHtml(e.empCode)+(e.nickname?' · '+escapeHtml(e.nickname):'')+'</span></div></div></td>'
     +'<td><span class="gs-co-badge '+escapeHtml(e.company)+'"><span class="dot"></span>'+escapeHtml(e.company)+'</span></td>'
     +'<td><div class="gs-pos">'+escapeHtml(e.position||'-')+'</div><div class="gs-dept">'+escapeHtml(e.department||'-')+(employeeDivision(e)?' · '+escapeHtml(employeeDivision(e)):'')+'</div></td>'
     +'<td class="gs-mono">'+escapeHtml(e.jobCode||'-')+'</td>'
@@ -8338,6 +8339,290 @@ window.refreshPerfEmployeeSelects=function(){
   install();
   TAB_RENDERERS.recruitment = render;
   window.renderRecruitment = render;
+})();
+</script>
+<style id="emp-profile-style">
+/* ===== Employee profile page (opened from the employee list) ===== */
+.ep-wrap{display:flex;flex-direction:column;gap:16px}
+.ep-back{align-self:flex-start}
+.ep-top{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:16px;align-items:stretch}
+.ep-head{display:flex;gap:20px;align-items:center;padding:20px 22px!important}
+.ep-photo{position:relative;flex:0 0 132px;width:132px;height:132px;border-radius:22px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:700;color:#fff}
+.ep-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.ep-photo-btn{position:absolute;right:6px;bottom:6px;width:32px;height:32px;border-radius:10px;border:0;background:rgba(20,28,48,.78);color:#fff;font-size:15px;cursor:pointer}
+.ep-id{flex:1;min-width:0}
+.ep-name{font-size:24px;font-weight:700;margin:0 0 4px;line-height:1.25}
+.ep-code{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:12px;font-size:14px}
+.ep-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:999px;font-size:12.5px;font-weight:700}
+.ep-pill.on{background:rgba(16,160,100,.16);color:#0a6e4b}
+.ep-pill.off{background:rgba(214,69,69,.16);color:#b42323}
+.ep-pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.ep-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 22px}
+.ep-line{display:flex;gap:8px;font-size:14px;line-height:1.5;min-width:0}
+.ep-line .ep-k{flex:0 0 auto;color:var(--v4-muted,#667085);min-width:70px}
+.ep-line .ep-v{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.ep-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ep-tile{border-radius:18px;padding:14px 10px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1px solid transparent}
+.ep-tile .ep-ico{font-size:24px;line-height:1}
+.ep-tile .ep-tl{font-size:13px;color:var(--v4-muted,#667085);font-weight:600}
+.ep-tile .ep-tv{font-size:19px;font-weight:700;line-height:1.3}
+.ep-tile.t1{background:rgba(59,130,246,.15);border-color:rgba(59,130,246,.3)}
+.ep-tile.t2{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3)}
+.ep-tile.t3{background:rgba(244,63,94,.13);border-color:rgba(244,63,94,.28)}
+.ep-tile.t4{background:rgba(139,92,246,.15);border-color:rgba(139,92,246,.3)}
+.ep-actions{display:flex;flex-wrap:wrap;gap:8px}
+.ep-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px!important}
+.ep-tab{border:0;background:transparent;color:var(--v4-muted,#667085);font:inherit;font-size:14px;font-weight:600;padding:9px 16px;border-radius:12px;cursor:pointer;border-bottom:3px solid transparent}
+.ep-tab:hover{color:inherit}
+.ep-tab.active{color:var(--module-accent,#2450b8);border-bottom-color:var(--module-accent,#2450b8);background:rgba(36,80,184,.09)}
+.ep-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.ep-grid.single{grid-template-columns:minmax(0,1fr)}
+.ep-card{padding:16px 18px!important;min-width:0}
+.ep-card h3{margin:0 0 12px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.ep-rows{display:flex;flex-direction:column;gap:7px;font-size:14px}
+.ep-row{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.ep-row .ep-k{color:var(--v4-muted,#667085)}
+.ep-row .ep-v{font-weight:600;text-align:right;overflow-wrap:anywhere}
+.ep-chip{display:inline-block;padding:2px 12px;border-radius:999px;background:rgba(36,80,184,.12);color:var(--module-accent,#2450b8);font-weight:700;font-size:13px}
+.ep-tl{position:relative;padding-left:22px;display:flex;flex-direction:column;gap:14px}
+.ep-tl::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:2px;background:rgba(80,100,150,.3)}
+.ep-tl-i{position:relative;font-size:14px;line-height:1.45}
+.ep-tl-i::before{content:"";position:absolute;left:-22px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--module-accent,#2450b8);border:2px solid transparent}
+.ep-tl-i.past::before{background:#8a91a3}
+.ep-tl-i b{display:block;font-size:15px}
+.ep-tl-i .ep-d{color:var(--v4-muted,#667085);font-size:13px}
+.ep-ring{display:flex;gap:14px;align-items:center}
+.ep-ring svg{flex:0 0 96px}
+.ep-ring .ep-list{flex:1;min-width:0;font-size:14px;display:flex;flex-direction:column;gap:6px}
+.ep-ok{color:#0a6e4b;font-weight:700}.ep-warn{color:#8a5200;font-weight:700}
+.ep-bars{display:flex;align-items:flex-end;gap:14px;height:120px;padding-top:8px}
+.ep-bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;font-size:13px}
+.ep-bar i{display:block;width:100%;max-width:46px;border-radius:8px 8px 0 0;background:linear-gradient(180deg,#5b8def,#2450b8);min-height:4px}
+.ep-bar b{font-size:13px}
+.ep-miles{display:flex;gap:0;justify-content:space-between;position:relative;padding-top:6px}
+.ep-miles::before{content:"";position:absolute;left:6%;right:6%;top:20px;height:2px;background:rgba(80,100,150,.3)}
+.ep-mile{position:relative;flex:1;text-align:center;font-size:13.5px;line-height:1.4;padding:0 4px}
+.ep-mile i{display:block;width:30px;height:30px;line-height:30px;border-radius:50%;margin:0 auto 6px;background:var(--module-accent,#2450b8);color:#fff;font-style:normal;font-size:14px;position:relative}
+.ep-mile.future i{background:#8a91a3}
+.ep-mile b{display:block;font-size:14px}
+.ep-empty{color:var(--v4-muted,#667085);font-size:14px}
+.ep-hide{display:none!important}
+#view-employees.ep-open #empSummaryGrid{display:none}
+.ep-span2{grid-column:span 2}.ep-span4{grid-column:1/-1}
+.ep-grid.single .ep-span2,.ep-grid.single .ep-span4{grid-column:auto}
+@media(max-width:1200px){.ep-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ep-top{grid-template-columns:1fr}}
+@media(max-width:700px){.ep-grid{grid-template-columns:1fr}.ep-span2{grid-column:auto}.ep-head{flex-direction:column;align-items:flex-start}.ep-cols{grid-template-columns:1fr}}
+</style>
+<script id="employee-profile-script">
+(function(){
+  var currentCode = '', currentTab = 'all';
+  var TABS = [['all','ข้อมูลพื้นฐาน'],['work','ประวัติการทำงาน'],['leave','การลา & สายงาน'],['train','การฝึกอบรม'],['perf','การประเมินผล'],['jd','JD / KPI'],['miles','ไทม์ไลน์']];
+
+  function esc(s){ return escapeHtml(String(s == null ? '' : s)); }
+  function attr(s){ return v4EscapeAttr(s); }
+  function root(){
+    var el = document.getElementById('employee-sub-profile');
+    if(!el){
+      el = document.createElement('div'); el.className = 'subview'; el.id = 'employee-sub-profile';
+      var after = document.getElementById('employee-sub-search');
+      after.insertAdjacentElement('afterend', el);
+    }
+    return el;
+  }
+  function monthsBetween(a, b){
+    var m = (b.getFullYear()-a.getFullYear())*12 + (b.getMonth()-a.getMonth());
+    if(b.getDate() < a.getDate()) m--;
+    return Math.max(0, m);
+  }
+  function ym(months){ var y = Math.floor(months/12), m = months%12; return (y ? y+' ปี ' : '') + m + ' เดือน'; }
+  function line(k, v){ return '<div class="ep-line"><span class="ep-k">'+esc(k)+'</span><span class="ep-v">'+(v==null||v===''?'-':v)+'</span></div>'; }
+  function row(k, v){ return '<div class="ep-row"><span class="ep-k">'+esc(k)+'</span><span class="ep-v">'+(v==null||v===''?'-':v)+'</span></div>'; }
+  function maskId(id){
+    var s = String(id||'').replace(/\D/g,'');
+    if(s.length < 13) return s ? esc(s.slice(0,1))+'••••••••'+esc(s.slice(-2)) : '';
+    return s.charAt(0)+'-'+s.slice(1,5).replace(/\d/g,'•')+'-'+s.slice(5,10).replace(/\d/g,'•')+'-'+s.slice(10,12)+'-'+s.charAt(12);
+  }
+
+  function cardPersonal(e){
+    var bd = parseDate(e.birthDate), age = bd ? Math.floor(monthsBetween(bd,new Date())/12) : null;
+    var idShown = e.idNumber ? '<span id="epId">'+maskId(e.idNumber)+'</span> <button class="btn-ghost btn-sm" type="button" onclick="epToggleId()">แสดง</button>' : '';
+    var emergency = e.emergencyName ? esc(e.emergencyName)+(e.emergencyRelation?' ('+esc(e.emergencyRelation)+')':'') : '';
+    return '<section class="card ep-card" data-sec="all"><h3>👤 ข้อมูลส่วนบุคคล</h3><div class="ep-rows">'
+      + row('ชื่อ-สกุล', esc(e.fullName)) + row('ชื่อเล่น', esc(e.nickname))
+      + row('เลขบัตรประชาชน', idShown)
+      + row('วันเกิด', bd ? esc(formatThaiDate(e.birthDate))+' (อายุ '+age+' ปี)' : '')
+      + row('ประเภทการจ้าง', esc(e.employmentType||'ประจำ'))
+      + (e.contractEndDate ? row('สัญญาสิ้นสุด', esc(formatThaiDate(e.contractEndDate))) : '')
+      + row('ผู้ติดต่อฉุกเฉิน', emergency) + row('เบอร์ฉุกเฉิน', esc(e.emergencyPhone))
+      + '</div></section>';
+  }
+  function cardWork(e){
+    var items = [];
+    var start = parseDate(e.startDate), pa = (DB.probationActions||[]).find(function(a){return a.employeeCode===e.empCode && a.status==='completed';});
+    var ended = e.status==='Inactive';
+    items.push('<div class="ep-tl-i'+(ended?' past':'')+'"><b>'+esc(displayPositionTitle(e.position)||'-')+'</b>'+esc(e.department||'-')+(employeeDivision(e)?' · '+esc(employeeDivision(e)):'')+'<div class="ep-d">'+esc(formatThaiDate(e.startDate))+' – '+(ended&&e.endDate?esc(formatThaiDate(e.endDate)):'ปัจจุบัน')+'</div></div>');
+    if(pa) items.push('<div class="ep-tl-i past"><b>ผ่านทดลองงาน'+(pa.result?' ('+esc(pa.result)+')':'')+'</b><div class="ep-d">'+esc(formatThaiDate(pa.assessedAt||pa.completedAt))+(pa.completedBy?' · โดย '+esc(pa.completedBy):'')+'</div></div>');
+    else if(start && !ended){
+      var pe = addDays(start, Number(e.probationDays)||120);
+      items.push('<div class="ep-tl-i'+(pe<new Date()?'':'')+'"><b>ครบกำหนดทดลองงาน</b><div class="ep-d">'+esc(formatThaiDate(pe))+(pe<new Date()?' · ยังไม่บันทึกผล':'')+'</div></div>');
+    }
+    if(ended) items.push('<div class="ep-tl-i past"><b>พ้นสภาพพนักงาน</b><div class="ep-d">'+esc(e.endDate?formatThaiDate(e.endDate):'-')+'</div></div>');
+    return '<section class="card ep-card" data-sec="work"><h3>💼 ประวัติการทำงาน</h3><div class="ep-tl">'+items.join('')+'</div></section>';
+  }
+  function cardLeave(e){
+    var year = new Date().getFullYear(), rows = '';
+    ['ลาพักร้อน','ลากิจ','ลาป่วย'].forEach(function(t){
+      var ov = (DB.leaveEntitlementOverrides||[]).find(function(r){return r.employeeCode===e.empCode && Number(r.year)===year && r.leaveType===t;});
+      var df = (DB.leaveEntitlementDefaults||[]).find(function(r){return r.leaveType===t;});
+      var ent = ov ? Number(ov.days||0) : Number(df ? df.defaultDays : 0);
+      var used = (DB.attendanceRecords||[]).filter(function(r){return r.employeeCode===e.empCode && r.type==='leave' && r.leaveType===t && String(r.date||'').slice(0,4)===String(year);}).length;
+      rows += row(t+'คงเหลือ', '<span class="ep-chip">'+Math.max(0,ent-used)+' / '+ent+' วัน</span>');
+    });
+    var sup = e.parentId ? getEmployeeByCode(e.parentId) : null;
+    var dotted = (e.dottedLineManagerCodes||[]).map(function(c){return getEmployeeName(c)||c;}).filter(Boolean).join(', ');
+    var reports = DB.employees.filter(function(x){return x.parentId===e.empCode && x.status!=='Inactive';}).length;
+    return '<section class="card ep-card" data-sec="leave"><h3>🗓️ การลา & สายงาน</h3><div class="ep-rows">'
+      + rows + '<div style="border-top:1px solid rgba(80,100,150,.25);margin:4px 0"></div>'
+      + row('หัวหน้างาน', sup ? esc(sup.fullName)+'<div class="ep-d small">'+esc(displayPositionTitle(sup.position)||'')+'</div>' : '')
+      + (dotted ? row('หัวหน้าสายประสาน', esc(dotted)) : '')
+      + row('ลูกน้องโดยตรง', reports+' คน')
+      + '</div><div class="small" style="margin-top:8px">ปี '+year+' (นับจากรายการลาที่บันทึกในระบบ)</div></section>';
+  }
+  function cardTrain(e){
+    var enr = (DB.trainingEnrollments||[]).filter(function(x){return x.employeeCode===e.empCode;});
+    var done = enr.filter(function(x){return x.attendance==='Attended';}).length, pct = enr.length ? Math.round(done/enr.length*100) : 0;
+    var C = 2*Math.PI*38;
+    var ring = '<svg width="96" height="96" viewBox="0 0 96 96"><circle cx="48" cy="48" r="38" fill="none" stroke="rgba(80,100,150,.22)" stroke-width="10"/><circle cx="48" cy="48" r="38" fill="none" stroke="#12a36b" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+(C*pct/100)+' '+C+'" transform="rotate(-90 48 48)"/><text x="48" y="54" text-anchor="middle" font-size="19" font-weight="700" fill="currentColor">'+pct+'%</text></svg>';
+    var list = enr.slice(0,5).map(function(x){
+      var c = courseById(x.courseId)||{};
+      return '<div>'+(x.attendance==='Attended'?'<span class="ep-ok">✓</span>':'<span class="ep-warn">○</span>')+' '+esc(c.title||'หลักสูตร')+'</div>';
+    }).join('');
+    return '<section class="card ep-card" data-sec="train"><h3>🎓 การฝึกอบรม & พัฒนา</h3>'
+      + (enr.length ? '<div class="ep-ring">'+ring+'<div class="ep-list">'+list+(enr.length>5?'<div class="small">และอีก '+(enr.length-5)+' หลักสูตร</div>':'')+'</div></div><div class="small" style="margin-top:6px">เข้าอบรมแล้ว '+done+' จาก '+enr.length+' หลักสูตร</div>' : '<div class="ep-empty">ยังไม่มีประวัติการฝึกอบรม</div>')
+      + '</section>';
+  }
+  function cardPerf(e){
+    var revs = (DB.performanceReviews||[]).filter(function(r){return r.employeeCode===e.empCode && r.yearAverageScore!=null;}).sort(function(a,b){return Number(a.evaluationYear)-Number(b.evaluationYear);}).slice(-4);
+    var body;
+    if(!revs.length) body = '<div class="ep-empty">ยังไม่มีผลการประเมิน</div>';
+    else {
+      var last = revs[revs.length-1];
+      body = '<div class="ep-chip" style="margin-bottom:6px">ล่าสุด (ปี '+esc(last.evaluationYear)+'): '+Number(last.yearAverageScore).toFixed(2)+' / 5</div><div class="ep-bars">'
+        + revs.map(function(r){var s=Number(r.yearAverageScore);return '<div class="ep-bar"><b>'+s.toFixed(2)+'</b><i style="height:'+Math.max(4,Math.min(100,s/5*100))+'%"></i><span>'+esc(r.evaluationYear)+'</span></div>';}).join('')+'</div>';
+    }
+    return '<section class="card ep-card" data-sec="perf"><h3>📈 การประเมินผลปฏิบัติงาน</h3>'+body+'</section>';
+  }
+  function cardJd(e){
+    var d = currentFrameworkDataForEmployee(e), custom = !!getEmployeeJdOverride(e.empCode);
+    return '<section class="card ep-card" data-sec="jd"><h3>📋 JD / KPI / Competency</h3><div class="ep-rows">'
+      + row('ตำแหน่ง', esc(displayPositionTitle(e.position)||'-')) + row('Job Code', esc(e.jobCode||'-')) + row('ระดับ', esc(e.level||'-'))
+      + row('KPI', d.kpis.length+' ข้อ') + row('Competency', d.comps.length+' ข้อ')
+      + row('รูปแบบ', custom ? '<span class="ep-chip">กำหนดเองรายบุคคล</span>' : 'ตามมาตรฐานตำแหน่ง')
+      + '</div><div class="ep-actions" style="margin-top:12px"><button class="btn-ghost btn-sm" onclick="epOpenJd()">ดู JD/KPI</button><button class="btn-ghost btn-sm" onclick="openEmployeeJdEditor(\''+attr(e.empCode)+'\')">แก้ไขรายบุคคล</button></div></section>';
+  }
+  function cardMiles(e){
+    var start = parseDate(e.startDate), now = new Date(), ms = [];
+    if(start){
+      ms.push(['🏁','เริ่มงาน',start]);
+      ms.push(['🧪','ครบทดลองงาน',addDays(start, Number(e.probationDays)||120)]);
+      [1,3,5].forEach(function(y){ ms.push(['⭐','ครบ '+y+' ปี',new Date(start.getFullYear()+y,start.getMonth(),start.getDate())]); });
+    }
+    var bd = parseDate(e.birthDate);
+    if(bd){ var nb = new Date(now.getFullYear(), bd.getMonth(), bd.getDate()); if(nb < new Date(now.getFullYear(),now.getMonth(),now.getDate())) nb = new Date(now.getFullYear()+1, bd.getMonth(), bd.getDate()); ms.push(['🎂','วันเกิดถัดไป',nb]); }
+    ms.sort(function(a,b){return a[2]-b[2];});
+    return '<section class="card ep-card ep-span4" data-sec="miles"><h3>🕒 ไทม์ไลน์สำคัญในชีวิตการทำงาน</h3>'
+      + (ms.length ? '<div class="ep-miles">'+ms.map(function(m){return '<div class="ep-mile'+(m[2]>now?' future':'')+'"><i>'+m[0]+'</i><b>'+esc(m[1])+'</b>'+esc(formatThaiDate(m[2]))+'</div>';}).join('')+'</div>' : '<div class="ep-empty">ยังไม่มีวันเริ่มงาน</div>')
+      + '</section>';
+  }
+  function cardSummary(e){
+    var checks = [['อีเมล',e.email],['เบอร์โทร',e.phone],['วันเกิด',e.birthDate],['วันเริ่มงาน',e.startDate],['หัวหน้างาน',e.parentId],['Job Code',e.jobCode],['เลขบัตรประชาชน',e.idNumber],['ผู้ติดต่อฉุกเฉิน',e.emergencyName]];
+    var missing = checks.filter(function(c){return !c[1];});
+    return '<section class="card ep-card ep-span2" data-sec="all"><h3>💡 สรุปความครบถ้วนของข้อมูล</h3><div class="ep-rows">'
+      + (missing.length ? missing.map(function(c){return '<div><span class="ep-warn">⚠</span> ยังไม่มี'+esc(c[0])+'</div>';}).join('') : '<div><span class="ep-ok">✓</span> ข้อมูลครบถ้วนทุกหัวข้อสำคัญ</div>')
+      + '<div class="small" style="margin-top:6px">อัปเดตล่าสุด: '+esc(e.updatedAt ? new Date(e.updatedAt).toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'}) : '-')+'</div>'
+      + '</div></section>';
+  }
+
+  function render(){
+    var e = getEmployeeByCode(currentCode), el = root();
+    if(!e){ el.innerHTML = '<div class="empty">ไม่พบพนักงาน</div>'; return; }
+    var start = parseDate(e.startDate), end = (e.status==='Inactive' && e.endDate) ? parseDate(e.endDate) : new Date();
+    var bd = parseDate(e.birthDate), grad = gsAvatarGradient(e.company), div = employeeDivision(e);
+    var photo = e.photo ? '<img src="'+attr(e.photo)+'" alt="">' : esc(gsInitials(e.fullName));
+    var off = e.status==='Inactive';
+    var head = '<section class="card ep-head"><div class="ep-photo" style="background:'+grad+'">'+photo
+      + '<button class="ep-photo-btn" type="button" title="เปลี่ยนรูปภาพ" onclick="document.getElementById(\'epPhotoInput\').click()">📷</button><input id="epPhotoInput" type="file" accept="image/*" class="hidden" onchange="epPhotoChosen(this)"></div>'
+      + '<div class="ep-id"><h2 class="ep-name">'+esc(e.fullName)+(e.nickname?' <span style="font-weight:500;font-size:17px">('+esc(e.nickname)+')</span>':'')+'</h2>'
+      + '<div class="ep-code"><span>รหัสพนักงาน <b>'+esc(e.empCode)+'</b></span><span class="ep-pill '+(off?'off':'on')+'">'+(off?'พ้นสภาพ':'พนักงานปัจจุบัน')+'</span><span class="gs-co-badge '+esc(e.company)+'"><span class="dot"></span>'+esc(e.company)+'</span></div>'
+      + '<div class="ep-cols"><div>'+line('ตำแหน่ง',esc(displayPositionTitle(e.position)))+line('ฝ่าย',esc(div))+line('แผนก',esc(e.department))+'</div>'
+      + '<div>'+line('อีเมล',esc(e.email))+line('โทรศัพท์',esc(e.phone))+line('เริ่มงาน',start?esc(formatThaiDate(e.startDate)):'')+'</div></div></div></section>';
+    var tiles = '<div class="ep-tiles">'
+      + '<div class="ep-tile t1"><span class="ep-ico">👥</span><span class="ep-tl">อายุงาน</span><span class="ep-tv">'+(start?esc(ym(monthsBetween(start,end))):'-')+'</span></div>'
+      + '<div class="ep-tile t2"><span class="ep-ico">🎂</span><span class="ep-tl">อายุ</span><span class="ep-tv">'+(bd?Math.floor(monthsBetween(bd,new Date())/12)+' ปี':'-')+'</span></div>'
+      + '<div class="ep-tile t3"><span class="ep-ico">⭐</span><span class="ep-tl">ระดับพนักงาน</span><span class="ep-tv">'+esc(e.level||'-')+'</span></div>'
+      + '<div class="ep-tile t4"><span class="ep-ico">📄</span><span class="ep-tl">ประเภทการจ้าง</span><span class="ep-tv">'+esc(e.employmentType||'ประจำ')+'</span></div></div>';
+    var tabs = '<div class="card ep-tabs">'+TABS.map(function(t){return '<button type="button" class="ep-tab'+(currentTab===t[0]?' active':'')+'" onclick="epTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>';
+    var cards = [cardPersonal(e), cardWork(e), cardLeave(e), cardTrain(e), cardPerf(e), cardJd(e), cardSummary(e), cardMiles(e)].join('');
+    el.innerHTML = '<div class="ep-wrap"><div class="ep-actions"><button class="btn-ghost ep-back" onclick="showEmployeeSubtab(\'search\')">← กลับรายชื่อพนักงาน</button>'
+      + '<button class="btn-ghost" onclick="editEmployee(\''+attr(e.empCode)+'\')">✏️ แก้ไขประวัติ</button>'
+      + '<button class="btn-ghost" onclick="printEmployeePositionDocument(\''+attr(e.empCode)+'\')">🖨️ พิมพ์ JD/KPI</button></div>'
+      + '<div class="ep-top">'+head+tiles+'</div>'+tabs+'<div class="ep-grid" id="epGrid">'+cards+'</div></div>';
+    applyTab();
+  }
+  function applyTab(){
+    var grid = document.getElementById('epGrid'); if(!grid) return;
+    grid.classList.toggle('single', currentTab !== 'all');
+    Array.prototype.forEach.call(grid.children, function(c){
+      var sec = c.getAttribute('data-sec');
+      c.classList.toggle('ep-hide', currentTab !== 'all' && sec !== currentTab);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.ep-tab'), function(b, i){ b.classList.toggle('active', TABS[i][0] === currentTab); });
+  }
+
+  window.epTab = function(t){ currentTab = t; applyTab(); };
+  window.epToggleId = function(){
+    var e = getEmployeeByCode(currentCode), s = document.getElementById('epId'); if(!e || !s) return;
+    var shown = s.getAttribute('data-shown') === '1';
+    s.textContent = shown ? maskId(e.idNumber).replace(/&bull;/g,'•') : e.idNumber;
+    s.setAttribute('data-shown', shown ? '0' : '1');
+    var btn = s.nextElementSibling; if(btn) btn.textContent = shown ? 'แสดง' : 'ซ่อน';
+  };
+  window.epOpenJd = function(){ if(typeof showEmployeeJdKpiModal === 'function') showEmployeeJdKpiModal(currentCode); };
+  window.epPhotoChosen = function(input){
+    var f = input.files && input.files[0]; if(!f) return;
+    var rd = new FileReader();
+    rd.onload = function(){
+      var img = new Image();
+      img.onload = function(){
+        var S = 240, c = document.createElement('canvas'); c.width = c.height = S;
+        var side = Math.min(img.width, img.height), sx = (img.width-side)/2, sy = (img.height-side)/2;
+        c.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, S, S);
+        var e = getEmployeeByCode(currentCode); if(!e) return;
+        e.photo = c.toDataURL('image/jpeg', 0.78); e.updatedAt = new Date().toISOString();
+        saveDB(); render();
+      };
+      img.src = rd.result;
+    };
+    rd.readAsDataURL(f); input.value = '';
+  };
+  window.openEmployeeProfile = function(code){
+    currentCode = code; currentTab = 'all';
+    if(typeof showTab === 'function' && !document.getElementById('view-employees').classList.contains('active')) showTab('employees');
+    ['employee-sub-add','employee-sub-search'].forEach(function(id){ document.getElementById(id).classList.remove('active'); });
+    ['employeeSubBtnAdd','employeeSubBtnSearch'].forEach(function(id){ document.getElementById(id).classList.remove('active'); });
+    document.getElementById('view-employees').classList.add('ep-open');
+    root().classList.add('active'); render();
+    window.scrollTo({top:0});
+  };
+
+  // leaving the profile through the normal sub-menu hides it again
+  var prevSubtab = window.showEmployeeSubtab;
+  window.showEmployeeSubtab = function(name){
+    var p = document.getElementById('employee-sub-profile'); if(p) p.classList.remove('active');
+    document.getElementById('view-employees').classList.remove('ep-open');
+    return prevSubtab.apply(this, arguments);
+  };
+  showEmployeeSubtab = window.showEmployeeSubtab;
 })();
 </script>
 </body>
