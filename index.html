@@ -8535,7 +8535,7 @@ window.refreshPerfEmployeeSelects=function(){
 <script id="employee-profile-script">
 (function(){
   var currentCode = '', currentTab = 'all';
-  var TABS = [['all','ข้อมูลพื้นฐาน'],['person','ประวัติส่วนตัว'],['pay','💰 เงินเดือน & การจ่าย'],['work','ประวัติการทำงาน'],['leave','การลา & สายงาน'],['train','การฝึกอบรม'],['perf','การประเมินผล'],['jd','JD / KPI'],['assets','สินทรัพย์'],['custom','ข้อมูลกำหนดเอง'],['miles','ไทม์ไลน์'],['audit','ประวัติการแก้ไข']];
+  var TABS = [['all','ข้อมูลพื้นฐาน'],['person','ประวัติส่วนตัว'],['pay','💰 เงินเดือน & การจ่าย'],['set','⚙️ ตั้งค่า'],['work','ประวัติการทำงาน'],['leave','การลา & สายงาน'],['train','การฝึกอบรม'],['perf','การประเมินผล'],['jd','JD / KPI'],['assets','สินทรัพย์'],['custom','ข้อมูลกำหนดเอง'],['miles','ไทม์ไลน์'],['audit','ประวัติการแก้ไข']];
 
   function esc(s){ return escapeHtml(String(s == null ? '' : s)); }
   function attr(s){ return v4EscapeAttr(s); }
@@ -9643,7 +9643,7 @@ html:not(.theme-soft) .side-sub button.on{background:rgba(255,255,255,.14);color
 (function(){
   function call(fn){ var a=[].slice.call(arguments,1); return function(){ var f=window[fn]; if(typeof f==='function') return f.apply(null,a); }; }
   var MODS = {
-    employees:[['search','ค้นหาพนักงาน',call('showEmployeeSubtab','search')],['add','เพิ่มข้อมูลพนักงาน',call('showEmployeeSubtab','add')],['paysettings','ตั้งค่า (เงินเดือน/เวลา)',call('showEmployeeSubtab','paysettings')]],
+    employees:[['search','ค้นหาพนักงาน',call('showEmployeeSubtab','search')],['add','เพิ่มข้อมูลพนักงาน',call('showEmployeeSubtab','add')]],
     onboarding:[['checklist','Checklist เริ่มงานใหม่',call('showOnboardingSubtab','checklist')],['birthday','วันเกิด',call('showOnboardingSubtab','birthday')],['anniversary','ครบรอบการทำงาน',call('showOnboardingSubtab','anniversary')],['probation','ทดลองงาน',call('showOnboardingSubtab','probation')],['namecard','นามบัตร QR',call('showOnboardingSubtab','namecard')],['calendar','ปฏิทินอัตโนมัติ',call('showOnboardingSubtab','calendar')],['contracts','สัญญาจ้าง & NDA',call('showOnboardingSubtab','contracts')]],
     recruitment:[['dashboard','ภาพรวม',call('rcShowSub','dashboard')],['jobs','ตำแหน่ง/ใบขอ',call('rcShowSub','jobs')],['candidates','ผู้สมัคร',call('rcShowSub','candidates')],['pipeline','Pipeline',call('rcShowSub','pipeline')],['reports','KPI & SLA',call('rcShowSub','reports')],['settings','ตั้งค่าการสรรหา',call('rcOpenSettings')]],
     training:[['overview','ภาพรวม',call('showTrainingSubtab','overview')],['ojt','OJT (On-the-Job Training)',call('showTrainingSubtab','ojt')],['history','ประวัติการฝึกอบรม',call('showTrainingSubtab','history')],['budget','งบประมาณการฝึกอบรม',call('showTrainingSubtab','budget')],['dsd','ยื่นหลักสูตรกรมพัฒนาฝีมือแรงงาน',call('showTrainingSubtab','dsd')],['followup','ติดตามผลหลังอบรม',call('showTrainingSubtab','followup')],['need','Training Need & Roadmap',call('showTrainingSubtab','need')]],
@@ -10390,8 +10390,16 @@ html:not(.theme-soft) .ps-menu{background:#1c1c1e}
   function S(){ return PAY.data.settings; }
   function pe(code){
     var m = PAY.data.emp; if(!m[code]) m[code] = {};
-    var x = m[code]; ['salaryHistory','fixedItems','autoItems','funds','deposits','welfare','taxYears'].forEach(function(k){ if(!Array.isArray(x[k])) x[k]=[]; });
+    var x = m[code]; ['salaryHistory','fixedItems','autoItems','funds','deposits','welfare','taxYears','costAlloc'].forEach(function(k){ if(!Array.isArray(x[k])) x[k]=[]; });
     return x;
+  }
+  function cfg(code){
+    var p=pe(code); if(!p.cfg) p.cfg={};
+    var c=p.cfg; if(!c.deductions) c.deductions={};
+    // ย้ายค่าจากเวอร์ชันก่อน (ตั้งค่า ปกส./ภาษีเคยอยู่ในการ์ดค่าจ้าง)
+    if(!c.sso && (p.ssoMode||p.ssoFixed||p.ssoStart)) c.sso={mode:p.ssoMode||'',fixed:p.ssoFixed||'',start:p.ssoStart||''};
+    if(!c.tax && (p.taxMode||p.taxFixed||p.taxStart)) c.tax={method:p.taxMode==='คงที่ทุกเดือน'?'คงที่ทุกเดือน (ภงด.1)':'คำนวณตามจริง (ภงด.1)',fixed:p.taxFixed||'',start:p.taxStart||''};
+    return c;
   }
   var saveTimer=null, loading=false;
   function savePay(){ clearTimeout(saveTimer); saveTimer=setTimeout(doSave,800); }
@@ -10521,8 +10529,6 @@ html:not(.theme-soft) .ps-menu{background:#1c1c1e}
     hxForm('ค่าจ้างและการจ่ายเงิน',[
       {k:'wage',label:'ค่าจ้าง (บาท/เดือน)',type:'number'},
       {k:'advanceOn',label:'กำหนดวงเงินเบิกล่วงหน้า',type:'select',options:['ไม่กำหนด','กำหนด']},{k:'advanceLimit',label:'วงเงินเบิกล่วงหน้า (บาท)',type:'number'},
-      {k:'ssoMode',label:'ประกันสังคม — วิธีคิด',type:'select',options:['คิดตามฐานเงินเดือนจริงที่ได้รับ','ค่าคงที่']},{k:'ssoFixed',label:'ค่าคงที่ของประกันสังคม (บาท)',type:'number'},{k:'ssoStart',label:'เดือนที่เริ่มคำนวณประกันสังคม',type:'month'},
-      {k:'taxMode',label:'ภาษี ภงด.1',type:'select',options:['คำนวณตามจริง','คงที่ทุกเดือน']},{k:'taxFixed',label:'จำนวนภาษีคงที่ต่อเดือน (บาท)',type:'number'},{k:'taxStart',label:'เดือนที่เริ่มคำนวณภาษี',type:'month'},
       {k:'payChannel',label:'ช่องทางการชำระเงิน',type:'select',options:['','โอนเข้าบัญชี','เงินสด','เช็ค']},{k:'payAccount',label:'บัญชีบริษัทนำจ่าย',type:'select',options:accs},
       {k:'bank',label:'ธนาคาร'},{k:'branch',label:'รหัสสาขาธนาคาร'},{k:'accountNo',label:'เลขที่บัญชี'}
     ], p, function(v){
@@ -10533,9 +10539,9 @@ html:not(.theme-soft) .ps-menu{background:#1c1c1e}
   };
   window.pyShowAcc = function(id){ var s=document.getElementById(id); if(!s) return; var on=s.getAttribute('data-on')==='1'; s.textContent=on?mask(pe(cur()).accountNo):(pe(cur()).accountNo||'-'); s.setAttribute('data-on',on?'0':'1'); var b=s.nextElementSibling; if(b) b.textContent=on?'แสดง':'ซ่อน'; };
   function payInfoCards(e){
-    var p=pe(e.empCode);
-    var ssoTxt = (p.ssoMode||'คิดตามฐานเงินเดือนจริงที่ได้รับ') + (p.ssoMode==='ค่าคงที่' ? ' · '+money(p.ssoFixed)+' บาท' : '') + (p.ssoStart?' · เริ่ม '+esc(p.ssoStart):'');
-    var taxTxt = (p.taxMode||'คำนวณตามจริง') + (p.taxMode==='คงที่ทุกเดือน' ? ' · '+money(p.taxFixed)+' บาท/เดือน' : '') + (p.taxStart?' · เริ่ม '+esc(p.taxStart):'');
+    var p=pe(e.empCode), c=cfg(e.empCode), so=c.sso||{}, tx=c.tax||{};
+    var ssoTxt = esc(so.mode||'คิดตามฐานเงินเดือนจริงที่ได้รับ') + (so.mode==='ค่าคงที่' ? ' · '+money(so.fixed)+' บาท' : '') + (so.start?' · เริ่ม '+esc(so.start):'') + ' <a href="#" onclick="epTab(\'set\');return false">ตั้งค่า</a>';
+    var taxTxt = esc(tx.method||'คำนวณตามจริง (ภงด.1)') + (/คงที่/.test(tx.method||'') ? ' · '+money(tx.fixed)+' บาท/เดือน' : '') + (tx.start?' · เริ่ม '+esc(tx.start):'') + ' <a href="#" onclick="epTab(\'set\');return false">ตั้งค่า</a>';
     var acc = p.accountNo ? '<span id="pyAcc" data-on="0">'+esc(mask(p.accountNo))+'</span> <button class="btn-ghost btn-sm" type="button" onclick="pyShowAcc(\'pyAcc\')">แสดง</button>' : '-';
     return '<section class="card ep-card ep-span4" data-sec="pay" data-only-tab="1">'+head('💰 ค่าจ้างและการจ่ายเงิน','<span class="py-badge">เฉพาะผู้มีสิทธิ์</span> <button class="btn-ghost btn-sm" type="button" onclick="pyEditPay()">✏️ แก้ไข</button>')
       +'<div class="ep-rows">'+rr('ค่าจ้าง (บาท/เดือน)','<b>'+money(p.wage)+'</b>')+rr('เงินเบิกล่วงหน้า',p.advanceOn==='กำหนด'?'วงเงิน '+money(p.advanceLimit)+' บาท':'ไม่กำหนดวงเงิน')+rr('ประกันสังคม',ssoTxt)+rr('ภาษี ภงด.1',taxTxt)
@@ -10565,8 +10571,141 @@ html:not(.theme-soft) .ps-menu{background:#1c1c1e}
       +simpleCard('🎁 สวัสดิการ','e:welfare')
       +simpleCard('🧾 ภาษี (สรุปรายปี)','e:taxYears');
   }
+  /* =====================================================================
+     แท็บ "⚙️ ตั้งค่า" รายบุคคล — มีผลกับการคำนวณเงินเดือน (ตามแท็บตั้งค่าของ Humansoft)
+     ===================================================================== */
+  var CFT = { general:'ตั้งค่าทั่วไป', sso:'ประกันสังคม', tax:'ภาษี', user:'ตั้งค่าผู้ใช้', shift:'กะการทำงาน', workweek:'วันทำงาน–วันหยุด', time:'เวลาการทำงาน', face:'ใบหน้า' };
+  var CF = {
+    general:function(){ return [{k:'empType',label:'ประเภทพนักงาน (สูตรคำนวณ)',type:'select',options:opts(S().empTypes)},{k:'calc',label:'การคำนวณเงินเดือน',type:'select',options:['คำนวณเงินเดือน','ระงับการคำนวณ']},{k:'payStart',label:'เริ่มคำนวณเงินเดือนตั้งแต่',type:'date'},{k:'prorate',label:'เดือนแรก/เดือนสุดท้าย',type:'select',options:['คิดตามวันทำงานจริง','คิดเต็มเดือน']},{k:'payslipLang',label:'ภาษาสลิปเงินเดือน',type:'select',options:['ไทย','อังกฤษ']},{k:'payslipEmail',label:'อีเมลรับสลิปเงินเดือน'}]; },
+    sso:function(){ return [{k:'mode',label:'วิธีคิดประกันสังคม',type:'select',options:['คิดตามฐานเงินเดือนจริงที่ได้รับ','ค่าคงที่','ไม่หักประกันสังคม']},{k:'fixed',label:'ค่าคงที่ของประกันสังคม (บาท/เดือน)',type:'number'},{k:'start',label:'เดือนที่เริ่มคำนวณประกันสังคม',type:'month'},{k:'section',label:'ประเภทผู้ประกันตน',type:'select',options:['มาตรา 33','ไม่อยู่ในระบบประกันสังคม']}]; },
+    tax:function(){ return [{k:'method',label:'วิธีคิดภาษี',type:'select',options:['คำนวณตามจริง (ภงด.1)','คงที่ทุกเดือน (ภงด.1)','หัก ณ ที่จ่าย (ภงด.3)','ไม่หักภาษี']},{k:'fixed',label:'จำนวนภาษีคงที่ต่อเดือน (บาท)',type:'number'},{k:'start',label:'เดือนที่เริ่มคำนวณภาษี',type:'month'},{k:'whtRate',label:'อัตราหัก ณ ที่จ่าย (%) กรณี ภงด.3',type:'number'},{k:'residency',label:'สถานะผู้เสียภาษี',type:'select',options:['ผู้อยู่ในประเทศไทย','ผู้ไม่อยู่ในประเทศไทย']},{k:'prevIncome',label:'เงินได้จากนายจ้างเดิมในปีนี้ (บาท)',type:'number'},{k:'prevTax',label:'ภาษีที่ถูกหักจากนายจ้างเดิม (บาท)',type:'number'},{k:'prevSso',label:'ประกันสังคมที่จ่ายกับนายจ้างเดิม (บาท)',type:'number'}]; },
+    user:function(){ return [{k:'loginEmail',label:'อีเมลสำหรับเข้าระบบ'},{k:'role',label:'บทบาท',type:'select',options:['พนักงาน','หัวหน้างาน','HR','ผู้บริหาร']},{k:'status',label:'สถานะบัญชี',type:'select',options:['เปิดใช้งาน','ปิดใช้งาน']}]; },
+    shift:function(){ return [{k:'default',label:'กะการทำงานหลัก',type:'select',options:opts(S().shifts)},{k:'from',label:'มีผลตั้งแต่',type:'date'}]; },
+    workweek:function(){ return [{k:'pattern',label:'วันทำงานปกติ',type:'select',options:['ตามค่าตั้งต้นของบริษัท','จันทร์–ศุกร์','จันทร์–เสาร์','จันทร์–เสาร์ (เว้นเสาร์)','อาทิตย์–ศุกร์','ตามกะการทำงาน']},{k:'holidayCal',label:'ปฏิทินวันหยุด',type:'select',options:['ตามปฏิทินวันหยุดบริษัท','กำหนดเอง']},{k:'note',label:'หมายเหตุ',span:1}]; },
+    time:function(){ return [{k:'needScan',label:'การบันทึกเวลา',type:'select',options:['ต้องบันทึกเวลา','ไม่ต้องบันทึกเวลา']},{k:'grace',label:'ผ่อนผันมาสาย (นาที) — เว้นว่าง = ตามบริษัท',type:'number'},{k:'late',label:'การหักมาสาย',type:'select',options:['ตามค่าตั้งต้นของบริษัท','ไม่หัก','หักตามนาที','หักเป็นครั้ง']},{k:'absent',label:'การหักขาดงาน',type:'select',options:['ตามค่าตั้งต้นของบริษัท','ไม่หัก','หักตามอัตราค่าจ้างรายวัน']},{k:'ot',label:'สิทธิ์ OT',type:'select',options:['มีสิทธิ์ OT','ไม่มีสิทธิ์ OT']},{k:'otApprove',label:'การอนุมัติ OT',type:'select',options:['ต้องขออนุมัติ','อนุมัติอัตโนมัติ']}]; },
+    face:function(){ return [{k:'registered',label:'สถานะใบหน้า',type:'select',options:['ยังไม่ลงทะเบียน','ลงทะเบียนแล้ว']},{k:'regDate',label:'วันที่ลงทะเบียน',type:'date'},{k:'device',label:'เครื่อง/อุปกรณ์สแกน'}]; }
+  };
+  window.pyCfgEdit = function(sec){ var c=cfg(cur()); c[sec]=c[sec]||{}; hxForm(CFT[sec], CF[sec](), c[sec], function(v){ Object.assign(c[sec],v); audit(cur(),'ตั้งค่า'+CFT[sec]); savePay(); rerender(); }); };
+  var CHK = { shifts:['การมองเห็นกะการทำงาน','shifts'], ot:['การมองเห็นประเภทโอที','otTypes'], leave:['การมองเห็นประเภทการลา','leaveTypes'], period:['ป้ายกำกับช่วงเวลา','periodLabels'], duty:['ป้ายกำกับหน้าที่ปฏิบัติงาน','dutyLabels'] };
+  window.pyCfgChecks = function(key){
+    var c=cfg(cur()), def=CHK[key], items=(S()[def[1]]||[]).map(function(x){return x.name;}), sel=(c.vis&&c.vis[key])||[];
+    var old=document.getElementById('hxModal'); if(old) old.remove();
+    var d=document.createElement('div'); d.className='hx-modal'; d.id='hxModal';
+    d.innerHTML='<div class="hx-box"><h3>'+esc(def[0])+'</h3>'+(items.length?'<div class="ps-note">'+(key==='period'||key==='duty'?'เลือกป้ายที่ใช้กับพนักงานคนนี้':'ไม่เลือกเลย = มองเห็นทุกรายการตามค่าตั้งต้นของบริษัท')+'</div>'+items.map(function(n){ return '<label style="display:flex;gap:8px;align-items:center;padding:6px 0;cursor:pointer"><input type="checkbox" class="py-chk" value="'+attr(n)+'"'+(sel.indexOf(n)>=0?' checked':'')+'> '+esc(n)+'</label>'; }).join(''):'<div class="hx-empty">ยังไม่มีรายการ — เพิ่มที่ปุ่ม "จัดการรายการหลัก" ก่อน</div>')
+      +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn-ghost" type="button" id="pyChkCancel">ยกเลิก</button><button class="btn-primary" type="button" id="pyChkSave">บันทึก</button></div></div>';
+    document.body.appendChild(d);
+    d.addEventListener('click',function(ev){ if(ev.target===d) d.remove(); });
+    document.getElementById('pyChkCancel').onclick=function(){ d.remove(); };
+    document.getElementById('pyChkSave').onclick=function(){ c.vis=c.vis||{}; c.vis[key]=Array.from(d.querySelectorAll('.py-chk:checked')).map(function(i){return i.value;}); audit(cur(),def[0]); savePay(); d.remove(); rerender(); };
+  };
+
+  /* ---------- ค่าลดหย่อนภาษี (ตามแบบ ล.ย.01 รายปี) ---------- */
+  var DED = [
+    ['spouse','คู่สมรสไม่มีเงินได้ (60,000)','select',['ไม่มี','มี']],
+    ['children','จำนวนบุตร (คนละ 30,000)','number'],
+    ['children2561','บุตรคนที่ 2 ขึ้นไปที่เกิดตั้งแต่ปี 2561 (คนละ 60,000)','number'],
+    ['prenatal','ค่าฝากครรภ์และคลอดบุตร (ไม่เกิน 60,000)','number'],
+    ['parents','จำนวนบิดามารดาที่อุปการะ (คนละ 30,000 สูงสุด 4 คน)','number'],
+    ['disabled','จำนวนผู้พิการ/ทุพพลภาพที่อุปการะ (คนละ 60,000)','number'],
+    ['lifeIns','เบี้ยประกันชีวิต (ไม่เกิน 100,000)','number'],
+    ['healthIns','เบี้ยประกันสุขภาพตนเอง (ไม่เกิน 25,000 รวมประกันชีวิตไม่เกิน 100,000)','number'],
+    ['parentHealth','เบี้ยประกันสุขภาพบิดามารดา (ไม่เกิน 15,000)','number'],
+    ['pension','เบี้ยประกันชีวิตแบบบำนาญ','number'],
+    ['pvd','เงินสะสมกองทุนสำรองเลี้ยงชีพ (ส่วนพนักงาน)','number'],
+    ['rmf','ค่าซื้อหน่วยลงทุน RMF','number'],
+    ['thaiesg','ค่าซื้อหน่วยลงทุน ThaiESG / ThaiESGX','number'],
+    ['homeLoan','ดอกเบี้ยเงินกู้ซื้อที่อยู่อาศัย (ไม่เกิน 100,000)','number'],
+    ['donationEdu','เงินบริจาคเพื่อการศึกษา/กีฬา/รพ.รัฐ (หักได้ 2 เท่า)','number'],
+    ['donation','เงินบริจาคทั่วไป','number'],
+    ['other','ค่าลดหย่อนอื่น (บาท)','number'],
+    ['otherNote','รายละเอียดค่าลดหย่อนอื่น','text']
+  ];
+  var dedYear = String(new Date().getFullYear());
+  window.pyDedYear = function(y){ dedYear=y; rerender(); };
+  window.pyDedEdit = function(){
+    var c=cfg(cur()); var o=c.deductions[dedYear]||{};
+    hxForm('ค่าลดหย่อนภาษี ปี '+(Number(dedYear)+543), DED.map(function(d){ return {k:d[0],label:d[1],type:d[2],options:d[3],span:d[2]==='text'?1:0}; }), o, function(v){ c.deductions[dedYear]=v; audit(cur(),'ค่าลดหย่อนภาษี ปี '+dedYear); savePay(); rerender(); });
+  };
+  window.pyDedCopy = function(){
+    var c=cfg(cur()), prev=c.deductions[String(Number(dedYear)-1)]; if(!prev){ toast('ไม่มีข้อมูลค่าลดหย่อนของปีก่อน'); return; }
+    if(c.deductions[dedYear] && !confirm('ปีนี้มีข้อมูลอยู่แล้ว ต้องการเขียนทับด้วยข้อมูลปีก่อนไหม?')) return;
+    c.deductions[dedYear]=Object.assign({},prev); audit(cur(),'คัดลอกค่าลดหย่อนจากปีก่อน'); savePay(); rerender();
+  };
+  function N(v){ var n=Number(String(v==null?'':v).replace(/,/g,'')); return isNaN(n)?0:n; }
+  function allowanceOf(d, income){
+    d=d||{};
+    var life=Math.min(N(d.lifeIns)+Math.min(N(d.healthIns),25000),100000);
+    var retire=Math.min(N(d.pension)+N(d.pvd)+N(d.rmf),500000);
+    var esg=Math.min(N(d.thaiesg),income*0.3,300000);
+    return { personal:60000+(d.spouse==='มี'?60000:0)+N(d.children)*30000+N(d.children2561)*60000+Math.min(N(d.prenatal),60000)+Math.min(N(d.parents),4)*30000+N(d.disabled)*60000,
+      insurance:life+Math.min(N(d.parentHealth),15000), saving:retire+esg, other:Math.min(N(d.homeLoan),100000)+N(d.other), donation:N(d.donationEdu)*2+N(d.donation) };
+  }
+  function progressive(net){
+    var B=[[150000,0],[300000,.05],[500000,.10],[750000,.15],[1000000,.20],[2000000,.25],[5000000,.30],[Infinity,.35]], tax=0, prev=0;
+    B.forEach(function(b){ if(net>prev){ tax+=(Math.min(net,b[0])-prev)*b[1]; } prev=b[0]; });
+    return Math.max(0,tax);
+  }
+  function estimate(code, year){
+    var p=pe(code), c=cfg(code), so=c.sso||{}, tx=c.tax||{}, ss=S().sso||{}, wage=N(p.wage);
+    var taxableFixed=0; p.fixedItems.forEach(function(x){ if(x.kind==='รายจ่าย') return; var m=(S().incomeItems||[]).find(function(i){return i.name===x.item;}); if(!m||m.taxable!=='ไม่เสียภาษี') taxableFixed+=N(x.amount); });
+    var ssoBaseFixed=0; p.fixedItems.forEach(function(x){ if(x.kind==='รายจ่าย') return; var m=(S().incomeItems||[]).find(function(i){return i.name===x.item;}); if(m&&m.ssoBase==='รวมฐาน ปกส.') ssoBaseFixed+=N(x.amount); });
+    var ssoM = so.mode==='ไม่หักประกันสังคม'||so.section==='ไม่อยู่ในระบบประกันสังคม' ? 0 : so.mode==='ค่าคงที่' ? N(so.fixed) : Math.min(Math.max(wage+ssoBaseFixed,N(ss.minBase)),N(ss.maxBase))*N(ss.rate)/100;
+    var income=(wage+taxableFixed)*12+N(tx.prevIncome);
+    var expense=Math.min(income*0.5,100000);
+    var al=allowanceOf(c.deductions[year||dedYear], income);
+    var ssoYear=ssoM*12+N(tx.prevSso); // ลดหย่อนได้ตามจำนวนที่จ่ายจริง
+    var beforeDon=Math.max(0,income-expense-al.personal-al.insurance-al.saving-al.other-ssoYear);
+    var don=Math.min(al.donation,beforeDon*0.1);
+    var net=Math.max(0,beforeDon-don);
+    var taxYear=progressive(net), monthly;
+    if(tx.method==='ไม่หักภาษี') monthly=0;
+    else if(/คงที่/.test(tx.method||'')) monthly=N(tx.fixed);
+    else if(/ภงด.3/.test(tx.method||'')) monthly=(wage+taxableFixed)*N(tx.whtRate||3)/100;
+    else monthly=Math.max(0,taxYear-N(tx.prevTax))/12;
+    return { wage:wage, income:income, expense:expense, allowance:al, sso:ssoYear, ssoMonthly:ssoM, donation:don, net:net, taxYear:taxYear, taxMonthly:monthly };
+  }
+  window.PayrollData_estimate = estimate;
+
+  function scard(id,title,btn,body,note){ return '<section class="card ep-card ep-span4" id="pyset-'+id+'" data-sec="set" data-only-tab="1">'+head(title,btn)+(note?'<div class="ps-note">'+note+'</div>':'')+body+'</section>'; }
+  function ebtn(fn,label){ return '<button class="btn-ghost btn-sm" type="button" onclick="'+fn+'">'+(label||'✏️ แก้ไข')+'</button>'; }
+  function kvRows(sec,o){ return '<div class="ep-rows">'+CF[sec]().map(function(f){ var v=o[f.k]; if(f.type==='date') v=v?dfmt(v):''; else if(f.type==='number'&&v!==''&&v!=null&&!/grace|whtRate/.test(f.k)) v=money(v); return rr(f.label,esc(v)); }).join('')+'</div>'; }
+  function chips(list,emptyTxt){ return list&&list.length ? list.map(function(n){return '<span class="hx-tag">'+esc(n)+'</span>';}).join(' ') : '<span class="small">'+esc(emptyTxt)+'</span>'; }
+  function setCards(e){
+    var lockNote = '';
+    var nav='<section class="card ep-card ep-span4" data-sec="set" data-only-tab="1"><div class="hx-sec-head"><h3>⚙️ ตั้งค่ารายบุคคล</h3><button class="btn-ghost btn-sm" type="button" onclick="pyMasters()">🗂️ จัดการรายการหลัก</button></div><div class="ps-note">ค่าที่ตั้งในแท็บนี้ใช้กับการคำนวณเงินเดือนของพนักงานคนนี้ รายการให้เลือก (กะ ประเภท OT ประเภทการลา ป้ายกำกับ ศูนย์ต้นทุน กองทุน ฯลฯ) จัดการได้ที่ปุ่ม "จัดการรายการหลัก"</div><div style="display:flex;flex-wrap:wrap;gap:6px">'
+      +[['general','ทั่วไป'],['sso','ประกันสังคม'],['tax','ภาษี'],['ded','ค่าลดหย่อน'],['est','ประมาณการ'],['approver','ผู้อนุมัติ'],['user','ผู้ใช้'],['shift','กะ'],['workweek','วันทำงาน'],['vis','การมองเห็น OT/ลา'],['quota','โควตาลา'],['time','เวลาทำงาน'],['face','ใบหน้า'],['labels','ป้ายกำกับ'],['cost','Cost Allocation']].map(function(x){ return '<button class="btn-ghost btn-sm" type="button" onclick="document.getElementById(\'pyset-'+x[0]+'\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">'+x[1]+'</button>'; }).join('')+'</div></section>';
+    var a=(e.approvers&&e.approvers.length)?e.approvers:(e.parentId?[e.parentId]:[]);
+    var approver=scard('approver','2. กำหนดผู้อนุมัติรายบุคคล',ebtn('hxEditApprovers()','✏️ กำหนด'),'<div class="ep-rows">'+[0,1,2].map(function(i){ var m=emp(a[i]); return rr('ขั้นที่ '+(i+1),esc(m?m.fullName+' ('+m.empCode+')':'-')); }).join('')+'</div>', (e.approvers&&e.approvers.length)?'':'ยังไม่กำหนด — ใช้หัวหน้าสายงานตามผังองค์กรเป็นขั้นที่ 1');
+    if(PAY.state!=='ok') return nav.replace('<button class="btn-ghost btn-sm" type="button" onclick="pyMasters()">🗂️ จัดการรายการหลัก</button>','')+approver+lockCard().replace('data-sec="pay"','data-sec="set"');
+    var c=cfg(e.empCode), vis=c.vis||{};
+    var est=estimate(e.empCode,dedYear), al=est.allowance, d=c.deductions[dedYear]||{};
+    var yearSel='<select onchange="pyDedYear(this.value)">'+YEARS().slice(1).map(function(y){return '<option value="'+y+'"'+(y===dedYear?' selected':'')+'>ปีภาษี '+(Number(y)+543)+'</option>';}).join('')+'</select>';
+    var dedRows=DED.filter(function(x){ var v=d[x[0]]; return v!==undefined&&v!==''&&v!=='0'&&v!=='ไม่มี'; }).map(function(x){ return rr(x[1], esc(x[2]==='number'&&!/จำนวน/.test(x[1])?money(d[x[0]]):d[x[0]])); }).join('');
+    var allocTot=p2(indexed('e:costAlloc').reduce(function(s,x){return s+N(x.percent);},0));
+    function p2(n){ return Math.round(n*100)/100; }
+    return nav
+      + scard('general','1. ตั้งค่าทั่วไป',ebtn('pyCfgEdit(\'general\')'),kvRows('general',c.general||{}))
+      + scard('sso','ประกันสังคม',ebtn('pyCfgEdit(\'sso\')'),kvRows('sso',c.sso||{}),'ค่ากลางของบริษัท: อัตรา '+esc((S().sso||{}).rate)+'% ฐาน '+money((S().sso||{}).minBase)+' – '+money((S().sso||{}).maxBase)+' บาท (แก้ได้ที่ "จัดการรายการหลัก")')
+      + scard('tax','ภาษี',ebtn('pyCfgEdit(\'tax\')'),kvRows('tax',c.tax||{}),'กรณีเริ่มงานระหว่างปี ให้กรอกเงินได้และภาษีจากนายจ้างเดิม (ตามหนังสือรับรอง 50 ทวิ) เพื่อให้คำนวณภาษีทั้งปีถูกต้อง')
+      + scard('ded','ค่าลดหย่อนภาษี (ล.ย.01)',yearSel+' '+ebtn('pyDedCopy()','📋 คัดลอกจากปีก่อน')+' '+ebtn('pyDedEdit()'),(dedRows?'<div class="ep-rows">'+rr('ผู้มีเงินได้ (ตนเอง)',money(60000))+dedRows+'</div>':'<div class="hx-empty">ยังไม่ได้กรอกค่าลดหย่อนปีนี้ — ระบบใช้ค่าลดหย่อนส่วนตัว 60,000 บาท</div>')
+          +'<div class="py-sum">รวมค่าลดหย่อนที่ใช้ได้ (หลังตรวจเพดาน): '+money(al.personal+al.insurance+al.saving+al.other)+' บาท + ประกันสังคม '+money(est.sso)+' บาท + เงินบริจาค '+money(est.donation)+' บาท</div>','เพดานในวงเล็บเป็นค่าทั่วไป ควรตรวจสอบประกาศกรมสรรพากรของปีภาษีนั้นทุกปี')
+      + scard('est','📊 ประมาณการภาษีและประกันสังคม','', '<div class="ep-rows">'+rr('เงินได้ทั้งปี (ประมาณ)',money(est.income))+rr('หักค่าใช้จ่าย 50% (ไม่เกิน 100,000)',money(est.expense))+rr('หักค่าลดหย่อนรวม',money(al.personal+al.insurance+al.saving+al.other+est.sso+est.donation))+rr('เงินได้สุทธิ',money(est.net))+rr('ภาษีทั้งปี (อัตราก้าวหน้า)',money(est.taxYear))+rr('ภาษีหักต่อเดือน','<b>'+money(est.taxMonthly)+'</b>')+rr('ประกันสังคมต่อเดือน','<b>'+money(est.ssoMonthly)+'</b>')+'</div>','คำนวณจากค่าจ้าง รายรับคงที่ที่เสียภาษี และค่าที่ตั้งในแท็บนี้ เป็นตัวเลขประมาณการเพื่อตรวจสอบ ไม่ใช่ผลคำนวณเงินเดือนจริง')
+      + approver
+      + scard('user','3. ตั้งค่าผู้ใช้',ebtn('pyCfgEdit(\'user\')'),kvRows('user',c.user||{}),'เก็บไว้สำหรับระบบพนักงานเข้าดูข้อมูลตัวเอง (Self-service) ในอนาคต')
+      + scard('shift','4–5. กะการทำงาน / การมองเห็นกะ',ebtn('pyCfgEdit(\'shift\')','✏️ กะหลัก')+' '+ebtn('pyCfgChecks(\'shifts\')','👁️ กะที่เลือกได้'),'<div class="ep-rows">'+rr('กะการทำงานหลัก',esc((c.shift||{}).default))+rr('มีผลตั้งแต่',esc(dfmt((c.shift||{}).from)))+rr('กะที่มองเห็น/เลือกได้',chips(vis.shifts,'ทุกกะตามค่าตั้งต้น'))+'</div>')
+      + scard('workweek','6. วันทำงาน–วันหยุด',ebtn('pyCfgEdit(\'workweek\')'),kvRows('workweek',c.workweek||{}))
+      + scard('vis','7–8. การมองเห็นประเภทโอที / ประเภทการลา',ebtn('pyCfgChecks(\'ot\')','👁️ ประเภทโอที')+' '+ebtn('pyCfgChecks(\'leave\')','👁️ ประเภทการลา'),'<div class="ep-rows">'+rr('ประเภทโอทีที่ใช้ได้',chips(vis.ot,'ทุกประเภทตามค่าตั้งต้น'))+rr('ประเภทการลาที่ใช้ได้',chips(vis.leave,'ทุกประเภทตามค่าตั้งต้น'))+'</div>')
+      + scard('quota','9. โควตาการลา',ebtn('epTab(\'leave\')','เปิดแท็บการลา'),'<div class="ps-note" style="margin:0">ดูและปรับโควตาการลารายบุคคลได้ที่แท็บ "การลา &amp; สายงาน"</div>')
+      + scard('time','10. เวลาการทำงาน',ebtn('pyCfgEdit(\'time\')'),kvRows('time',c.time||{}))
+      + scard('face','11. ใบหน้า',ebtn('pyCfgEdit(\'face\')'),kvRows('face',c.face||{}),'บันทึกสถานะไว้อ้างอิงกับเครื่องสแกนเวลา ระบบนี้ยังไม่มีการสแกนใบหน้าในตัว')
+      + scard('labels','12 / 14. ป้ายกำกับช่วงเวลา / หน้าที่ปฏิบัติงาน',ebtn('pyCfgChecks(\'period\')','🏷️ ช่วงเวลา')+' '+ebtn('pyCfgChecks(\'duty\')','🏷️ หน้าที่'),'<div class="ep-rows">'+rr('ป้ายกำกับช่วงเวลา',chips(vis.period,'ไม่ได้กำหนด'))+rr('ป้ายกำกับหน้าที่',chips(vis.duty,'ไม่ได้กำหนด'))+'</div>')
+      + scard('cost','13. Cost Allocation',addBtn('e:costAlloc','+ เพิ่ม'),tableHtml('e:costAlloc',indexed('e:costAlloc'),{empty:'ยังไม่ปันส่วน — ใช้ศูนย์ต้นทุนตามแผนก 100%'})+(indexed('e:costAlloc').length?'<div class="py-sum" style="color:'+(Math.abs(allocTot-100)>0.001?'#d70015':'inherit')+'">รวม '+allocTot+'%'+(Math.abs(allocTot-100)>0.001?' — ต้องรวมเป็น 100%':'')+'</div>':''));
+  }
+  LS['e:costAlloc'] = { title:'Cost Allocation', fields:function(){ return [{k:'center',label:'ศูนย์ต้นทุน',type:'select',options:opts(S().costCenters),req:1},{k:'percent',label:'สัดส่วน (%)',type:'number',req:1}]; },
+    cols:[['ศูนย์ต้นทุน',function(x){return esc(x.center);}],['สัดส่วน',function(x){return esc(x.percent)+'%';}]] };
+
   var prevCards = window.hrdEmpExt && window.hrdEmpExt.cards;
-  if(prevCards){ window.hrdEmpExt.cards = function(e){ return prevCards(e) + payCards(e); }; }
+  if(prevCards){ window.hrdEmpExt.cards = function(e){ return prevCards(e) + payCards(e) + setCards(e); }; }
 
   /* =====================================================================
      หน้า "ตั้งค่า" (เงินเดือน / เวลาทำงาน) — 14 เมนูตามโครงสร้าง Humansoft + รายการหลัก
@@ -10641,63 +10780,51 @@ html:not(.theme-soft) .ps-menu{background:#1c1c1e}
     supabaseClient.from('payroll_admins').delete().eq('email',email).then(function(r){ if(r.error) toast('ลบไม่สำเร็จ: '+r.error.message); else { PAY.admins=PAY.admins.filter(function(x){return x!==email;}); refreshSettings(); } }); };
 
   window.psExport = function(){
-    var H=['รหัสพนักงาน','ชื่อ-นามสกุล','บริษัท','ประเภทพนักงาน','ค่าจ้าง','วงเงินเบิกล่วงหน้า','วิธีคิดประกันสังคม','ประกันสังคมคงที่','เดือนเริ่มประกันสังคม','วิธีคิดภาษี','ภาษีคงที่/เดือน','เดือนเริ่มภาษี','ช่องทางจ่าย','ธนาคาร','สาขา','เลขบัญชี','รายรับคงที่รวม','รายจ่ายคงที่รวม','รายการอัตโนมัติ','กองทุน','เงินประกันสะสม','ผู้อนุมัติ'];
-    var rows=(DB.employees||[]).map(function(e){ var p=pe(e.empCode), inc=0, out=0;
+    var H=['รหัสพนักงาน','ชื่อ-นามสกุล','บริษัท','ประเภทพนักงาน','การคำนวณ','ค่าจ้าง','วงเงินเบิกล่วงหน้า','วิธีคิดประกันสังคม','ประกันสังคมคงที่','เดือนเริ่มประกันสังคม','วิธีคิดภาษี','ภาษีคงที่/เดือน','อัตราหัก ณ ที่จ่าย','เดือนเริ่มภาษี','เงินได้นายจ้างเดิม','ภาษีนายจ้างเดิม','ค่าลดหย่อนรวม(ปีนี้)','ภาษี/เดือน(ประมาณ)','ปกส./เดือน(ประมาณ)','กะหลัก','สิทธิ์OT','ช่องทางจ่าย','ธนาคาร','สาขา','เลขบัญชี','รายรับคงที่รวม','รายจ่ายคงที่รวม','รายการอัตโนมัติ','กองทุน','เงินประกันสะสม','Cost Allocation','ผู้อนุมัติ'];
+    var yr=String(new Date().getFullYear());
+    var rows=(DB.employees||[]).map(function(e){ var p=pe(e.empCode), c=cfg(e.empCode), so=c.sso||{}, tx=c.tax||{}, g=c.general||{}, inc=0, out=0, est=estimate(e.empCode,yr), al=est.allowance;
       p.fixedItems.forEach(function(x){ if(x.kind==='รายจ่าย') out+=Number(x.amount||0); else inc+=Number(x.amount||0); });
-      return [e.empCode,e.fullName,e.company,e.payType||'',p.wage||'',p.advanceOn==='กำหนด'?p.advanceLimit:'',p.ssoMode||'',p.ssoFixed||'',p.ssoStart||'',p.taxMode||'',p.taxFixed||'',p.taxStart||'',p.payChannel||'',p.bank||'',p.branch||'',p.accountNo||'',inc,out,p.autoItems.map(function(x){return x.item;}).join('; '),p.funds.map(function(x){return x.name;}).join('; '),p.deposits.reduce(function(s,x){return s+Number(x.amount||0);},0),(e.approvers||[]).join('>')]; });
+      return [e.empCode,e.fullName,e.company,g.empType||e.payType||'',g.calc||'คำนวณเงินเดือน',p.wage||'',p.advanceOn==='กำหนด'?p.advanceLimit:'',so.mode||'',so.fixed||'',so.start||'',tx.method||'',tx.fixed||'',tx.whtRate||'',tx.start||'',tx.prevIncome||'',tx.prevTax||'',Math.round(al.personal+al.insurance+al.saving+al.other),est.taxMonthly.toFixed(2),est.ssoMonthly.toFixed(2),(c.shift||{}).default||'',(c.time||{}).ot||'',p.payChannel||'',p.bank||'',p.branch||'',p.accountNo||'',inc,out,p.autoItems.map(function(x){return x.item;}).join('; '),p.funds.map(function(x){return x.name;}).join('; '),p.deposits.reduce(function(s,x){return s+Number(x.amount||0);},0),p.costAlloc.map(function(x){return x.center+' '+x.percent+'%';}).join('; '),(e.approvers||[]).join('>')]; });
     var csv=[H].concat(rows).map(function(r){return r.map(function(c){return '"'+String(c==null?'':c).replace(/"/g,'""')+'"';}).join(',');}).join('\r\n');
     downloadFile('payroll_employee_data.csv','﻿'+csv,'text/csv;charset=utf-8'); toast('ส่งออกแล้ว — ไฟล์นี้มีข้อมูลเงินเดือน/บัญชีธนาคาร เก็บรักษาให้ปลอดภัย');
   };
 
   var SET = [
-    ['grp','ตั้งค่าพื้นฐาน'],
-    ['general','1. ตั้งค่าทั่วไป',function(){ return kvEdit('รอบการจ่ายเงินเดือน','general',OBJ.general)+kvEdit('ประกันสังคม (ค่ากลางของบริษัท)','sso',OBJ.sso)
-      +ownCard('ส่งออกข้อมูลสำหรับคำนวณเงินเดือน','<button class="btn-primary btn-sm" type="button" onclick="psExport()">⬇️ ส่งออก CSV</button>','<div class="ps-note">รวมค่าจ้าง วิธีคิดประกันสังคม/ภาษี บัญชีธนาคาร และรายการคงที่ของพนักงานทุกคนไว้ในไฟล์เดียว ใช้เป็นข้อมูลนำเข้าฟังก์ชันคำนวณเงินเดือน หรือเรียกใช้ในโค้ดผ่าน <code>PayrollData</code> — ไฟล์นี้มีข้อมูลอ่อนไหว</div>'); }],
-    ['approver','2. กำหนดผู้อนุมัติรายบุคคล',function(){ var rows=(DB.employees||[]).filter(function(e){return !e.status||/active|ปฏิบัติ/i.test(e.status);}).map(function(e){ var a=(e.approvers&&e.approvers.length)?e.approvers:(e.parentId?[e.parentId]:[]);
-        return '<tr><td><b>'+esc(e.fullName)+'</b><div class="small">'+esc(e.empCode)+'</div></td>'+[0,1,2].map(function(i){var m=emp(a[i]); return '<td>'+esc(m?m.fullName:'-')+'</td>';}).join('')+'<td><button class="btn-ghost btn-sm" onclick="psApprover(\''+attr(e.empCode)+'\')">กำหนด</button></td></tr>'; }).join('');
-      return ownCard('กำหนดผู้อนุมัติรายบุคคล','','<div class="ps-note">ไม่กำหนดไว้ = ใช้หัวหน้าสายงานตามผังองค์กรเป็นขั้นที่ 1</div><div class="table-wrap"><table><thead><tr><th>พนักงาน</th><th>ขั้นที่ 1</th><th>ขั้นที่ 2</th><th>ขั้นที่ 3</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'); }],
-    ['users','3. ตั้งค่าผู้ใช้ (สิทธิ์ข้อมูลเงินเดือน)',function(){ var rows=PAY.admins.map(function(m){ return '<tr><td>'+esc(m)+'</td><td><button class="btn-danger btn-sm" onclick="psAdminDel(\''+attr(m)+'\')">ถอนสิทธิ์</button></td></tr>'; }).join('');
-      return ownCard('ผู้มีสิทธิ์ดู/แก้ข้อมูลเงินเดือน','<button class="btn-ghost btn-sm" onclick="psAdminAdd()">+ เพิ่มผู้มีสิทธิ์</button>','<div class="ps-note">สิทธิ์นี้บังคับที่ฐานข้อมูลจริง (RLS) ผู้ใช้อื่นที่ล็อกอินได้จะอ่านข้อมูลเงินเดือน บัญชีธนาคาร และหน้าตั้งค่านี้ไม่ได้</div><div class="table-wrap"><table><thead><tr><th>อีเมล</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'); }],
-    ['grp','เวลาทำงานและการลา'],
-    ['shifts','4. ตั้งค่ากะการทำงาน',function(){ return tbl('s:shifts'); }],
-    ['shiftvis','5. ตั้งค่าการมองเห็นกะการทำงาน',function(){ return visTable('s:shifts','การมองเห็นกะการทำงาน'); }],
-    ['workdays','6. ตั้งค่าวันทำงาน–วันหยุด',function(){ var w=S().workweek; return ownCard('วันทำงานปกติ','<button class="btn-ghost btn-sm" onclick="psEditWeek()">✏️ แก้ไข</button>','<div class="ep-rows">'+rr('CMN',esc(w.CMN))+rr('CIL',esc(w.CIL))+'</div>')+tbl('s:holidays',null,'ระบบไม่เติมวันหยุดนักขัตฤกษ์ให้อัตโนมัติ เพราะวันหยุดบางวันเปลี่ยนทุกปี กรุณาเพิ่มตามประกาศประจำปีของบริษัท'); }],
-    ['otvis','7. ตั้งค่าประเภทโอที / การมองเห็น',function(){ return tbl('s:otTypes',null,'อัตราตั้งต้นเป็นค่าทั่วไปตามกฎหมายคุ้มครองแรงงาน ตรวจสอบและแก้ให้ตรงกับนโยบายบริษัท')+visTable('s:otTypes','การมองเห็นประเภทโอที'); }],
-    ['leavevis','8. ตั้งค่าประเภทการลา / การมองเห็น',function(){ return tbl('s:leaveTypes')+visTable('s:leaveTypes','การมองเห็นประเภทการลา'); }],
-    ['quota','9. ตั้งค่าโควตาการลา',function(){ return ownCard('โควตาการลา','<button class="btn-primary btn-sm" onclick="showTab(\'performance-tracking\');setPerfSubTab(\'leavequota\')">เปิดหน้าโควตาการลา</button>','<div class="ps-note">โควตาการลามีหน้าจัดการอยู่แล้วที่เมนู ติดตามผลการปฏิบัติงาน › โควตาการลา (ตั้งค่าตั้งต้นและรายบุคคลได้)</div>'); }],
-    ['timerules','10. ตั้งค่าเวลาการทำงาน',function(){ return kvEdit('กติกามาสาย / ขาดงาน / OT','timeRules',OBJ.timeRules); }],
-    ['face','11. ตั้งค่าใบหน้า',function(){ return kvEdit('การสแกนใบหน้า','face',OBJ.face)+'<div class="ps-note">บันทึกค่าไว้สำหรับอุปกรณ์/ระบบสแกนเวลาที่ใช้ ระบบนี้ยังไม่มีฟังก์ชันสแกนใบหน้าในตัว</div>'; }],
-    ['periodlabel','12. ตั้งค่าป้ายกำกับช่วงเวลา',function(){ return tbl('s:periodLabels'); }],
-    ['cost','13. Cost Allocation',function(){ var tot={}; (S().costAlloc||[]).forEach(function(x){ tot[x.department]=(tot[x.department]||0)+Number(x.percent||0); }); var bad=Object.keys(tot).filter(function(d){return Math.abs(tot[d]-100)>0.001;});
-      return tbl('s:costCenters')+tbl('s:costAlloc',null,bad.length?'<span style="color:#d70015">⚠️ สัดส่วนรวมไม่ครบ 100%: '+bad.map(function(d){return esc(d)+' ('+tot[d]+'%)';}).join(', ')+'</span>':'ผลรวมสัดส่วนของแต่ละแผนกต้องเท่ากับ 100%'); }],
-    ['duty','14. ตั้งค่าป้ายกำกับหน้าที่ปฏิบัติงาน',function(){ return tbl('s:dutyLabels'); }],
-    ['grp','รายการหลักสำหรับเงินเดือน'],
-    ['masters','15. รายการหลัก (ประเภทพนักงาน / รายรับ-รายจ่าย / กองทุน / สวัสดิการ / บัญชีนำจ่าย)',function(){ return tbl('s:empTypes')+tbl('s:companyAccounts')+tbl('s:incomeItems')+tbl('s:autoItems')+tbl('s:fundTypes')+tbl('s:welfareTypes'); }]
+    ['grp','ค่ากลางของบริษัท'],
+    ['general','รอบจ่ายเงินเดือน / ประกันสังคม / ส่งออก',function(){ return kvEdit('รอบการจ่ายเงินเดือน','general',OBJ.general)+kvEdit('ประกันสังคม (ค่ากลางของบริษัท)','sso',OBJ.sso)
+      +ownCard('ส่งออกข้อมูลสำหรับคำนวณเงินเดือน','<button class="btn-primary btn-sm" type="button" onclick="psExport()">⬇️ ส่งออก CSV</button>','<div class="ps-note">รวมค่าจ้าง การตั้งค่าภาษี/ประกันสังคม ค่าลดหย่อน ภาษีประมาณการ บัญชีธนาคาร และรายการคงที่ของพนักงานทุกคนไว้ในไฟล์เดียว หรือเรียกใช้ในโค้ดผ่าน <code>PayrollData</code> — ไฟล์นี้มีข้อมูลอ่อนไหว</div>'); }],
+    ['timerules','ค่าตั้งต้นเวลาทำงาน / วันหยุด',function(){ var w=S().workweek; return kvEdit('กติกามาสาย / ขาดงาน / OT (ค่าตั้งต้น)','timeRules',OBJ.timeRules)+ownCard('วันทำงานปกติ (ค่าตั้งต้น)','<button class="btn-ghost btn-sm" onclick="psEditWeek()">✏️ แก้ไข</button>','<div class="ep-rows">'+rr('CMN',esc(w.CMN))+rr('CIL',esc(w.CIL))+'</div>')+tbl('s:holidays',null,'ระบบไม่เติมวันหยุดนักขัตฤกษ์ให้อัตโนมัติ เพราะบางวันเปลี่ยนทุกปี กรุณาเพิ่มตามประกาศประจำปีของบริษัท'); }],
+    ['users','ผู้มีสิทธิ์ข้อมูลเงินเดือน',function(){ var rows=PAY.admins.map(function(m){ return '<tr><td>'+esc(m)+'</td><td><button class="btn-danger btn-sm" onclick="psAdminDel(\''+attr(m)+'\')">ถอนสิทธิ์</button></td></tr>'; }).join('');
+      return ownCard('ผู้มีสิทธิ์ดู/แก้ข้อมูลเงินเดือน','<button class="btn-ghost btn-sm" onclick="psAdminAdd()">+ เพิ่มผู้มีสิทธิ์</button>','<div class="ps-note">สิทธิ์นี้บังคับที่ฐานข้อมูลจริง ผู้ใช้อื่นที่ล็อกอินได้จะอ่านข้อมูลเงินเดือน บัญชีธนาคาร และการตั้งค่าเหล่านี้ไม่ได้</div><div class="table-wrap"><table><thead><tr><th>อีเมล</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'); }],
+    ['grp','รายการให้เลือกในแท็บตั้งค่า'],
+    ['shifts','กะการทำงาน',function(){ return tbl('s:shifts'); }],
+    ['otvis','ประเภทโอที',function(){ return tbl('s:otTypes',null,'อัตราตั้งต้นเป็นค่าทั่วไปตามกฎหมายคุ้มครองแรงงาน ตรวจสอบให้ตรงกับนโยบายบริษัท'); }],
+    ['leavevis','ประเภทการลา',function(){ return tbl('s:leaveTypes'); }],
+    ['labels','ป้ายกำกับช่วงเวลา / หน้าที่',function(){ return tbl('s:periodLabels')+tbl('s:dutyLabels'); }],
+    ['cost','ศูนย์ต้นทุน (Cost Center)',function(){ return tbl('s:costCenters'); }],
+    ['grp','รายการหลักเงินเดือน'],
+    ['emptypes','ประเภทพนักงาน',function(){ return tbl('s:empTypes'); }],
+    ['income','รายรับ/รายจ่าย (คงที่ / อัตโนมัติ)',function(){ return tbl('s:incomeItems')+tbl('s:autoItems'); }],
+    ['funds','กองทุน / สวัสดิการ',function(){ return tbl('s:fundTypes')+tbl('s:welfareTypes'); }],
+    ['accounts','บัญชีบริษัทนำจ่าย',function(){ return tbl('s:companyAccounts'); }]
   ];
   var setCur = 'general';
   function settingsHtml(){
-    if(PAY.state!=='ok') return '<section class="card"><div class="py-lock">'+(lockCard().replace(/^.*?<div class="py-lock">/,'').replace(/<\/div><\/section>$/,''))+'</div></section>';
+    if(PAY.state!=='ok') return '<div class="py-lock">'+(lockCard().replace(/^.*?<div class="py-lock">/,'').replace(/<\/div><\/section>$/,''))+'</div>';
     var menu=SET.map(function(s){ return s[0]==='grp' ? '<div class="grp">'+esc(s[1])+'</div>' : '<button class="'+(s[0]===setCur?'on':'')+'" onclick="psGo(\''+s[0]+'\')">'+esc(s[1])+'</button>'; }).join('');
     var it=SET.find(function(s){return s[0]===setCur;}) || SET[1];
     return '<div class="ps-wrap"><div class="ps-menu">'+menu+'</div><div class="ps-body">'+it[2]()+'</div></div>';
   }
-  function refreshSettings(){ var v=document.getElementById('employee-sub-paysettings'); if(v && v.classList.contains('active')) v.innerHTML='<section class="card"><h2 style="margin:0 0 4px">⚙️ ตั้งค่าเงินเดือน & เวลาทำงาน</h2><div class="sub">ตั้งค่ากลางสำหรับฟังก์ชันคำนวณเงินเดือน ตามโครงสร้างระบบ HRS-Humansoft</div></section>'+settingsHtml(); }
-  window.psGo = function(id){ setCur=id; refreshSettings(); window.scrollTo({top:0}); };
-
-  function install(){
-    var after=document.getElementById('employee-sub-search'); if(!after || document.getElementById('employee-sub-paysettings')) return;
-    var v=document.createElement('div'); v.className='subview'; v.id='employee-sub-paysettings'; after.insertAdjacentElement('afterend',v);
-    var prev=window.showEmployeeSubtab;
-    window.showEmployeeSubtab=function(name){
-      prev(name);
-      var on=name==='paysettings'; v.classList.toggle('active',on);
-      if(on){ ['employee-sub-search','employee-sub-add'].forEach(function(id){var e=document.getElementById(id); if(e) e.classList.remove('active');}); if(PAY.state!=='ok' && PAY.state!=='loading') loadPay(); refreshSettings(); }
-    };
-    showEmployeeSubtab=window.showEmployeeSubtab;
-    var po=window.openEmployeeProfile;
-    window.openEmployeeProfile=function(){ v.classList.remove('active'); return po.apply(this,arguments); };
-  }
-  install();
+  function refreshSettings(){ var b=document.getElementById('psModalBody'); if(b) b.innerHTML=settingsHtml(); }
+  window.psGo = function(id){ setCur=id; refreshSettings(); var m=document.querySelector('#psModal .ct-modal'); if(m) m.scrollTop=0; };
+  window.pyMasters = function(){
+    var old=document.getElementById('psModal'); if(old) old.remove();
+    var bg=document.createElement('div'); bg.className='ct-modal-bg'; bg.id='psModal';
+    bg.innerHTML='<div class="ct-modal" style="max-width:1150px"><div class="hx-sec-head"><h3 style="margin:0">🗂️ จัดการรายการหลัก (ค่ากลางของบริษัท)</h3><button class="btn-ghost btn-sm" type="button" onclick="pyMastersClose()">✕ ปิด</button></div><div class="ps-note">รายการเหล่านี้เป็นตัวเลือกในแท็บ "⚙️ ตั้งค่า" และ "💰 เงินเดือน" ของพนักงานแต่ละคน</div><div id="psModalBody"></div></div>';
+    bg.addEventListener('mousedown',function(ev){ if(ev.target===bg) pyMastersClose(); });
+    document.body.appendChild(bg); refreshSettings();
+  };
+  window.pyMastersClose = function(){ var m=document.getElementById('psModal'); if(m) m.remove(); rerender(); };
 })();
 </script>
 </body>
