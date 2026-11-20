@@ -888,6 +888,10 @@ function defaultDB(){
     // ===== Training (single source of truth: courses + enrollments) =====
     trainingCourses: [],
     trainingEnrollments: [],
+    ojtPlans: [],
+    dsdSubmissions: [],
+    trainingFollowups: [],
+    trainingNeeds: [],
     settings: {
       birthdayEmail: { subject: DEFAULT_BDAY_SUBJECT, body: DEFAULT_BDAY_BODY, reminderDays: '7,1,0' },
       probation: { assessmentWebappUrl: 'https://hr-unified-system.vercel.app/probation' },
@@ -907,7 +911,7 @@ function migrateDB(raw){
 
   // Arrays: ต้องมีอยู่และเป็น array เสมอ ห้าม undefined ไม่งั้นทุก DB.xxx.push() จะพัง
   ['employees','performanceReviews','goals','jd','kpiDefinitions','competencies','competencyDictionary','kpiDictionary',
-   'orgChartSnapshots','positionRevisions','probationActions','trainingCourses','trainingEnrollments','attendanceRecords','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','leaveEntitlementDefaults','leaveEntitlementOverrides','importedRequestIds','employeeJdOverrides'
+   'orgChartSnapshots','positionRevisions','probationActions','trainingCourses','trainingEnrollments','attendanceRecords','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','leaveEntitlementDefaults','leaveEntitlementOverrides','importedRequestIds','employeeJdOverrides'
   ].forEach(k => {
     if(!Array.isArray(merged[k])) merged[k] = base[k];
   });
@@ -3441,7 +3445,7 @@ var v4OriginalMigrateDB = migrateDB;
 
 migrateDB = function(raw){
   var merged = v4OriginalMigrateDB(raw);
-  ['probationActions','trainingCourses','trainingEnrollments','positionRevisions','orgChartSnapshots','attendanceRecords','performanceReviews','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','leaveEntitlementOverrides','importedRequestIds'].forEach(function(k){ if(!Array.isArray(merged[k])) merged[k]=[]; });
+  ['probationActions','trainingCourses','trainingEnrollments','positionRevisions','orgChartSnapshots','attendanceRecords','performanceReviews','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','leaveEntitlementOverrides','importedRequestIds'].forEach(function(k){ if(!Array.isArray(merged[k])) merged[k]=[]; });
   if(!Array.isArray(merged.leaveEntitlementDefaults)||!merged.leaveEntitlementDefaults.length) merged.leaveEntitlementDefaults=defaultDB().leaveEntitlementDefaults;
   if(!merged.orgCharts || typeof merged.orgCharts!=='object') merged.orgCharts={};
   return merged;
@@ -8626,8 +8630,15 @@ window.refreshPerfEmployeeSelects=function(){
 })();
 </script>
 <style id="hrd-style">
-#view-training.hrd-ov #trainingSummaryGrid{display:none}
-#view-training.hrd-need #trainingSummaryGrid{display:none}
+#view-training.hrd-nosum #trainingSummaryGrid{display:none}
+.hrd-sub-note{font-size:13px;opacity:.8;margin-bottom:10px}
+.hrd-prog{height:8px;border-radius:99px;background:rgba(120,130,150,.25);overflow:hidden;min-width:80px}.hrd-prog>i{display:block;height:100%;background:#3b82f6}
+.hrd-form{border:1px solid rgba(120,130,150,.3);border-radius:14px;padding:14px;margin-bottom:14px}
+.hrd-fg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.hrd-fg .f2{grid-column:span 2}.hrd-fg .f3{grid-column:span 3}
+@media(max-width:800px){.hrd-fg{grid-template-columns:1fr}.hrd-fg .f2,.hrd-fg .f3{grid-column:span 1}}
+.hrd-pill.s-bad{background:#fbd9d9;color:#a32020}
+.hrd-qrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}.hrd-qrow input{max-width:320px}
+.hrd-rm{display:grid;grid-template-columns:minmax(160px,1.2fr) repeat(4,minmax(0,1fr));gap:6px;font-size:13px}.hrd-rm>div{padding:6px 8px;border-radius:8px;background:rgba(120,130,150,.1);min-height:34px}.hrd-rm .h{font-weight:700;background:rgba(59,130,246,.15)}.hrd-rm .pos{font-weight:600}
 .hrd-sub{margin-bottom:12px}
 .hrd-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px}
 .hrd-head h2{font-size:34px;font-weight:800;margin:0;letter-spacing:.5px}
@@ -8699,16 +8710,16 @@ window.refreshPerfEmployeeSelects=function(){
     return '<span class="d '+(pct>0?'hrd-up':pct<0?'hrd-down':'hrd-flat')+'">'+(pct>0?'▲ ':pct<0?'▼ ':'')+Math.abs(pct)+'% จากปีก่อน</span>';
   }
   function pillClass(st){ return st==='เปิดรับสมัคร'?'s-open':st==='กำลังดำเนินการ'?'s-run':st==='รออนุมัติ'?'s-wait':st==='เสร็จสิ้น'?'s-done':'s-plan'; }
+  var SUBS=[['overview','📊 ภาพรวม'],['ojt','🧑‍💻 OJT (On-the-Job Training)'],['history','🗂️ ประวัติการฝึกอบรม'],['budget','💰 งบประมาณการฝึกอบรม'],['dsd','🏛️ ยื่นหลักสูตรกรมพัฒนาฝีมือแรงงาน'],['followup','📈 ติดตามผลหลังอบรม'],['need','🎯 Training Need & Roadmap']];
+  var curSub='overview';
+  function cap(k){ return k.charAt(0).toUpperCase()+k.slice(1); }
   function ensureDom(){
     var view = document.getElementById('view-training'); if(!view || document.getElementById('training-sub-overview')) return;
     var nav = view.querySelector('.subnav');
-    nav.insertAdjacentHTML('afterbegin','<button class="subnav-btn active" id="trainingSubBtnOverview" onclick="showTrainingSubtab(\'overview\')">📊 ภาพรวม HRD</button>');
-    nav.insertAdjacentHTML('beforeend','<button class="subnav-btn" id="trainingSubBtnNeed" onclick="showTrainingSubtab(\'need\')">🎯 Training Need & Roadmap</button>');
-    document.getElementById('trainingSubBtnManage').textContent='🗂️ หลักสูตร / OJT';
-    document.getElementById('trainingSubBtnBudget').textContent='💰 ประวัติ & งบประมาณ';
+    nav.innerHTML = SUBS.map(function(x){ return '<button class="subnav-btn" id="trainingSubBtn'+cap(x[0])+'" onclick="showTrainingSubtab(\''+x[0]+'\')">'+x[1]+'</button>'; }).join('');
     var manage = document.getElementById('training-sub-manage');
-    manage.insertAdjacentHTML('beforebegin','<div class="subview active" id="training-sub-overview"></div>');
-    view.appendChild(Object.assign(document.createElement('div'),{id:'training-sub-need',className:'subview'}));
+    ['overview','ojt','history'].forEach(function(k){ manage.insertAdjacentHTML('beforebegin','<div class="subview" id="training-sub-'+k+'"></div>'); });
+    ['dsd','followup','need'].forEach(function(k){ view.appendChild(Object.assign(document.createElement('div'),{id:'training-sub-'+k,className:'subview'})); });
     manage.classList.remove('active');
   }
   function yearOptions(){
@@ -8730,16 +8741,15 @@ window.refreshPerfEmployeeSelects=function(){
     var legend = TYPES.map(function(t,i){ return '<div><i style="background:'+COLORS[i]+'"></i>'+esc(t)+'<span class="p">'+(total?Math.round(counts[i]*100/total):0)+'%</span></div>'; }).join('');
     // alerts
     var allCourses = (DB.trainingCourses||[]).filter(function(c){return courseInCompany(c,companyFilter);});
-    var waitApprove = allCourses.filter(function(c){return c.status==='รออนุมัติ';}).length;
-    var ojtSoon = allCourses.filter(function(c){ if(typeOf(c)!=='OJT'||c.status==='เสร็จสิ้น') return false; var d=parseDate(c.endDate); return d && d>=today && d<=in30; }).length;
-    var allEn = enrollsOf(allCourses);
-    var waitEval = allEn.filter(function(e){return e.attendance==='Attended' && e.result==='รอผล';}).length;
-    var needCnt = needList().filter(function(r){return r.count===0;}).length;
+    var waitApprove = (DB.dsdSubmissions||[]).filter(function(r){return (r.status==='ยื่นแล้ว'||r.status==='รออนุมัติ'||r.status==='ขอแก้ไข') && (companyFilter==='ALL'||!r.company||r.company===companyFilter);}).length;
+    var ojtSoon = (DB.ojtPlans||[]).filter(function(r){ if(r.status==='เสร็จสิ้น'||r.status==='ยกเลิก'||!empInCompany(r.empCode,companyFilter)) return false; var d=parseDate(r.endDate); return d && d<=in30; }).length;
+    var waitEval = window.hrdPendingFollowups ? window.hrdPendingFollowups().length : 0;
+    var needCnt = (DB.trainingNeeds||[]).filter(function(r){return r.status!=='เสร็จสิ้น' && r.status!=='ยกเลิก';}).length;
     function alertRow(ic,txt,n,color,fn){ return '<div class="hrd-alert" onclick="'+fn+'"><span style="font-size:20px">'+ic+'</span><span>'+txt+'</span><span class="n" style="background:'+color+'">'+n+'</span></div>'; }
-    var alerts = alertRow('📋','รออนุมัติหลักสูตร',waitApprove,'#e5484d',"hrdGo('manage')")
-      + alertRow('⏰','OJT ที่ใกล้ครบกำหนด (30 วัน)',ojtSoon,'#f5a524',"hrdGo('manage')")
-      + alertRow('📝','รอประเมินผลหลังอบรม',waitEval,'#e08a1e',"hrdGo('manage')")
-      + alertRow('🎯','พนักงานที่ยังไม่มีแผนอบรม (Training Need)',needCnt,'#3b82f6',"showTrainingSubtab('need')");
+    var alerts = alertRow('📋','หลักสูตรที่ยื่นกรมฯ รอผลอนุมัติ/แก้ไข',waitApprove,'#e5484d',"hrdGo('dsd')")
+      + alertRow('⏰','OJT ที่ใกล้ครบกำหนด/เลยกำหนด (30 วัน)',ojtSoon,'#f5a524',"hrdGo('ojt')")
+      + alertRow('📝','รอติดตามผลหลังอบรม',waitEval,'#e08a1e',"hrdGo('followup')")
+      + alertRow('🎯','Training Need ที่ยังไม่ปิด',needCnt,'#3b82f6',"hrdGo('need')");
     // upcoming
     var up = allCourses.filter(function(c){ var d=parseDate(c.startDate); return d && d>=today && c.status!=='เสร็จสิ้น'; })
       .sort(function(a,b){return parseDate(a.startDate)-parseDate(b.startDate);}).slice(0,8);
@@ -8751,10 +8761,10 @@ window.refreshPerfEmployeeSelects=function(){
     box.innerHTML =
       '<div class="hrd-head"><div><h2>HRD</h2><div class="hrd-tag">พัฒนาคน พัฒนาองค์กร สู่ความสำเร็จอย่างยั่งยืน</div></div><div class="hrd-quote">“การลงทุนในคน คือการลงทุนที่คุ้มค่าที่สุด” 🌱</div></div>'
       + '<div class="hrd-tiles">'
-      + '<button class="hrd-tile hrd-t1" onclick="hrdNewCourse(\'OJT\')"><span class="ic">🧑‍💻</span><span><b>1. สร้าง OJT ให้พนักงาน</b><small>On-the-Job Training</small></span></button>'
-      + '<button class="hrd-tile hrd-t2" onclick="hrdGo(\'budget\')"><span class="ic">🎓</span><span><b>2. ประวัติการฝึกอบรมและงบประมาณ</b><small>Training History & Budget</small></span></button>'
-      + '<button class="hrd-tile hrd-t3" onclick="hrdGo(\'manage\')"><span class="ic">🏅</span><span><b>3. ติดตามสถานะการยื่นหลักสูตร</b><small>กรมพัฒนาฝีมือแรงงาน</small></span></button>'
-      + '<button class="hrd-tile hrd-t4" onclick="hrdGo(\'manage\')"><span class="ic">📈</span><span><b>4. ติดตามผลการปฏิบัติงาน</b><small>หลังฝึกอบรม</small></span></button>'
+      + '<button class="hrd-tile hrd-t1" onclick="hrdGo(\'ojt\')"><span class="ic">🧑‍💻</span><span><b>1. สร้าง OJT ให้พนักงาน</b><small>On-the-Job Training</small></span></button>'
+      + '<button class="hrd-tile hrd-t2" onclick="hrdGo(\'history\')"><span class="ic">🎓</span><span><b>2. ประวัติการฝึกอบรมและงบประมาณ</b><small>Training History & Budget</small></span></button>'
+      + '<button class="hrd-tile hrd-t3" onclick="hrdGo(\'dsd\')"><span class="ic">🏅</span><span><b>3. ติดตามสถานะการยื่นหลักสูตร</b><small>กรมพัฒนาฝีมือแรงงาน</small></span></button>'
+      + '<button class="hrd-tile hrd-t4" onclick="hrdGo(\'followup\')"><span class="ic">📈</span><span><b>4. ติดตามผลการปฏิบัติงาน</b><small>หลังฝึกอบรม</small></span></button>'
       + '<button class="hrd-tile hrd-t5" onclick="showTrainingSubtab(\'need\')"><span class="ic">🎯</span><span><b>5. Training Need และ Training Roadmap</b><small>ของแต่ละตำแหน่ง</small></span></button>'
       + '</div>'
       + '<section class="card hrd-card"><div class="hrd-bar"><h3 style="margin:0">ภาพรวมการพัฒนาบุคลากร</h3><label class="small">ช่วงเวลา: <select onchange="hrdSetYear(this.value)">'+yearOptions()+'</select></label></div><div class="hrd-kpis">'
@@ -8775,59 +8785,300 @@ window.refreshPerfEmployeeSelects=function(){
       return { emp:e, count:en.length, hours:en.reduce(function(s,x){return s+Number(ids[x.courseId].hours||0);},0), titles:en.map(function(x){return ids[x.courseId].title;}) };
     }).sort(function(a,b){ return a.count-b.count || String(a.emp.department||'').localeCompare(String(b.emp.department||''),'th'); });
   }
-  function renderNeed(){
-    var box = document.getElementById('training-sub-need'); if(!box) return;
+  function renderCoverage(){
+    var box = document.getElementById('hrdCoverageBox'); if(!box) return;
     var q = ((document.getElementById('hrdNeedSearch')||{}).value||'').trim().toLowerCase();
     var all = needList();
     var rows = all.filter(function(r){ return !q || (r.emp.fullName+' '+r.emp.empCode+' '+(r.emp.department||'')+' '+(r.emp.position||'')).toLowerCase().indexOf(q)>=0; });
     var none = all.filter(function(r){return r.count===0;}).length;
-    box.innerHTML = '<section class="card hrd-card"><div class="hrd-bar"><div><h3 style="margin:0">Training Need & Roadmap</h3><div class="small">เรียงจากพนักงานที่ยังไม่มีแผนอบรมในปี '+(hrdYear+543)+' ไว้ก่อน — ยังไม่มีแผน '+none+' คน จากทั้งหมด '+all.length+' คน</div></div><label class="small">ปี <select onchange="hrdSetYear(this.value)">'+yearOptions()+'</select></label></div>'
-      + '<div class="field"><input id="hrdNeedSearch" value="'+esc(q)+'" oninput="hrdNeedSearchChange()" placeholder="ค้นหา ชื่อ รหัส แผนก ตำแหน่ง"/></div>'
-      + '<div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>พนักงาน</th><th>แผนก</th><th>ตำแหน่ง</th><th>จำนวนหลักสูตร</th><th>ชั่วโมงรวม</th><th>หลักสูตรที่วางแผน/เข้าร่วม</th></tr></thead><tbody>'
-      + (rows.slice(0,300).map(function(r){ return '<tr><td><strong>'+esc(r.emp.fullName)+'</strong><div class="small">'+esc(r.emp.empCode)+'</div></td><td>'+esc(r.emp.department||'-')+'</td><td>'+esc(r.emp.position||'-')+'</td><td>'+(r.count?r.count:'<span class="hrd-pill s-wait">ยังไม่มีแผน</span>')+'</td><td>'+fmt(r.hours)+'</td><td>'+(esc(r.titles.join(', '))||'-')+'</td></tr>'; }).join('')||'<tr><td colspan="6" class="empty">ไม่พบข้อมูล</td></tr>')
-      + '</tbody></table></div>'+(rows.length>300?'<div class="small">แสดง 300 รายการแรก จาก '+rows.length+' — พิมพ์ค้นหาเพื่อกรอง</div>':'')+'</section>';
-    var s = document.getElementById('hrdNeedSearch');
-    if(s && q){ s.focus(); s.setSelectionRange(q.length,q.length); }
+    var keep = box.querySelector('#hrdNeedSearch');
+    if(!keep){ box.innerHTML = '<div class="hrd-sub-note" id="hrdCovNote"></div><div class="field"><input id="hrdNeedSearch" oninput="hrdNeedSearchChange()" placeholder="ค้นหา ชื่อ รหัส แผนก ตำแหน่ง"/></div><div id="hrdCovTable" class="table-wrap" style="margin-top:10px"></div>'; }
+    document.getElementById('hrdCovNote').textContent = 'ปี '+(hrdYear+543)+': ยังไม่มีแผนอบรม '+none+' คน จากทั้งหมด '+all.length+' คน (เรียงคนที่ยังไม่มีแผนไว้ก่อน)';
+    document.getElementById('hrdCovTable').innerHTML = '<table><thead><tr><th>พนักงาน</th><th>แผนก</th><th>ตำแหน่ง</th><th>จำนวนหลักสูตร</th><th>ชั่วโมงรวม</th><th>หลักสูตรที่วางแผน/เข้าร่วม</th></tr></thead><tbody>'
+      + (rows.slice(0,200).map(function(r){ return '<tr><td><strong>'+esc(r.emp.fullName)+'</strong><div class="small">'+esc(r.emp.empCode)+'</div></td><td>'+esc(r.emp.department||'-')+'</td><td>'+esc(r.emp.position||'-')+'</td><td>'+(r.count?r.count:'<span class="hrd-pill s-wait">ยังไม่มีแผน</span>')+'</td><td>'+fmt(r.hours)+'</td><td>'+(esc(r.titles.join(', '))||'-')+'</td></tr>'; }).join('')||'<tr><td colspan="6" class="empty">ไม่พบข้อมูล</td></tr>')
+      + '</tbody></table>'+(rows.length>200?'<div class="small">แสดง 200 รายการแรก จาก '+rows.length+' — พิมพ์ค้นหาเพื่อกรอง</div>':'');
   }
-  var prevSub = window.showTrainingSubtab;
+  window.hrdRenderers = { overview: renderOverview };
+  window.hrdCore = { esc:esc, fmt:fmt, yearOptions:yearOptions, getYear:function(){return hrdYear;}, renderCoverage:renderCoverage, coursesOf:coursesOf, enrollsOf:enrollsOf, typeOf:typeOf };
   window.showTrainingSubtab = function(name){
-    ensureDom();
-    var ids = ['overview','manage','budget','need'];
-    ids.forEach(function(k){
-      var v = document.getElementById('training-sub-'+k); if(v) v.classList.toggle('active',k===name);
-      var b = document.getElementById('trainingSubBtn'+k.charAt(0).toUpperCase()+k.slice(1)); if(b) b.classList.toggle('active',k===name);
+    ensureDom(); curSub = name;
+    SUBS.forEach(function(x){ var k=x[0];
+      var on = (k===name);
+      var v = document.getElementById('training-sub-'+k); if(v) v.classList.toggle('active',on);
+      var b = document.getElementById('trainingSubBtn'+cap(k)); if(b) b.classList.toggle('active',on);
     });
+    var man = document.getElementById('training-sub-manage'); if(man) man.classList.toggle('active',name==='history');
     var view = document.getElementById('view-training');
-    view.classList.toggle('hrd-ov',name==='overview'); view.classList.toggle('hrd-need',name==='need');
-    if(name==='overview') renderOverview();
-    if(name==='need') renderNeed();
+    view.classList.toggle('hrd-nosum', name!=='history');
+    var r = window.hrdRenderers[name]; if(r) r();
   };
   showTrainingSubtab = window.showTrainingSubtab;
   window.hrdGo = function(name){ showTrainingSubtab(name); window.scrollTo({top:0,behavior:'smooth'}); };
-  window.hrdSetYear = function(v){ hrdYear = Number(v)||hrdYear; renderOverview(); renderNeed(); };
-  window.hrdNeedSearchChange = function(){ renderNeed(); };
+  window.hrdSetYear = function(v){ hrdYear = Number(v)||hrdYear; var r=window.hrdRenderers[curSub]; if(r) r(); };
+  window.hrdNeedSearchChange = function(){ renderCoverage(); };
   window.hrdNewCourse = function(type){
-    showTrainingSubtab('manage'); resetTrainingCourseForm();
+    showTrainingSubtab('history'); resetTrainingCourseForm();
     var t = document.getElementById('course_type'); if(t) t.value = type||'';
     var el = document.getElementById('course_title'); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.focus(); }
   };
-  window.hrdOpenCourse = function(id){ showTrainingSubtab('manage'); selectTrainingCourse(id); };
+  window.hrdOpenCourse = function(id){ showTrainingSubtab('history'); selectTrainingCourse(id); };
   var prevRender = window.renderTrainingModuleV4;
   var firstShow = true;
   window.renderTrainingModuleV4 = function(){
     var r = prevRender.apply(this, arguments);
     ensureDom();
     if(firstShow){ firstShow = false; showTrainingSubtab('overview'); }
-    else {
-      var ov = document.getElementById('training-sub-overview'), nd = document.getElementById('training-sub-need');
-      if(ov && ov.classList.contains('active')) renderOverview();
-      if(nd && nd.classList.contains('active')) renderNeed();
-    }
+    else if(curSub!=='budget'){ var f=window.hrdRenderers[curSub]; if(f) f(); }
     return r;
   };
   renderTrainingModuleV4 = window.renderTrainingModuleV4;
   TAB_RENDERERS.training = window.renderTrainingModuleV4;
   ensureDom();
+})();
+</script>
+<script id="hrd-modules-script">
+(function(){
+  var H = window.hrdCore, esc = H.esc, fmt = H.fmt;
+  function attr(v){ return v4EscapeAttr(v); }
+  function empName(code){ var e=getEmployeeByCode(code); return e?e.fullName:code; }
+  function empCell(code){ var e=getEmployeeByCode(code)||{}; return '<strong>'+esc(e.fullName||code||'-')+'</strong><div class="small">'+esc(code||'')+(e.department?' · '+esc(e.department):'')+'</div>'; }
+  function courseTitle(id){ var c=(DB.trainingCourses||[]).find(function(x){return x.id===id;}); return c?c.title:''; }
+  function dshort(v){ var d=parseDate(v); return d? d.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) : '-'; }
+  function pill(txt,cls){ return '<span class="hrd-pill '+(cls||'')+'">'+esc(txt||'-')+'</span>'; }
+  function bar(n){ n=Math.max(0,Math.min(100,Number(n)||0)); return '<div class="hrd-prog" title="'+n+'%"><i style="width:'+n+'%"></i></div><div class="small">'+n+'%</div>'; }
+  function coOK(rec){ return companyFilter==='ALL' || !rec.company || rec.company===companyFilter; }
+  function empOK(rec){ return rec.empCode ? empInCompany(rec.empCode,companyFilter) : coOK(rec); }
+
+  /* ---------- generic list + form engine ---------- */
+  window.hrdCrud = {};
+  function makeCrud(cfg){
+    var st = { editing:null, show:false, q:'', prefill:null };
+    var boxId = cfg.box;
+    function fid(k){ return 'f_'+cfg.id+'_'+k; }
+    function opts(f,val){
+      var list = f.type==='course' ? [['','— ไม่ระบุ —']].concat((DB.trainingCourses||[]).map(function(c){return [c.id,c.title];})) : (typeof f.options==='function'?f.options():f.options).map(function(o){return [o,o||'— ไม่ระบุ —'];});
+      return list.map(function(o){ return '<option value="'+attr(o[0])+'"'+(String(val==null?'':val)===String(o[0])?' selected':'')+'>'+esc(o[1])+'</option>'; }).join('');
+    }
+    function fieldHtml(f,val){
+      var cls = 'field'+(f.span?' f'+f.span:''), id=fid(f.k), inp;
+      if(f.type==='select'||f.type==='course') inp='<select id="'+id+'">'+opts(f,val)+'</select>';
+      else if(f.type==='textarea') inp='<textarea id="'+id+'" rows="3">'+esc(val||'')+'</textarea>';
+      else if(f.type==='emp') inp='<input id="'+id+'" list="hrdEmpList" placeholder="พิมพ์ชื่อหรือรหัสแล้วเลือก" value="'+attr(val?(val+' · '+empName(val)):'')+'"/>';
+      else if(f.type==='list') inp='<input id="'+id+'" list="'+f.list+'" value="'+attr(val||'')+'"/>';
+      else inp='<input id="'+id+'" type="'+(f.type||'text')+'"'+(f.type==='number'?' min="'+(f.min==null?0:f.min)+'"'+(f.max!=null?' max="'+f.max+'"':'')+' step="'+(f.step||1)+'"':'')+' value="'+attr(val==null?'':val)+'"/>';
+      return '<div class="'+cls+'"><label>'+esc(f.label)+'</label>'+inp+'</div>';
+    }
+    function renderForm(){
+      var box = document.getElementById(cfg.id+'-form'); if(!box) return;
+      if(!st.show){ box.innerHTML=''; return; }
+      var rec = st.editing ? (DB[cfg.key].find(function(r){return r.id===st.editing;})||{}) : Object.assign({}, cfg.defaults?cfg.defaults():{}, st.prefill||{});
+      box.innerHTML = '<div class="hrd-form"><h3 style="margin:0 0 10px">'+(st.editing?'แก้ไขรายการ':'เพิ่มรายการใหม่')+'</h3><div class="hrd-fg">'+cfg.fields.map(function(f){return fieldHtml(f,rec[f.k]);}).join('')+'</div><div class="inline-error" id="'+cfg.id+'-err"></div><div class="actions" style="margin-top:10px"><button class="btn-primary" onclick="hrdCrud[\''+cfg.id+'\'].save()">บันทึก</button><button class="btn-ghost" onclick="hrdCrud[\''+cfg.id+'\'].cancel()">ยกเลิก</button></div></div>';
+    }
+    function renderTable(){
+      var box = document.getElementById(cfg.id+'-table'); if(!box) return;
+      var q = st.q.trim().toLowerCase();
+      var rows = (DB[cfg.key]||[]).filter(cfg.inCo).filter(function(r){ return !q || cfg.text(r).toLowerCase().indexOf(q)>=0; }).sort(cfg.sort||function(){return 0;});
+      var sm = document.getElementById(cfg.id+'-sum'); if(sm) sm.innerHTML = cfg.summary ? cfg.summary((DB[cfg.key]||[]).filter(cfg.inCo)) : '';
+      box.innerHTML = '<table><thead><tr>'+cfg.cols.map(function(c){return '<th>'+c[0]+'</th>';}).join('')+'<th></th></tr></thead><tbody>'
+        + (rows.map(function(r){ return '<tr>'+cfg.cols.map(function(c){return '<td>'+c[1](r)+'</td>';}).join('')+'<td style="white-space:nowrap"><button class="btn-ghost btn-sm" onclick="hrdCrud[\''+cfg.id+'\'].edit(\''+attr(r.id)+'\')">แก้ไข</button> <button class="btn-danger btn-sm" onclick="hrdCrud[\''+cfg.id+'\'].del(\''+attr(r.id)+'\')">ลบ</button></td></tr>'; }).join('') || '<tr><td colspan="'+(cfg.cols.length+1)+'" class="empty">'+esc(cfg.empty||'ยังไม่มีรายการ')+'</td></tr>')
+        + '</tbody></table>';
+    }
+    var api = {
+      render: function(){
+        var box = document.getElementById(boxId); if(!box) return;
+        if(!document.getElementById(cfg.id+'-table')){
+          box.innerHTML = '<section class="card hrd-card"><div class="hrd-bar"><div><h3 style="margin:0">'+esc(cfg.title)+'</h3><div class="hrd-sub-note" style="margin:4px 0 0">'+esc(cfg.note||'')+'</div></div><button class="btn-primary" onclick="hrdCrud[\''+cfg.id+'\'].add()">+ เพิ่มรายการ</button></div>'
+            + '<div id="'+cfg.id+'-sum" class="hrd-kpis" style="margin-bottom:12px"></div>'
+            + '<div id="'+cfg.id+'-form"></div><div class="hrd-qrow"><input id="'+cfg.id+'-q" placeholder="ค้นหา" oninput="hrdCrud[\''+cfg.id+'\'].search(this.value)"/></div><div class="table-wrap" id="'+cfg.id+'-table"></div></section>';
+        }
+        var dl = document.getElementById('hrdEmpList');
+        if(!dl){ document.body.insertAdjacentHTML('beforeend','<datalist id="hrdEmpList"></datalist>'); dl=document.getElementById('hrdEmpList'); }
+        dl.innerHTML = (DB.employees||[]).map(function(e){return '<option value="'+attr(e.empCode+' · '+e.fullName)+'"></option>';}).join('');
+        renderForm(); renderTable();
+      },
+      add: function(prefill){ st.editing=null; st.show=true; st.prefill=prefill||null; renderForm(); var b=document.getElementById(cfg.id+'-form'); if(b) b.scrollIntoView({behavior:'smooth',block:'center'}); },
+      edit: function(id){ st.editing=id; st.show=true; st.prefill=null; renderForm(); var b=document.getElementById(cfg.id+'-form'); if(b) b.scrollIntoView({behavior:'smooth',block:'center'}); },
+      cancel: function(){ st.show=false; st.editing=null; renderForm(); },
+      search: function(v){ st.q=v; renderTable(); },
+      save: function(){
+        var vals = {}, err = '';
+        cfg.fields.forEach(function(f){
+          var el = document.getElementById(fid(f.k)); var v = el?el.value.trim():'';
+          if(f.type==='emp') v = v.split(' · ')[0].trim();
+          if(f.type==='number') v = v===''?'':Number(v);
+          if(f.req && (v===''||v==null) && !err) err = 'กรุณากรอก: '+f.label.replace(' *','');
+          vals[f.k] = v;
+        });
+        if(!err && cfg.validate) err = cfg.validate(vals)||'';
+        if(err){ var e=document.getElementById(cfg.id+'-err'); if(e) e.textContent=err; return; }
+        var arr = DB[cfg.key], idx = st.editing ? arr.findIndex(function(r){return r.id===st.editing;}) : -1;
+        var rec = Object.assign({}, idx>=0?arr[idx]:{id:uid(cfg.id+'_'),createdAt:v4Now()}, vals, {updatedAt:v4Now()});
+        if(cfg.beforeSave) cfg.beforeSave(rec);
+        if(idx>=0) arr[idx]=rec; else arr.push(rec);
+        saveDB(); st.show=false; st.editing=null; api.render(); if(cfg.onChange) cfg.onChange();
+      },
+      del: function(id){
+        if(!confirm('ลบรายการนี้ใช่ไหม? (ลบแล้วกู้คืนไม่ได้)')) return;
+        DB[cfg.key] = DB[cfg.key].filter(function(r){return r.id!==id;});
+        saveDB(); api.render(); if(cfg.onChange) cfg.onChange();
+      }
+    };
+    window.hrdCrud[cfg.id] = api;
+    return api;
+  }
+  function kpi(l,v,color){ return '<div class="hrd-kpi"><div class="l">'+l+'</div><div class="v" style="'+(color?'color:'+color:'')+'">'+v+'</div></div>'; }
+  function today(){ return todayStart(); }
+
+  /* ---------- OJT ---------- */
+  var OJT_ST=['วางแผน','กำลังดำเนินการ','เสร็จสิ้น','ยกเลิก'];
+  var ojt = makeCrud({ id:'ojt', box:'training-sub-ojt', key:'ojtPlans', title:'OJT — การฝึกอบรมระหว่างปฏิบัติงาน',
+    note:'บันทึกแผน OJT รายคน: ผู้ฝึก พี่เลี้ยง ทักษะที่ต้องผ่าน ความคืบหน้า และผลสรุป', empty:'ยังไม่มีแผน OJT — กด "+ เพิ่มรายการ"',
+    fields:[{k:'empCode',label:'พนักงานที่ฝึก OJT *',type:'emp',req:1},{k:'mentor',label:'พี่เลี้ยง / ผู้สอนงาน'},{k:'status',label:'สถานะ',type:'select',options:OJT_ST},
+      {k:'topic',label:'หัวข้อ / ทักษะที่ฝึก *',span:3,req:1},{k:'startDate',label:'วันที่เริ่ม',type:'date'},{k:'endDate',label:'กำหนดสิ้นสุด',type:'date'},{k:'progress',label:'ความคืบหน้า (%)',type:'number',max:100},
+      {k:'result',label:'ผลสรุป',type:'select',options:['รอผล','ผ่าน','ไม่ผ่าน']},{k:'checklist',label:'รายการทักษะที่ต้องผ่าน (1 บรรทัด = 1 ข้อ)',type:'textarea',span:2},{k:'note',label:'หมายเหตุ',span:3}],
+    defaults:function(){return {status:'วางแผน',progress:0,result:'รอผล'};},
+    inCo:function(r){return empInCompany(r.empCode,companyFilter);},
+    text:function(r){return [r.empCode,empName(r.empCode),r.topic,r.mentor,r.status].join(' ');},
+    sort:function(a,b){return String(a.endDate||'9999').localeCompare(String(b.endDate||'9999'));},
+    cols:[['พนักงาน',function(r){return empCell(r.empCode);}],['หัวข้อ',function(r){var n=String(r.checklist||'').split('\n').filter(function(x){return x.trim();}).length; return '<strong>'+esc(r.topic)+'</strong>'+(n?'<div class="small">ทักษะ '+n+' ข้อ</div>':'');}],['พี่เลี้ยง',function(r){return esc(r.mentor||'-');}],
+      ['ช่วงเวลา',function(r){return dshort(r.startDate)+' – '+dshort(r.endDate);}],['ความคืบหน้า',function(r){return bar(r.progress);}],['สถานะ',function(r){return pill(r.status,r.status==='เสร็จสิ้น'?'s-done':r.status==='กำลังดำเนินการ'?'s-run':r.status==='ยกเลิก'?'s-bad':'s-plan');}],['ผล',function(r){return pill(r.result||'รอผล',r.result==='ผ่าน'?'s-open':r.result==='ไม่ผ่าน'?'s-bad':'s-wait');}]],
+    summary:function(rows){ var t=today(), act=rows.filter(function(r){return r.status==='กำลังดำเนินการ';}).length, done=rows.filter(function(r){return r.status==='เสร็จสิ้น';}).length, late=rows.filter(function(r){var d=parseDate(r.endDate);return d&&d<t&&r.status!=='เสร็จสิ้น'&&r.status!=='ยกเลิก';}).length;
+      return kpi('OJT ทั้งหมด',rows.length)+kpi('กำลังดำเนินการ',act)+kpi('เสร็จสิ้น',done)+kpi('เลยกำหนด',late,late?'#c53030':''); } });
+
+  /* ---------- DSD ---------- */
+  var DSD_ST=['เตรียมเอกสาร','ยื่นแล้ว','รออนุมัติ','ขอแก้ไข','อนุมัติ','ไม่อนุมัติ'];
+  var dsd = makeCrud({ id:'dsd', box:'training-sub-dsd', key:'dsdSubmissions', title:'ยื่นหลักสูตรกรมพัฒนาฝีมือแรงงาน (กพร.)',
+    note:'ติดตามการยื่นขอรับรองหลักสูตรฝึกอบรม: วันที่ยื่น เลขที่คำขอ สถานะ และเอกสารที่ต้องเตรียม', empty:'ยังไม่มีรายการยื่นหลักสูตร — กด "+ เพิ่มรายการ"',
+    fields:[{k:'title',label:'ชื่อหลักสูตรที่ยื่น *',span:2,req:1},{k:'company',label:'บริษัท',type:'select',options:['','CMN','CIL']},{k:'courseId',label:'เชื่อมกับหลักสูตรในระบบ',type:'course'},{k:'trainer',label:'วิทยากร / สถาบัน'},{k:'participants',label:'จำนวนผู้เข้าอบรม (คน)',type:'number'},
+      {k:'status',label:'สถานะการยื่น',type:'select',options:DSD_ST},{k:'submitDate',label:'วันที่ยื่น',type:'date'},{k:'refNo',label:'เลขที่คำขอ / เลขที่อนุมัติ'},{k:'approvedDate',label:'วันที่อนุมัติ',type:'date'},{k:'trainDate',label:'วันที่จัดอบรม (ตามที่ยื่น)',type:'date'},{k:'deadline',label:'กำหนดติดตามผล',type:'date'},
+      {k:'docs',label:'เอกสารที่ต้องเตรียม / ส่งแล้ว (1 บรรทัด = 1 รายการ)',type:'textarea',span:3},{k:'note',label:'หมายเหตุ',span:3}],
+    defaults:function(){return {status:'เตรียมเอกสาร',company:companyFilter==='ALL'?'':companyFilter};},
+    beforeSave:function(r){ if(r.courseId && !r.title) r.title=courseTitle(r.courseId); },
+    inCo:coOK, text:function(r){return [r.title,r.refNo,r.trainer,r.status,r.company].join(' ');},
+    sort:function(a,b){return String(b.submitDate||'').localeCompare(String(a.submitDate||''));},
+    cols:[['หลักสูตร',function(r){return '<strong>'+esc(r.title)+'</strong><div class="small">'+esc(r.trainer||'')+'</div>';}],['บริษัท',function(r){return esc(r.company||'-');}],['วันที่ยื่น',function(r){return dshort(r.submitDate);}],['เลขที่',function(r){return esc(r.refNo||'-');}],['วันที่จัดอบรม',function(r){return dshort(r.trainDate);}],
+      ['สถานะ',function(r){return pill(r.status,r.status==='อนุมัติ'?'s-open':r.status==='ไม่อนุมัติ'?'s-bad':(r.status==='ขอแก้ไข'||r.status==='รออนุมัติ')?'s-wait':r.status==='ยื่นแล้ว'?'s-run':'s-plan');}]],
+    summary:function(rows){ function n(x){return rows.filter(function(r){return r.status===x;}).length;} return kpi('เตรียมเอกสาร',n('เตรียมเอกสาร'))+kpi('ยื่นแล้ว/รออนุมัติ',n('ยื่นแล้ว')+n('รออนุมัติ'))+kpi('ขอแก้ไข',n('ขอแก้ไข'),n('ขอแก้ไข')?'#c53030':'')+kpi('อนุมัติแล้ว',n('อนุมัติ'),'#0a8a4f'); } });
+
+  /* ---------- Follow-up ---------- */
+  function pendingFollowups(){
+    var done = {}; (DB.trainingFollowups||[]).forEach(function(f){ done[f.courseId+'|'+f.empCode]=1; });
+    var out=[];
+    (DB.trainingEnrollments||[]).forEach(function(e){
+      if(!(e.attendance==='Attended'||e.result==='ผ่าน'||e.result==='เข้าร่วม')) return;
+      if(done[e.courseId+'|'+e.employeeCode]) return;
+      var c=(DB.trainingCourses||[]).find(function(x){return x.id===e.courseId;}); if(!c||!courseInCompany(c,companyFilter)||!empInCompany(e.employeeCode,companyFilter)) return;
+      var base=parseDate(c.endDate||c.startDate); var due=base?new Date(base.getTime()+30*86400000):null;
+      out.push({course:c,code:e.employeeCode,due:due});
+    });
+    return out.sort(function(a,b){return (a.due||0)-(b.due||0);});
+  }
+  window.hrdPendingFollowups = pendingFollowups;
+  var fu = makeCrud({ id:'followup', box:'hrdFuCrud', key:'trainingFollowups', title:'บันทึกผลการติดตามหลังอบรม',
+    note:'หัวหน้างานประเมินว่าพนักงานนำความรู้ไปใช้ได้หรือไม่ ภายใน 30 วันหลังอบรม', empty:'ยังไม่มีบันทึกการติดตามผล',
+    fields:[{k:'courseId',label:'หลักสูตร *',type:'course',req:1},{k:'empCode',label:'พนักงาน *',type:'emp',req:1},{k:'followDate',label:'วันที่ติดตามผล',type:'date'},
+      {k:'supervisor',label:'ผู้ประเมิน (หัวหน้างาน)'},{k:'rating',label:'คะแนนการนำไปใช้ (1-5)',type:'select',options:['','1','2','3','4','5']},{k:'applied',label:'การนำไปใช้',type:'select',options:['นำไปใช้ได้ดี','ใช้ได้บางส่วน','ยังไม่ได้นำไปใช้']},
+      {k:'impact',label:'ผลต่อการปฏิบัติงาน / KPI',type:'textarea',span:3},{k:'nextAction',label:'แผนพัฒนาต่อเนื่อง',span:3}],
+    defaults:function(){return {followDate:new Date().toISOString().slice(0,10),applied:'นำไปใช้ได้ดี'};},
+    inCo:function(r){return empInCompany(r.empCode,companyFilter);}, text:function(r){return [empName(r.empCode),r.empCode,courseTitle(r.courseId),r.supervisor,r.applied].join(' ');},
+    sort:function(a,b){return String(b.followDate||'').localeCompare(String(a.followDate||''));},
+    cols:[['พนักงาน',function(r){return empCell(r.empCode);}],['หลักสูตร',function(r){return esc(courseTitle(r.courseId)||'-');}],['วันที่ติดตาม',function(r){return dshort(r.followDate);}],['ผู้ประเมิน',function(r){return esc(r.supervisor||'-');}],['คะแนน',function(r){return r.rating?'⭐ '+esc(r.rating)+'/5':'-';}],
+      ['การนำไปใช้',function(r){return pill(r.applied,r.applied==='นำไปใช้ได้ดี'?'s-open':r.applied==='ใช้ได้บางส่วน'?'s-wait':'s-bad');}],['ผลต่องาน/KPI',function(r){return esc(r.impact||'-');}]],
+    summary:function(rows){ var rated=rows.filter(function(r){return r.rating;}), avg=rated.length?(rated.reduce(function(s,r){return s+Number(r.rating);},0)/rated.length).toFixed(1):'—', pc=pendingFollowups().length;
+      return kpi('รอติดตามผล',pc,pc?'#e08a1e':'')+kpi('ติดตามแล้ว',rows.length)+kpi('คะแนนเฉลี่ย',avg)+kpi('นำไปใช้ได้ดี',rows.filter(function(r){return r.applied==='นำไปใช้ได้ดี';}).length,'#0a8a4f'); },
+    onChange:function(){ renderFuPending(); } });
+  function renderFuPending(){
+    var b=document.getElementById('hrdFuPending'); if(!b) return;
+    var list=pendingFollowups(), t=today(), td=new Date().toISOString().slice(0,10);
+    b.innerHTML='<section class="card hrd-card"><h3>รอติดตามผล ('+list.length+')</h3><div class="hrd-sub-note">พนักงานที่เข้าอบรมแล้วแต่ยังไม่มีบันทึกติดตามผล กด "ประเมิน" เพื่อบันทึกได้ทันที</div><div class="table-wrap"><table><thead><tr><th>พนักงาน</th><th>หลักสูตร</th><th>ครบกำหนดติดตาม</th><th></th></tr></thead><tbody>'
+      + (list.slice(0,100).map(function(x){ var late=x.due&&x.due<t; return '<tr><td>'+empCell(x.code)+'</td><td>'+esc(x.course.title)+'</td><td>'+(x.due?dshort(x.due):'-')+(late?' '+pill('เลยกำหนด','s-bad'):'')+'</td><td><button class="btn-primary btn-sm" onclick="hrdCrud.followup.add({courseId:\''+attr(x.course.id)+'\',empCode:\''+attr(x.code)+'\',followDate:\''+td+'\',applied:\'นำไปใช้ได้ดี\'})">ประเมิน</button></td></tr>'; }).join('')||'<tr><td colspan="4" class="empty">ไม่มีรายการค้าง 🎉</td></tr>')
+      +'</tbody></table></div></section>';
+  }
+
+  /* ---------- Training Need & Roadmap ---------- */
+  var NEED_ST=['รอพิจารณา','อนุมัติแผน','ดำเนินการ','เสร็จสิ้น','ยกเลิก'];
+  var need = makeCrud({ id:'need', box:'hrdNeedCrud', key:'trainingNeeds', title:'รายการ Training Need',
+    note:'บันทึกความต้องการฝึกอบรมของแต่ละตำแหน่ง/แผนก/บุคคล จาก KPI Gap, Competency Gap หรือนโยบายผู้บริหาร แล้วกำหนดไตรมาสที่จะอบรม', empty:'ยังไม่มี Training Need — กด "+ เพิ่มรายการ"',
+    fields:[{k:'topic',label:'หัวข้อ Training Need *',span:3,req:1},{k:'position',label:'ตำแหน่ง',type:'list',list:'hrdPosList'},{k:'department',label:'แผนก',type:'list',list:'hrdDepList'},{k:'empCode',label:'เฉพาะบุคคล (ถ้ามี)',type:'emp'},
+      {k:'source',label:'ที่มาของความต้องการ',type:'select',options:['KPI Gap','Competency Gap','JD / ความรู้ตามตำแหน่ง','นโยบายผู้บริหาร','ผลประเมิน','กฎหมาย / มาตรฐาน','อื่นๆ']},{k:'priority',label:'ความสำคัญ',type:'select',options:['สูง','กลาง','ต่ำ']},{k:'status',label:'สถานะ',type:'select',options:NEED_ST},
+      {k:'targetYear',label:'ปีที่จะอบรม (ค.ศ.)',type:'number',min:2000,max:2100},{k:'targetQuarter',label:'ไตรมาส',type:'select',options:['Q1','Q2','Q3','Q4']},{k:'courseId',label:'หลักสูตรที่เชื่อม',type:'course'},{k:'note',label:'หมายเหตุ',span:3}],
+    defaults:function(){return {priority:'กลาง',status:'รอพิจารณา',targetYear:H.getYear(),targetQuarter:'Q1',company:companyFilter==='ALL'?'':companyFilter};},
+    beforeSave:function(r){ var e=r.empCode&&getEmployeeByCode(r.empCode); if(e){ r.company=e.company; if(!r.position) r.position=e.position; if(!r.department) r.department=e.department; } if(r.courseId && r.status==='รอพิจารณา') r.status='อนุมัติแผน'; },
+    inCo:empOK, text:function(r){return [r.topic,r.position,r.department,empName(r.empCode),r.source,r.status].join(' ');},
+    sort:function(a,b){return (Number(a.targetYear)||0)-(Number(b.targetYear)||0) || String(a.targetQuarter||'').localeCompare(String(b.targetQuarter||''));},
+    cols:[['หัวข้อ',function(r){return '<strong>'+esc(r.topic)+'</strong><div class="small">'+esc(r.source||'')+'</div>';}],['ตำแหน่ง / แผนก',function(r){return esc(r.position||r.department||'ทั้งองค์กร')+(r.empCode?'<div class="small">'+esc(empName(r.empCode))+'</div>':'');}],['เป้าหมาย',function(r){return esc((r.targetQuarter||'-')+' / '+(r.targetYear?Number(r.targetYear)+543:'-'));}],
+      ['ความสำคัญ',function(r){return pill(r.priority,r.priority==='สูง'?'s-bad':r.priority==='กลาง'?'s-wait':'s-plan');}],['หลักสูตร',function(r){return esc(courseTitle(r.courseId)||'-');}],['สถานะ',function(r){return pill(r.status,r.status==='เสร็จสิ้น'?'s-done':r.status==='ดำเนินการ'?'s-run':r.status==='อนุมัติแผน'?'s-open':r.status==='ยกเลิก'?'s-bad':'s-plan');}]],
+    summary:function(rows){ function n(x){return rows.filter(function(r){return r.status===x;}).length;} return kpi('ทั้งหมด',rows.length)+kpi('รอพิจารณา',n('รอพิจารณา'),n('รอพิจารณา')?'#e08a1e':'')+kpi('อนุมัติ/ดำเนินการ',n('อนุมัติแผน')+n('ดำเนินการ'))+kpi('เสร็จสิ้น',n('เสร็จสิ้น'),'#0a8a4f'); },
+    onChange:function(){ renderRoadmap(); } });
+  function renderRoadmap(){
+    var b=document.getElementById('hrdRoadmap'); if(!b) return;
+    var y=H.getYear(), rows=(DB.trainingNeeds||[]).filter(empOK).filter(function(r){return Number(r.targetYear)===y && r.status!=='ยกเลิก';}), groups={};
+    rows.forEach(function(r){ var k=r.position||r.department||'ทั้งองค์กร'; (groups[k]=groups[k]||[]).push(r); });
+    var keys=Object.keys(groups).sort(function(a,b){return a.localeCompare(b,'th');}), Q=['Q1','Q2','Q3','Q4'];
+    b.innerHTML='<section class="card hrd-card"><div class="hrd-bar"><div><h3 style="margin:0">Training Roadmap รายตำแหน่ง</h3><div class="hrd-sub-note" style="margin:4px 0 0">แผนอบรมรายไตรมาสของแต่ละตำแหน่ง (จากรายการ Training Need ด้านล่าง)</div></div><label class="small">ปี <select onchange="hrdSetYear(this.value)">'+H.yearOptions()+'</select></label></div>'
+      +'<div style="overflow-x:auto"><div class="hrd-rm" style="min-width:640px"><div class="h">ตำแหน่ง / แผนก</div>'+Q.map(function(q){return '<div class="h">'+q+'</div>';}).join('')
+      + (keys.map(function(k){ return '<div class="pos">'+esc(k)+'</div>'+Q.map(function(q){ var it=groups[k].filter(function(r){return (r.targetQuarter||'Q1')===q;}); return '<div>'+(it.map(function(r){return '<div>• '+esc(r.topic)+(r.status==='เสร็จสิ้น'?' ✅':'')+'</div>';}).join('')||'<span class="small">—</span>')+'</div>'; }).join(''); }).join('')
+      || '<div style="grid-column:span 5">ยังไม่มี Training Need ที่กำหนดไว้ในปี '+(y+543)+'</div>')+'</div></div></section>';
+  }
+  function fillLists(){
+    var pos={},dep={}; (DB.employees||[]).forEach(function(e){ if(e.position) pos[e.position]=1; if(e.department) dep[e.department]=1; });
+    ['hrdPosList','hrdDepList'].forEach(function(id){ var dl=document.getElementById(id); if(!dl){ document.body.insertAdjacentHTML('beforeend','<datalist id="'+id+'"></datalist>'); dl=document.getElementById(id);} dl.innerHTML=Object.keys(id==='hrdPosList'?pos:dep).sort().map(function(x){return '<option value="'+attr(x)+'"></option>';}).join(''); });
+  }
+
+  /* ---------- History (per employee) ---------- */
+  var hist={q:'',year:''};
+  function historyRows(){
+    var q=hist.q.trim().toLowerCase(), out=[];
+    (DB.trainingEnrollments||[]).forEach(function(e){
+      var c=(DB.trainingCourses||[]).find(function(x){return x.id===e.courseId;}); if(!c||!courseInCompany(c,companyFilter)||!empInCompany(e.employeeCode,companyFilter)) return;
+      var d=parseDate(c.startDate); if(hist.year && (!d || String(d.getFullYear())!==hist.year)) return;
+      var emp=getEmployeeByCode(e.employeeCode)||{};
+      if(q && [emp.fullName,e.employeeCode,emp.department,c.title,c.provider].join(' ').toLowerCase().indexOf(q)<0) return;
+      out.push({e:e,c:c,emp:emp,d:d});
+    });
+    return out.sort(function(a,b){return (b.d||0)-(a.d||0);});
+  }
+  var ATT={Registered:'ลงทะเบียน',Attended:'เข้าอบรม',Absent:'ไม่เข้าอบรม'};
+  function renderHistoryTable(){
+    var box=document.getElementById('hrdHistTable'); if(!box) return;
+    var rows=historyRows();
+    box.innerHTML='<div class="hrd-sub-note">พบ '+rows.length+' รายการ</div><table><thead><tr><th>พนักงาน</th><th>หลักสูตร</th><th>ประเภท</th><th>วันที่อบรม</th><th>ชั่วโมง</th><th>การเข้าอบรม</th><th>ผล</th><th>ใบรับรอง</th></tr></thead><tbody>'
+      +(rows.slice(0,300).map(function(r){ return '<tr><td>'+empCell(r.e.employeeCode)+'</td><td><a href="#" onclick="hrdOpenCourse(\''+attr(r.c.id)+'\');return false">'+esc(r.c.title)+'</a></td><td>'+esc(r.c.type||'-')+'</td><td>'+dshort(r.c.startDate)+'</td><td>'+fmt(r.c.hours)+'</td><td>'+esc(ATT[r.e.attendance]||'-')+'</td><td>'+pill(r.e.result||'รอผล',r.e.result==='ผ่าน'?'s-open':r.e.result==='ไม่ผ่าน'?'s-bad':'s-wait')+'</td><td>'+esc(r.e.certificate||'-')+(r.e.certificateExpiryDate?'<div class="small">หมดอายุ '+dshort(r.e.certificateExpiryDate)+'</div>':'')+'</td></tr>'; }).join('')||'<tr><td colspan="8" class="empty">ยังไม่มีประวัติการฝึกอบรม — สร้างหลักสูตรและเพิ่มรายชื่อพนักงานด้านล่าง</td></tr>')
+      +'</tbody></table>'+(rows.length>300?'<div class="small">แสดง 300 รายการแรก — กรองเพื่อดูเพิ่ม</div>':'');
+  }
+  function renderHistory(){
+    var box=document.getElementById('training-sub-history'); if(!box) return;
+    if(!document.getElementById('hrdHistTable')){
+      box.innerHTML='<section class="card hrd-card"><div class="hrd-bar"><div><h3 style="margin:0">ประวัติการฝึกอบรมรายบุคคล</h3><div class="hrd-sub-note" style="margin:4px 0 0">ดูว่าพนักงานแต่ละคนเคยอบรมหลักสูตรอะไร เมื่อไหร่ ผลเป็นอย่างไร — เพิ่มหลักสูตรและรายชื่อผู้เข้าอบรมได้ด้านล่าง ↓</div></div><button class="btn-ghost" onclick="hrdHistExport()">⬇ ส่งออก CSV</button></div>'
+        +'<div class="hrd-qrow"><input id="hrdHistQ" placeholder="ค้นหา ชื่อ รหัส แผนก หลักสูตร" oninput="hrdHistFilter()"/><select id="hrdHistY" onchange="hrdHistFilter()"></select></div><div class="table-wrap" id="hrdHistTable"></div></section>';
+    }
+    var ys={}; (DB.trainingCourses||[]).forEach(function(c){var d=parseDate(c.startDate); if(d) ys[d.getFullYear()]=1;});
+    var sel=document.getElementById('hrdHistY'); sel.innerHTML='<option value="">ทุกปี</option>'+Object.keys(ys).sort().reverse().map(function(y){return '<option value="'+y+'"'+(hist.year===y?' selected':'')+'>'+(Number(y)+543)+'</option>';}).join('');
+    renderHistoryTable();
+  }
+  window.hrdHistFilter=function(){ hist.q=document.getElementById('hrdHistQ').value; hist.year=document.getElementById('hrdHistY').value; renderHistoryTable(); };
+  window.hrdHistExport=function(){
+    var head=['รหัส','ชื่อ','แผนก','หลักสูตร','ประเภท','วันที่เริ่ม','ชั่วโมง','การเข้าอบรม','ผล','คะแนน','ใบรับรอง','วันหมดอายุ'];
+    function q(v){ return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'; }
+    var lines=[head.map(q).join(',')].concat(historyRows().map(function(r){ return [r.e.employeeCode,r.emp.fullName,r.emp.department,r.c.title,r.c.type,r.c.startDate,r.c.hours,ATT[r.e.attendance]||'',r.e.result,r.e.score,r.e.certificate,r.e.certificateExpiryDate].map(q).join(','); }));
+    downloadFile('training-history.csv','﻿'+lines.join('\n'),'text/csv;charset=utf-8');
+  };
+
+  /* ---------- register tab renderers ---------- */
+  var R = window.hrdRenderers;
+  R.ojt = function(){ ojt.render(); };
+  R.dsd = function(){ dsd.render(); };
+  R.history = renderHistory;
+  R.followup = function(){
+    var box=document.getElementById('training-sub-followup'); if(!box) return;
+    if(!document.getElementById('hrdFuPending')) box.innerHTML='<div id="hrdFuPending"></div><div id="hrdFuCrud"></div>';
+    renderFuPending(); fu.render();
+  };
+  R.need = function(){
+    var box=document.getElementById('training-sub-need'); if(!box) return;
+    if(!document.getElementById('hrdRoadmap')) box.innerHTML='<div id="hrdRoadmap"></div><div id="hrdNeedCrud"></div><section class="card hrd-card"><h3>ความครอบคลุมการอบรมรายบุคคล</h3><div id="hrdCoverageBox"></div></section>';
+    fillLists(); renderRoadmap(); need.render(); H.renderCoverage();
+  };
 })();
 </script>
 </body>
