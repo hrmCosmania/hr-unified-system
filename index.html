@@ -893,6 +893,7 @@ function defaultDB(){
     trainingFollowups: [],
     trainingNeeds: [],
     trainingFollowupLinks: [],
+    auditLog: [],
     settings: {
       birthdayEmail: { subject: DEFAULT_BDAY_SUBJECT, body: DEFAULT_BDAY_BODY, reminderDays: '7,1,0' },
       probation: { assessmentWebappUrl: 'https://hr-unified-system.vercel.app/probation' },
@@ -912,7 +913,7 @@ function migrateDB(raw){
 
   // Arrays: ต้องมีอยู่และเป็น array เสมอ ห้าม undefined ไม่งั้นทุก DB.xxx.push() จะพัง
   ['employees','performanceReviews','goals','jd','kpiDefinitions','competencies','competencyDictionary','kpiDictionary',
-   'orgChartSnapshots','positionRevisions','probationActions','trainingCourses','trainingEnrollments','attendanceRecords','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','trainingFollowupLinks','leaveEntitlementDefaults','leaveEntitlementOverrides','importedRequestIds','employeeJdOverrides'
+   'orgChartSnapshots','positionRevisions','probationActions','trainingCourses','trainingEnrollments','attendanceRecords','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','trainingFollowupLinks','auditLog','leaveEntitlementDefaults','leaveEntitlementOverrides','importedRequestIds','employeeJdOverrides'
   ].forEach(k => {
     if(!Array.isArray(merged[k])) merged[k] = base[k];
   });
@@ -1222,12 +1223,17 @@ document.getElementById('employeeForm').addEventListener('submit', function(ev){
   if(editCode){
     const idx = DB.employees.findIndex(x => x.empCode === editCode);
     if(idx >= 0){
-      if(DB.employees[idx].photo) rec.photo = DB.employees[idx].photo;
+      try{ if(window.hrdAuditDiff) hrdAuditDiff(DB.employees[idx], rec); }catch(err){}
+      Object.keys(DB.employees[idx]).forEach(k => { if(!(k in rec)) rec[k] = DB.employees[idx][k]; });
       DB.employees[idx] = rec;
-      if(editCode !== empCode) DB.employees.forEach(x => { if(x.parentId === editCode) x.parentId = empCode; });
+      if(editCode !== empCode){
+        DB.employees.forEach(x => { if(x.parentId === editCode) x.parentId = empCode; });
+        (DB.auditLog||[]).forEach(a => { if(a.empCode === editCode) a.empCode = empCode; });
+      }
     }
   } else {
     DB.employees.push(rec);
+    try{ if(window.hrdAudit) hrdAudit(rec.empCode,[{field:'empCode',label:'เพิ่มพนักงานใหม่',from:'',to:rec.fullName}],'เพิ่มพนักงาน'); }catch(err){}
   }
   saveDB();
   resetEmployeeForm();
@@ -3446,7 +3452,7 @@ var v4OriginalMigrateDB = migrateDB;
 
 migrateDB = function(raw){
   var merged = v4OriginalMigrateDB(raw);
-  ['probationActions','trainingCourses','trainingEnrollments','positionRevisions','orgChartSnapshots','attendanceRecords','performanceReviews','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','trainingFollowupLinks','leaveEntitlementOverrides','importedRequestIds'].forEach(function(k){ if(!Array.isArray(merged[k])) merged[k]=[]; });
+  ['probationActions','trainingCourses','trainingEnrollments','positionRevisions','orgChartSnapshots','attendanceRecords','performanceReviews','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','trainingFollowupLinks','auditLog','leaveEntitlementOverrides','importedRequestIds'].forEach(function(k){ if(!Array.isArray(merged[k])) merged[k]=[]; });
   if(!Array.isArray(merged.leaveEntitlementDefaults)||!merged.leaveEntitlementDefaults.length) merged.leaveEntitlementDefaults=defaultDB().leaveEntitlementDefaults;
   if(!merged.orgCharts || typeof merged.orgCharts!=='object') merged.orgCharts={};
   return merged;
@@ -3706,7 +3712,7 @@ function renderEmployeesTable(){
     if(division&&employeeDivision(e)!==division)return false;
     if(dept&&(e.department||'')!==dept)return false;
     if(pos&&(e.position||'')!==pos)return false;
-    if(q&&![e.empCode,e.fullName,e.nickname,e.email,e.phone].join(' ').toLowerCase().includes(q))return false;
+    if(q&&![e.empCode,e.fullName,e.nickname,e.email,e.phone,e.hashtags,e.nameEnFirst,e.nameEnLast,e.nickEn].join(' ').toLowerCase().includes(q))return false;
     return true;
   }).sort(function(a,b){return (a.department||'').localeCompare(b.department||'','th')||(a.fullName||'').localeCompare(b.fullName||'','th');});
   var tbody=document.getElementById('employeesTbody'); if(!tbody)return;
@@ -8528,7 +8534,7 @@ window.refreshPerfEmployeeSelects=function(){
 <script id="employee-profile-script">
 (function(){
   var currentCode = '', currentTab = 'all';
-  var TABS = [['all','ข้อมูลพื้นฐาน'],['work','ประวัติการทำงาน'],['leave','การลา & สายงาน'],['train','การฝึกอบรม'],['perf','การประเมินผล'],['jd','JD / KPI'],['miles','ไทม์ไลน์']];
+  var TABS = [['all','ข้อมูลพื้นฐาน'],['person','ประวัติส่วนตัว'],['work','ประวัติการทำงาน'],['leave','การลา & สายงาน'],['train','การฝึกอบรม'],['perf','การประเมินผล'],['jd','JD / KPI'],['assets','สินทรัพย์'],['custom','ข้อมูลกำหนดเอง'],['miles','ไทม์ไลน์'],['audit','ประวัติการแก้ไข']];
 
   function esc(s){ return escapeHtml(String(s == null ? '' : s)); }
   function attr(s){ return v4EscapeAttr(s); }
@@ -8667,15 +8673,16 @@ window.refreshPerfEmployeeSelects=function(){
       + '<div class="ep-id"><h2 class="ep-name">'+esc(e.fullName)+(e.nickname?' <span style="font-weight:500;font-size:17px">('+esc(e.nickname)+')</span>':'')+'</h2>'
       + '<div class="ep-code"><span>รหัสพนักงาน <b>'+esc(e.empCode)+'</b></span><span class="ep-pill '+(off?'off':'on')+'">'+(off?'พ้นสภาพ':'พนักงานปัจจุบัน')+'</span><span class="gs-co-badge '+esc(e.company)+'"><span class="dot"></span>'+esc(e.company)+'</span></div>'
       + '<div class="ep-cols"><div>'+line('ตำแหน่ง',esc(displayPositionTitle(e.position)))+line('ฝ่าย',esc(div))+line('แผนก',esc(e.department))+'</div>'
-      + '<div>'+line('อีเมล',esc(e.email))+line('โทรศัพท์',esc(e.phone))+line('เริ่มงาน',start?esc(formatThaiDate(e.startDate)):'')+'</div></div></div></section>';
+      + '<div>'+line('อีเมล',esc(e.email))+line('โทรศัพท์',esc(e.phone))+line('เริ่มงาน',start?esc(formatThaiDate(e.startDate)):'')+line('ผู้อนุมัติ ขั้นที่ 1',esc(getEmployeeName((e.approvers&&e.approvers[0])||e.parentId)))+'</div></div>'+(e.hashtags?'<div style="margin-top:8px">'+String(e.hashtags).split(/\s+/).filter(Boolean).map(function(t){return '<span class="hx-tag">'+esc(t.charAt(0)==="#"?t:"#"+t)+'</span>';}).join('')+'</div>':'')+'</div></section>';
     var tiles = '<div class="ep-tiles">'
       + '<div class="ep-tile t1"><span class="ep-ico">👥</span><span class="ep-tl">อายุงาน</span><span class="ep-tv">'+(start?esc(ym(monthsBetween(start,end))):'-')+'</span></div>'
       + '<div class="ep-tile t2"><span class="ep-ico">🎂</span><span class="ep-tl">อายุ</span><span class="ep-tv">'+(bd?Math.floor(monthsBetween(bd,new Date())/12)+' ปี':'-')+'</span></div>'
       + '<div class="ep-tile t3"><span class="ep-ico">⭐</span><span class="ep-tl">ระดับพนักงาน</span><span class="ep-tv">'+esc(e.level||'-')+'</span></div>'
       + '<div class="ep-tile t4"><span class="ep-ico">📄</span><span class="ep-tl">ประเภทการจ้าง</span><span class="ep-tv">'+esc(e.employmentType||'ประจำ')+'</span></div></div>';
     var tabs = '<div class="card ep-tabs">'+TABS.map(function(t){return '<button type="button" class="ep-tab'+(currentTab===t[0]?' active':'')+'" onclick="epTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>';
-    var cards = [cardPersonal(e), cardWork(e), cardLeave(e), cardTrain(e), cardPerf(e), cardJd(e), cardSummary(e), cardMiles(e)].join('');
+    var cards = [cardPersonal(e), cardWork(e), cardLeave(e), cardTrain(e), cardPerf(e), cardJd(e), cardSummary(e), cardMiles(e)].join('') + (window.hrdEmpExt ? window.hrdEmpExt.cards(e) : '');
     el.innerHTML = '<div class="ep-wrap"><div class="ep-actions"><button class="btn-ghost ep-back" onclick="showEmployeeSubtab(\'search\')">← กลับรายชื่อพนักงาน</button>'
+      + '<input class="ep-jump" list="epJumpList" placeholder="🔎 สลับไปดูพนักงานคนอื่น" onchange="epJump(this.value)" style="max-width:240px"><datalist id="epJumpList">'+(DB.employees||[]).map(function(x){return '<option value="'+attr(x.empCode+' · '+x.fullName)+'"></option>';}).join('')+'</datalist>'
       + '<button class="btn-ghost" onclick="editEmployee(\''+attr(e.empCode)+'\')">✏️ แก้ไขประวัติ</button>'
       + '<button class="btn-ghost" onclick="printEmployeePositionDocument(\''+attr(e.empCode)+'\')">🖨️ พิมพ์ JD/KPI</button></div>'
       + '<div class="ep-top">'+head+tiles+'</div>'+tabs+'<div class="ep-grid" id="epGrid">'+cards+'</div></div>';
@@ -8686,12 +8693,15 @@ window.refreshPerfEmployeeSelects=function(){
     grid.classList.toggle('single', currentTab !== 'all');
     Array.prototype.forEach.call(grid.children, function(c){
       var sec = c.getAttribute('data-sec');
-      c.classList.toggle('ep-hide', currentTab !== 'all' && sec !== currentTab);
+      c.classList.toggle('ep-hide', (currentTab !== 'all' && sec !== currentTab) || (currentTab === 'all' && c.hasAttribute('data-only-tab')));
     });
     Array.prototype.forEach.call(document.querySelectorAll('.ep-tab'), function(b, i){ b.classList.toggle('active', TABS[i][0] === currentTab); });
   }
 
   window.epTab = function(t){ currentTab = t; applyTab(); };
+  window.epCurrentCode = function(){ return currentCode; };
+  window.epRerender = function(){ render(); };
+  window.epJump = function(v){ var c = String(v||'').split(' · ')[0].trim(); if(c && getEmployeeByCode(c)) openEmployeeProfile(c); };
   window.epToggleId = function(){
     var e = getEmployeeByCode(currentCode), s = document.getElementById('epId'); if(!e || !s) return;
     var shown = s.getAttribute('data-shown') === '1';
@@ -9671,6 +9681,265 @@ html:not(.theme-soft) .side-sub button.on{background:rgba(255,255,255,.14);color
   showTab=window.showTab;
   build(); markAll();
   setTimeout(function(){ build(); markAll(); },1500);
+})();
+</script>
+<style id="emp-ext-style">
+.hx-tag{display:inline-block;background:#e3edff;color:#2450b8;border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:600;margin:2px 4px 2px 0}
+.hx-sec-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.hx-sec-head h3{margin:0}
+.hx-list .hx-item{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid rgba(120,130,150,.18);font-size:14px}
+.hx-list .hx-item:last-child{border-bottom:0}
+.hx-item .hx-main{min-width:0}.hx-item .hx-sub{font-size:12.5px;opacity:.75}
+.hx-item .hx-act{white-space:nowrap}
+.hx-empty{font-size:13px;opacity:.7;padding:6px 0}
+.hx-warn{background:#fff6e0;border:1px solid #f0d28a;color:#7a5200;border-radius:12px;padding:10px 14px;font-size:13.5px;margin-bottom:12px}
+.hx-modal{position:fixed;inset:0;background:rgba(31,42,68,.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px}
+.hx-box{background:#fff;color:#1f2a44;border-radius:16px;padding:20px;max-width:620px;width:100%;max-height:90vh;overflow:auto}
+.hx-box h3{margin:0 0 12px}
+.hx-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.hx-grid .f2{grid-column:span 2}
+.hx-box label{display:block;font-size:13px;color:#556580;margin-bottom:4px;font-weight:600}
+.hx-box input,.hx-box select,.hx-box textarea{width:100%;border:1px solid #cdd8ec;border-radius:10px;padding:8px 10px;font-family:inherit;font-size:14.5px;background:#fff;color:#1f2a44}
+.hx-err{color:#b42323;font-size:13px;margin-top:8px}
+.ep-switch{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ep-switch input{max-width:260px}
+</style>
+<script id="employee-ext-script">
+(function(){
+  function esc(s){ return escapeHtml(String(s==null?'':s)); }
+  function attr(v){ return v4EscapeAttr(v); }
+  function cur(){ return window.epCurrentCode ? window.epCurrentCode() : ''; }
+  function emp(code){ return getEmployeeByCode(code); }
+  function dfmt(v){ return v ? formatThaiDate(v) : ''; }
+  function mask(v){ var s=String(v||''); if(!s) return ''; if(s.length<=3) return '•••'; return s.slice(0,1)+'•'.repeat(Math.max(3,s.length-3))+s.slice(-2); }
+  function rerender(){ if(window.epRerender) window.epRerender(); }
+
+  /* ---------- ผู้ใช้ปัจจุบัน (สำหรับบันทึกประวัติการแก้ไข) ---------- */
+  var who = '';
+  try{
+    supabaseClient.auth.getSession().then(function(r){ var u=r&&r.data&&r.data.session&&r.data.session.user; if(u) who=u.email||''; });
+    supabaseClient.auth.onAuthStateChange(function(ev,sess){ who = (sess&&sess.user&&sess.user.email)||''; });
+  }catch(e){}
+
+  /* ---------- Audit log ---------- */
+  var LABELS = { fullName:'ชื่อ-นามสกุล', nickname:'ชื่อเล่น', company:'บริษัท', employmentType:'ประเภทการจ้าง', division:'ฝ่าย', department:'แผนก', position:'ตำแหน่ง', jobCode:'รหัสตำแหน่ง', level:'ระดับ', parentId:'หัวหน้างาน', supervisorEmail:'อีเมลหัวหน้างาน', phone:'เบอร์โทร', email:'อีเมล', birthDate:'วันเกิด', startDate:'วันเริ่มงาน', probationDays:'วันทดลองงาน', status:'สถานะ', endDate:'วันที่สิ้นสุดงาน', contractEndDate:'วันสิ้นสุดสัญญา', note:'หมายเหตุ', emergencyName:'ผู้ติดต่อฉุกเฉิน', emergencyPhone:'เบอร์ฉุกเฉิน', emergencyRelation:'ความสัมพันธ์ฉุกเฉิน', idNumber:'เลขบัตรประชาชน', empCode:'รหัสพนักงาน',
+    titleName:'คำนำหน้า', gender:'เพศ', nationality:'สัญชาติ', maritalStatus:'สถานภาพสมรส', nameEnFirst:'ชื่อ (ENG)', nameEnLast:'นามสกุล (ENG)', nickEn:'ชื่อเล่น (ENG)', passportNo:'เลขหนังสือเดินทาง', workPermitNo:'เลขใบอนุญาตทำงาน', ssoNo:'เลขประกันสังคม', fingerprintCode:'รหัสลายนิ้วมือ', payType:'ประเภทพนักงาน (รายเดือน/เหมาจ่าย)', regularDate:'วันที่บรรจุ', retirementYear:'ปีที่เกษียณ', hashtags:'Hashtag', hospital:'โรงพยาบาลตามสิทธิ', hospitalRight:'สิทธิรักษา', approvers:'ผู้อนุมัติ' };
+  var SENSITIVE = { idNumber:1, passportNo:1, workPermitNo:1, ssoNo:1 };
+  function show(field,v){ if(v==null||v==='') return ''; if(Array.isArray(v)) v=v.join(', '); v=String(v); return SENSITIVE[field] ? mask(v) : v; }
+  window.hrdAudit = function(code, changes, note){
+    DB.auditLog = DB.auditLog || [];
+    var at = new Date().toISOString();
+    (changes||[]).forEach(function(c){ DB.auditLog.push({ id:uid('aud_'), at:at, by:who||'ไม่ทราบผู้ใช้', empCode:code, field:c.field, label:c.label||LABELS[c.field]||c.field, from:c.from, to:c.to, note:note||'' }); });
+    if(DB.auditLog.length>5000) DB.auditLog = DB.auditLog.slice(-5000);
+  };
+  window.hrdAuditDiff = function(oldRec, newRec, note){
+    if(!oldRec||!newRec) return;
+    var ch=[], keys={}; Object.keys(LABELS).forEach(function(k){keys[k]=1;});
+    Object.keys(keys).forEach(function(k){
+      if(k==='approvers' || !(k in newRec)) return;
+      var a=oldRec[k], b=newRec[k]; if(Array.isArray(a)) a=a.join(', '); if(Array.isArray(b)) b=b.join(', ');
+      a = a==null?'':String(a); b = b==null?'':String(b);
+      if(a!==b) ch.push({field:k,from:show(k,a),to:show(k,b)});
+    });
+    if(ch.length) hrdAudit(oldRec.empCode||newRec.empCode, ch, note||'แก้ไขข้อมูลพนักงาน (ฟอร์ม)');
+  };
+
+  /* ---------- generic modal form ---------- */
+  function openForm(title, fields, values, onSave){
+    var old=document.getElementById('hxModal'); if(old) old.remove();
+    function inp(f){
+      var v = values[f.k]==null?'':values[f.k], id='hx_'+f.k, t=f.type||'text';
+      if(t==='select') return '<select id="'+id+'">'+f.options.map(function(o){ var ov=Array.isArray(o)?o[0]:o, ol=Array.isArray(o)?o[1]:(o||'— ไม่ระบุ —'); return '<option value="'+attr(ov)+'"'+(String(v)===String(ov)?' selected':'')+'>'+esc(ol)+'</option>'; }).join('')+'</select>';
+      if(t==='textarea') return '<textarea id="'+id+'" rows="3">'+esc(v)+'</textarea>';
+      if(t==='emp') return '<input id="'+id+'" list="hxEmpList" placeholder="พิมพ์ชื่อหรือรหัสแล้วเลือก" value="'+attr(v?(v+' · '+((emp(v)||{}).fullName||'')):'')+'"/>';
+      return '<input id="'+id+'" type="'+t+'" value="'+attr(v)+'"'+(f.ph?' placeholder="'+attr(f.ph)+'"':'')+'/>';
+    }
+    var d=document.createElement('div'); d.className='hx-modal'; d.id='hxModal';
+    d.innerHTML='<div class="hx-box"><h3>'+esc(title)+'</h3><div class="hx-grid">'+fields.map(function(f){ return '<div class="'+(f.span?'f2':'')+'"><label>'+esc(f.label)+(f.req?' *':'')+'</label>'+inp(f)+'</div>'; }).join('')+'</div><div class="hx-err" id="hxErr"></div><div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end"><button class="btn-ghost" type="button" id="hxCancel">ยกเลิก</button><button class="btn-primary" type="button" id="hxSave">บันทึก</button></div></div>';
+    document.body.appendChild(d);
+    var dl=document.getElementById('hxEmpList'); if(!dl){ document.body.insertAdjacentHTML('beforeend','<datalist id="hxEmpList"></datalist>'); dl=document.getElementById('hxEmpList'); }
+    dl.innerHTML=(DB.employees||[]).map(function(e){return '<option value="'+attr(e.empCode+' · '+e.fullName)+'"></option>';}).join('');
+    d.addEventListener('click',function(ev){ if(ev.target===d) d.remove(); });
+    document.getElementById('hxCancel').onclick=function(){ d.remove(); };
+    document.getElementById('hxSave').onclick=function(){
+      var out={}, err='';
+      fields.forEach(function(f){ var el=document.getElementById('hx_'+f.k), v=el?el.value.trim():''; if(f.type==='emp') v=v.split(' · ')[0].trim(); if(f.req&&!v&&!err) err='กรุณากรอก: '+f.label; out[f.k]=v; });
+      if(err){ document.getElementById('hxErr').textContent=err; return; }
+      onSave(out); d.remove();
+    };
+  }
+  window.hxForm = openForm;
+
+  /* ---------- helpers: sections ---------- */
+  function sec(tab, title, btn, body, only){
+    return '<section class="card ep-card ep-span4" data-sec="'+tab+'"'+(only?' data-only-tab="1"':'')+'><div class="hx-sec-head"><h3>'+title+'</h3>'+(btn||'')+'</div>'+body+'</section>';
+  }
+  function addBtn(label,fn){ return '<button class="btn-ghost btn-sm" type="button" onclick="'+fn+'">'+label+'</button>'; }
+  function list(items, render, empty){ return items.length ? '<div class="hx-list">'+items.map(render).join('')+'</div>' : '<div class="hx-empty">'+esc(empty||'ยังไม่มีข้อมูล')+'</div>'; }
+  function itemRow(main, sub, key, idx){
+    return '<div class="hx-item"><div class="hx-main"><div>'+main+'</div>'+(sub?'<div class="hx-sub">'+sub+'</div>':'')+'</div><div class="hx-act"><button class="btn-ghost btn-sm" type="button" onclick="hxListEdit(\''+key+'\','+idx+')">แก้ไข</button> <button class="btn-danger btn-sm" type="button" onclick="hxListDel(\''+key+'\','+idx+')">ลบ</button></div></div>';
+  }
+
+  /* ---------- รายการย่อย (ประวัติส่วนตัว / สินทรัพย์) ---------- */
+  var LISTS = {
+    family:{ title:'👪 ครอบครัว', tab:'person', fields:[{k:'name',label:'ชื่อ-สกุล',req:1},{k:'relation',label:'ความสัมพันธ์',type:'select',options:['บิดา','มารดา','คู่สมรส','บุตร','พี่น้อง','อื่นๆ']},{k:'birthDate',label:'วันเกิด',type:'date'},{k:'occupation',label:'อาชีพ'},{k:'phone',label:'เบอร์โทร'}],
+      main:function(x){return '<b>'+esc(x.name)+'</b> <span class="hx-tag">'+esc(x.relation||'-')+'</span>';}, sub:function(x){return [x.occupation,x.phone,x.birthDate?dfmt(x.birthDate):''].filter(Boolean).map(esc).join(' · ');} },
+    workHistory:{ title:'💼 ประวัติการทำงานก่อนเข้าบริษัท', tab:'person', fields:[{k:'company',label:'บริษัท',req:1},{k:'position',label:'ตำแหน่ง'},{k:'from',label:'ตั้งแต่',type:'date'},{k:'to',label:'ถึง',type:'date'},{k:'reason',label:'เหตุผลที่ออก',span:1}],
+      main:function(x){return '<b>'+esc(x.company)+'</b> · '+esc(x.position||'-');}, sub:function(x){return esc(dfmt(x.from)||'-')+' – '+esc(dfmt(x.to)||'-')+(x.reason?' · '+esc(x.reason):'');} },
+    education:{ title:'🎓 ประวัติการศึกษา', tab:'person', fields:[{k:'level',label:'ระดับ',type:'select',options:['','ม.ต้น','ม.ปลาย/ปวช.','ปวส.','ปริญญาตรี','ปริญญาโท','ปริญญาเอก','อื่นๆ']},{k:'institute',label:'สถาบัน',req:1},{k:'major',label:'สาขา/วิชาเอก'},{k:'year',label:'ปีที่จบ (พ.ศ.)'},{k:'gpa',label:'เกรดเฉลี่ย'}],
+      main:function(x){return '<b>'+esc(x.institute)+'</b> '+(x.level?'<span class="hx-tag">'+esc(x.level)+'</span>':'');}, sub:function(x){return [x.major,x.year?'จบ '+x.year:'',x.gpa?'เกรด '+x.gpa:''].filter(Boolean).map(esc).join(' · ');} },
+    languages:{ title:'🗣️ ความสามารถทางภาษา', tab:'person', fields:[{k:'language',label:'ภาษา',req:1},{k:'speak',label:'พูด',type:'select',options:['','ดีมาก','ดี','พอใช้']},{k:'read',label:'อ่าน',type:'select',options:['','ดีมาก','ดี','พอใช้']},{k:'write',label:'เขียน',type:'select',options:['','ดีมาก','ดี','พอใช้']}],
+      main:function(x){return '<b>'+esc(x.language)+'</b>';}, sub:function(x){return 'พูด '+esc(x.speak||'-')+' · อ่าน '+esc(x.read||'-')+' · เขียน '+esc(x.write||'-');} },
+    skills:{ title:'✨ ความสามารถพิเศษ / ทักษะ', tab:'person', fields:[{k:'name',label:'ทักษะ',req:1},{k:'level',label:'ระดับ',type:'select',options:['','พื้นฐาน','ปานกลาง','ชำนาญ','เชี่ยวชาญ']},{k:'note',label:'รายละเอียด',span:1}],
+      main:function(x){return '<b>'+esc(x.name)+'</b> '+(x.level?'<span class="hx-tag">'+esc(x.level)+'</span>':'');}, sub:function(x){return esc(x.note||'');} },
+    licenses:{ title:'🪪 ใบอนุญาตขับขี่ / ใบอนุญาตวิชาชีพ', tab:'person', fields:[{k:'type',label:'ประเภท',req:1,ph:'เช่น ใบขับขี่รถยนต์ / รถจักรยานยนต์ / ใบประกอบวิชาชีพ'},{k:'number',label:'เลขที่'},{k:'expire',label:'วันหมดอายุ',type:'date'}],
+      main:function(x){return '<b>'+esc(x.type)+'</b> '+esc(x.number||'');}, sub:function(x){var d=parseDate(x.expire); return x.expire?('หมดอายุ '+esc(dfmt(x.expire))+(d&&d<new Date()?' · <b style="color:#c53030">หมดอายุแล้ว</b>':'')):'';} },
+    documents:{ title:'📎 เอกสาร', tab:'person', fields:[{k:'name',label:'ชื่อเอกสาร',req:1},{k:'type',label:'ประเภท',type:'select',options:['','สำเนาบัตรประชาชน','สำเนาทะเบียนบ้าน','วุฒิการศึกษา','สัญญาจ้าง','ใบรับรองแพทย์','อื่นๆ']},{k:'expire',label:'วันหมดอายุ (ถ้ามี)',type:'date'},{k:'note',label:'หมายเหตุ',span:1}],
+      main:function(x){return '<b>'+esc(x.name)+'</b> '+(x.type?'<span class="hx-tag">'+esc(x.type)+'</span>':'');}, sub:function(x){return esc(x.note||'')+(x.expire?' · หมดอายุ '+esc(dfmt(x.expire)):'');}, files:true },
+    assets:{ title:'💻 สินทรัพย์ถือครอง', tab:'assets', only:true, fields:[{k:'name',label:'สินทรัพย์',req:1,ph:'เช่น โน้ตบุ๊ก Dell, กุญแจตู้, บัตรเข้าอาคาร'},{k:'type',label:'ประเภท',type:'select',options:['','อุปกรณ์ IT','เครื่องมือ/อุปกรณ์','ยูนิฟอร์ม','บัตร/กุญแจ','ยานพาหนะ','อื่นๆ']},{k:'date',label:'วันที่รับ',type:'date'},{k:'value',label:'มูลค่า (บาท)',type:'number'},{k:'serial',label:'เลขทะเบียน/Serial'},{k:'returnDate',label:'วันที่คืน',type:'date'},{k:'note',label:'หมายเหตุ',span:1}],
+      main:function(x){return '<b>'+esc(x.name)+'</b> '+(x.type?'<span class="hx-tag">'+esc(x.type)+'</span>':'')+(x.returnDate?'<span class="hx-tag" style="background:#dcf5ea;color:#0a6e4b">คืนแล้ว</span>':'<span class="hx-tag" style="background:#ffe6c7;color:#9a5300">ถือครองอยู่</span>');},
+      sub:function(x){return [x.date?'รับ '+dfmt(x.date):'',x.value?'มูลค่า '+Number(x.value).toLocaleString('th-TH')+' บาท':'',x.serial,x.returnDate?'คืน '+dfmt(x.returnDate):'',x.note].filter(Boolean).map(esc).join(' · ');} }
+  };
+  function arr(e,key){ e.hist = e.hist || {}; e.hist[key] = e.hist[key] || []; return e.hist[key]; }
+  window.hxListAdd = function(key){
+    var e=emp(cur()); if(!e) return; var L=LISTS[key];
+    openForm('เพิ่ม'+L.title.replace(/^\S+\s/,''), L.fields, {}, function(v){ v.id=uid('h_'); arr(e,key).push(v); e.updatedAt=v4Now(); hrdAudit(e.empCode,[{field:'hist.'+key,label:L.title.replace(/^\S+\s/,''),from:'',to:'เพิ่ม: '+(v.name||v.institute||v.company||v.type||'')}],'ประวัติส่วนตัว'); saveDB(); rerender(); });
+  };
+  window.hxListEdit = function(key,idx){
+    var e=emp(cur()); if(!e) return; var L=LISTS[key], it=arr(e,key)[idx]; if(!it) return;
+    openForm('แก้ไข'+L.title.replace(/^\S+\s/,''), L.fields, it, function(v){ Object.assign(it,v); e.updatedAt=v4Now(); hrdAudit(e.empCode,[{field:'hist.'+key,label:L.title.replace(/^\S+\s/,''),from:'',to:'แก้ไข: '+(v.name||v.institute||v.company||v.type||'')}],'ประวัติส่วนตัว'); saveDB(); rerender(); });
+  };
+  window.hxListDel = function(key,idx){
+    var e=emp(cur()); if(!e) return; var L=LISTS[key], it=arr(e,key)[idx]; if(!it) return;
+    if(!confirm('ลบรายการนี้ใช่ไหม? (กู้คืนไม่ได้)')) return;
+    (it.files||[]).forEach(function(f){ try{ supabaseClient.storage.from('resumes').remove([f.path]); }catch(x){} });
+    arr(e,key).splice(idx,1); e.updatedAt=v4Now(); hrdAudit(e.empCode,[{field:'hist.'+key,label:L.title.replace(/^\S+\s/,''),from:(it.name||it.institute||it.company||it.type||''),to:'ลบ'}],'ประวัติส่วนตัว'); saveDB(); rerender();
+  };
+  window.hxFileAdd = function(key,idx){
+    var e=emp(cur()), it=e&&arr(e,key)[idx]; if(!it) return;
+    var inp=document.createElement('input'); inp.type='file';
+    inp.onchange=function(){ var f=inp.files&&inp.files[0]; if(!f) return;
+      if(f.size>10*1024*1024){ toast('ไฟล์ใหญ่เกิน 10 MB'); return; }
+      supabaseClient.auth.getSession().then(function(r){
+        if(!r||!r.data||!r.data.session){ toast('ต้องล็อกอินก่อนจึงจะแนบไฟล์ได้'); return; }
+        var path='hrd/emp/'+e.empCode+'/'+Date.now()+'_'+f.name.replace(/[^\w.\-]+/g,'_');
+        supabaseClient.storage.from('resumes').upload(path,f,{contentType:f.type||'application/octet-stream'}).then(function(u){
+          if(u.error){ toast('แนบไฟล์ไม่สำเร็จ: '+u.error.message+' (ต้องรัน recruit_setup.sql ใน Supabase ก่อน)'); return; }
+          it.files=it.files||[]; it.files.push({name:f.name,path:path,size:f.size}); saveDB(); rerender();
+        });
+      });
+    };
+    inp.click();
+  };
+  window.hxFileOpen = function(key,idx,fi){
+    var e=emp(cur()), it=e&&arr(e,key)[idx], f=it&&it.files&&it.files[fi]; if(!f) return;
+    var w=window.open('','_blank');
+    supabaseClient.storage.from('resumes').createSignedUrl(f.path,3600).then(function(r){ if(r.error){ if(w) w.close(); toast('เปิดไฟล์ไม่สำเร็จ: '+r.error.message); } else if(w) w.location.href=r.data.signedUrl; });
+  };
+  window.hxFileDel = function(key,idx,fi){
+    var e=emp(cur()), it=e&&arr(e,key)[idx], f=it&&it.files&&it.files[fi]; if(!f||!confirm('ลบไฟล์ "'+f.name+'" ใช่ไหม?')) return;
+    try{ supabaseClient.storage.from('resumes').remove([f.path]); }catch(x){}
+    it.files.splice(fi,1); saveDB(); rerender();
+  };
+  function listCard(e,key){
+    var L=LISTS[key], items=arr(e,key);
+    return sec(L.tab, L.title, addBtn('+ เพิ่ม','hxListAdd(\''+key+'\')'), list(items,function(x,i){
+      var extra=''; if(L.files){ extra='<div style="margin-top:4px">'+(x.files||[]).map(function(f,fi){ return '<span class="small"><a href="#" onclick="hxFileOpen(\''+key+'\','+i+','+fi+');return false">📎 '+esc(f.name)+'</a> <a href="#" onclick="hxFileDel(\''+key+'\','+i+','+fi+');return false">✕</a></span> '; }).join('')+'<button class="btn-ghost btn-sm" type="button" onclick="hxFileAdd(\''+key+'\','+i+')">+ แนบไฟล์</button></div>'; }
+      return '<div class="hx-item"><div class="hx-main"><div>'+L.main(x)+'</div>'+(L.sub(x)?'<div class="hx-sub">'+L.sub(x)+'</div>':'')+extra+'</div><div class="hx-act"><button class="btn-ghost btn-sm" type="button" onclick="hxListEdit(\''+key+'\','+i+')">แก้ไข</button> <button class="btn-danger btn-sm" type="button" onclick="hxListDel(\''+key+'\','+i+')">ลบ</button></div></div>';
+    }),L.only);
+  }
+
+  /* ---------- ข้อมูลเพิ่มเติม (ข้อมูลพื้นฐานส่วนขยาย) ---------- */
+  var EXT_FIELDS = [
+    {k:'titleName',label:'คำนำหน้าชื่อ',type:'select',options:['','นาย','นาง','นางสาว','Mr.','Mrs.','Ms.']},
+    {k:'gender',label:'เพศ',type:'select',options:['','ชาย','หญิง','ไม่ระบุ']},
+    {k:'nationality',label:'สัญชาติ',ph:'เช่น ไทย'},
+    {k:'maritalStatus',label:'สถานภาพสมรส',type:'select',options:['','โสด','สมรส','หย่าร้าง','หม้าย']},
+    {k:'nameEnFirst',label:'ชื่อ (ENG)'},{k:'nameEnLast',label:'นามสกุล (ENG)'},{k:'nickEn',label:'ชื่อเล่น (ENG)'},
+    {k:'payType',label:'ประเภทพนักงาน',type:'select',options:['','พนักงานรายเดือน','พนักงานเหมาจ่าย']},
+    {k:'regularDate',label:'วันที่บรรจุ',type:'date'},{k:'retirementYear',label:'ปีที่เกษียณ (ค.ศ.)',type:'number'},
+    {k:'fingerprintCode',label:'รหัสลายนิ้วมือ/สแกนเวลา'},
+    {k:'ssoNo',label:'เลขประกันสังคม'},{k:'passportNo',label:'เลขหนังสือเดินทาง'},{k:'workPermitNo',label:'เลขใบอนุญาตทำงาน (ต่างชาติ)'},
+    {k:'hospitalRight',label:'สิทธิรักษา',type:'select',options:['','ประกันสังคม','ประกันกลุ่มบริษัท','บัตรทอง','อื่นๆ']},{k:'hospital',label:'โรงพยาบาลตามสิทธิ'},
+    {k:'hashtags',label:'Hashtag (คั่นด้วยเว้นวรรค เช่น #ใหม่ #โรงงาน)',span:1}
+  ];
+  window.hxEditExt = function(){
+    var e=emp(cur()); if(!e) return; var before=Object.assign({},e);
+    openForm('แก้ไขข้อมูลเพิ่มเติม', EXT_FIELDS, e, function(v){
+      Object.keys(v).forEach(function(k){ e[k]=v[k]; }); e.updatedAt=v4Now(); hrdAuditDiff(before,e,'แก้ไขข้อมูลเพิ่มเติม'); saveDB(); rerender();
+    });
+  };
+  window.hxToggle = function(id,code,field){
+    var s=document.getElementById(id), e=emp(code); if(!s||!e) return;
+    var on=s.getAttribute('data-on')==='1'; s.textContent = on ? mask(e[field]) : e[field]; s.setAttribute('data-on',on?'0':'1');
+    var b=s.nextElementSibling; if(b) b.textContent = on?'แสดง':'ซ่อน';
+  };
+  function sens(e,field,id){ if(!e[field]) return '-'; return '<span id="'+id+'">'+esc(mask(e[field]))+'</span> <button class="btn-ghost btn-sm" type="button" onclick="hxToggle(\''+id+'\',\''+attr(e.empCode)+'\',\''+field+'\')">แสดง</button>'; }
+  function r(k,v){ return '<div class="ep-row"><span class="ep-k">'+esc(k)+'</span><span class="ep-v">'+(v==null||v===''?'-':v)+'</span></div>'; }
+  function extCard(e){
+    var tags=String(e.hashtags||'').split(/\s+/).filter(Boolean).map(function(t){return '<span class="hx-tag">'+esc(t.charAt(0)==='#'?t:'#'+t)+'</span>';}).join('');
+    return '<section class="card ep-card" data-sec="all"><div class="hx-sec-head"><h3>🧾 ข้อมูลเพิ่มเติม</h3>'+addBtn('✏️ แก้ไข','hxEditExt()')+'</div><div class="ep-rows">'
+      + r('คำนำหน้า / เพศ', esc([e.titleName,e.gender].filter(Boolean).join(' / '))) + r('สัญชาติ', esc(e.nationality)) + r('สถานภาพ', esc(e.maritalStatus))
+      + r('ชื่อ-สกุล (ENG)', esc([e.nameEnFirst,e.nameEnLast].filter(Boolean).join(' ')+(e.nickEn?' ('+e.nickEn+')':'')))
+      + r('ประเภทพนักงาน', esc(e.payType)) + r('วันที่บรรจุ', esc(dfmt(e.regularDate))) + r('ปีที่เกษียณ', esc(e.retirementYear))
+      + r('รหัสลายนิ้วมือ', esc(e.fingerprintCode)) + r('เลขประกันสังคม', sens(e,'ssoNo','hxSso')) + r('หนังสือเดินทาง', sens(e,'passportNo','hxPass')) + r('ใบอนุญาตทำงาน', sens(e,'workPermitNo','hxWp'))
+      + r('สิทธิรักษา', esc([e.hospitalRight,e.hospital].filter(Boolean).join(' · '))) + r('Hashtag', tags)
+      + '</div></section>';
+  }
+
+  /* ---------- ผู้อนุมัติ ---------- */
+  window.hxEditApprovers = function(){
+    var e=emp(cur()); if(!e) return; var a=e.approvers||[], before=Object.assign({},e,{approvers:a.slice()});
+    openForm('กำหนดผู้อนุมัติรายบุคคล', [{k:'a1',label:'ผู้อนุมัติขั้นที่ 1 (ลา/โอที)',type:'emp'},{k:'a2',label:'ผู้อนุมัติขั้นที่ 2',type:'emp'},{k:'a3',label:'ผู้อนุมัติขั้นที่ 3',type:'emp'}], {a1:a[0]||e.parentId||'',a2:a[1]||'',a3:a[2]||''}, function(v){
+      var nu=[v.a1,v.a2,v.a3].filter(Boolean); var bad=nu.filter(function(c){return !emp(c);});
+      if(bad.length){ toast('ไม่พบรหัสพนักงาน: '+bad.join(', ')); return; }
+      e.approvers=nu; e.updatedAt=v4Now();
+      hrdAudit(e.empCode,[{field:'approvers',label:'ผู้อนุมัติ',from:(a.length?a:[e.parentId||'']).filter(Boolean).join(' → '),to:nu.join(' → ')}],'กำหนดผู้อนุมัติ'); saveDB(); rerender();
+    });
+  };
+  function approverCard(e){
+    var a=(e.approvers&&e.approvers.length)?e.approvers:(e.parentId?[e.parentId]:[]);
+    return '<section class="card ep-card" data-sec="leave"><div class="hx-sec-head"><h3>✅ ผู้อนุมัติ</h3>'+addBtn('✏️ กำหนด','hxEditApprovers()')+'</div>'
+      + (a.length?'<div class="hx-list">'+a.map(function(c,i){ var m=emp(c)||{}; return '<div class="hx-item"><div class="hx-main"><b>ขั้นที่ '+(i+1)+'</b> · '+esc(m.fullName||c)+'<div class="hx-sub">'+esc(c)+(m.position?' · '+esc(m.position):'')+'</div></div></div>'; }).join('')+'</div>':'<div class="hx-empty">ยังไม่กำหนดผู้อนุมัติ (ใช้หัวหน้างานเป็นค่าเริ่มต้นเมื่อมีข้อมูล)</div>')+'</section>';
+  }
+
+  /* ---------- ข้อมูลกำหนดเอง ---------- */
+  function defs(){ DB.settings=DB.settings||{}; DB.settings.customFields=DB.settings.customFields||[]; return DB.settings.customFields; }
+  window.hxEditCustom = function(){
+    var e=emp(cur()); if(!e) return; var d=defs(); if(!d.length){ toast('ยังไม่มีช่องข้อมูล กด "จัดการช่องข้อมูล" เพื่อเพิ่มก่อน'); return; }
+    var vals=e.custom||{}, fields=d.map(function(x){return {k:x.id,label:x.label,type:x.type==='date'?'date':x.type==='number'?'number':'text'};});
+    openForm('ข้อมูลกำหนดเอง', fields, vals, function(v){ var before=Object.assign({},e.custom||{}); e.custom=Object.assign({},e.custom||{},v); e.updatedAt=v4Now();
+      var ch=[]; d.forEach(function(x){ if(String(before[x.id]||'')!==String(v[x.id]||'')) ch.push({field:'custom.'+x.id,label:x.label,from:before[x.id]||'',to:v[x.id]||''}); }); if(ch.length) hrdAudit(e.empCode,ch,'ข้อมูลกำหนดเอง'); saveDB(); rerender(); });
+  };
+  window.hxManageCustom = function(){
+    var d=defs();
+    openForm('เพิ่มช่องข้อมูลกำหนดเอง (ใช้กับพนักงานทุกคน)', [{k:'label',label:'ชื่อช่องข้อมูล',req:1,ph:'เช่น ขนาดเสื้อ, กรุ๊ปเลือด, ไลน์ไอดี'},{k:'type',label:'ชนิด',type:'select',options:[['text','ข้อความ'],['number','ตัวเลข'],['date','วันที่']]}], {type:'text'}, function(v){
+      d.push({id:'cf_'+Date.now().toString(36),label:v.label,type:v.type||'text'}); saveDB(); rerender(); });
+  };
+  window.hxDelCustomDef = function(id){
+    if(!confirm('ลบช่องข้อมูลนี้ออกจากพนักงานทุกคนใช่ไหม? (ค่าที่กรอกไว้จะซ่อนไป)')) return;
+    DB.settings.customFields=defs().filter(function(x){return x.id!==id;}); saveDB(); rerender();
+  };
+  function customCard(e){
+    var d=defs(), v=e.custom||{};
+    return sec('custom','🧩 ข้อมูลกำหนดเอง', addBtn('✏️ กรอกข้อมูล','hxEditCustom()')+' '+addBtn('⚙️ จัดการช่องข้อมูล','hxManageCustom()'),
+      d.length ? '<div class="ep-rows">'+d.map(function(x){ return '<div class="ep-row"><span class="ep-k">'+esc(x.label)+'</span><span class="ep-v">'+esc(x.type==='date'?dfmt(v[x.id]):v[x.id])+(v[x.id]?'':'-')+' <a href="#" title="ลบช่องนี้" onclick="hxDelCustomDef(\''+attr(x.id)+'\');return false" style="opacity:.5">✕</a></span></div>'; }).join('')+'</div>' : '<div class="hx-empty">ยังไม่มีช่องข้อมูลกำหนดเอง — กด "จัดการช่องข้อมูล" เพื่อเพิ่ม เช่น ขนาดเสื้อ กรุ๊ปเลือด ไลน์ไอดี</div>', true);
+  }
+
+  /* ---------- ประวัติการแก้ไข ---------- */
+  function auditCard(e){
+    var rows=(DB.auditLog||[]).filter(function(a){return a.empCode===e.empCode;}).slice(-200).reverse();
+    var body = rows.length ? '<div class="table-wrap"><table><thead><tr><th>วันที่-เวลา</th><th>ข้อมูลที่แก้</th><th>จาก</th><th>เป็น</th><th>โดย</th><th>หมายเหตุ</th></tr></thead><tbody>'
+      + rows.map(function(a){ var d=new Date(a.at); return '<tr><td style="white-space:nowrap">'+esc(isNaN(d)?a.at:d.toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}))+'</td><td>'+esc(a.label)+'</td><td>'+esc(a.from||'-')+'</td><td>'+esc(a.to||'-')+'</td><td>'+esc(a.by||'-')+'</td><td>'+esc(a.note||'')+'</td></tr>'; }).join('')+'</tbody></table></div>'
+      : '<div class="hx-empty">ยังไม่มีประวัติการแก้ไข — ระบบเริ่มบันทึกตั้งแต่การแก้ไขครั้งนี้เป็นต้นไป</div>';
+    return sec('audit','🕘 ประวัติการแก้ไข','',body+'<div class="small" style="margin-top:8px">ข้อมูลอ่อนไหว (เลขบัตร/ประกันสังคม/พาสปอร์ต) จะบันทึกแบบปกปิด</div>',true);
+  }
+
+  window.hrdEmpExt = { cards:function(e){
+    return extCard(e) + approverCard(e)
+      + '<section class="card ep-card ep-span4" data-sec="person" data-only-tab="1"><div class="hx-warn">🔒 หน้านี้มีข้อมูลส่วนบุคคล ระบบยังไม่มีการจำกัดสิทธิ์ตามบทบาท ผู้ที่ล็อกอินได้ทุกคนเห็นข้อมูลนี้ได้ — ควรให้เฉพาะ HR ใช้ระบบ</div></section>'
+      + ['family','workHistory','education','languages','skills','licenses','documents'].map(function(k){ var c=listCard(e,k); return c.replace('data-sec="person"','data-sec="person" data-only-tab="1"'); }).join('')
+      + listCard(e,'assets') + customCard(e) + auditCard(e);
+  }};
 })();
 </script>
 </body>
