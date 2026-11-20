@@ -892,6 +892,7 @@ function defaultDB(){
     dsdSubmissions: [],
     trainingFollowups: [],
     trainingNeeds: [],
+    trainingFollowupLinks: [],
     settings: {
       birthdayEmail: { subject: DEFAULT_BDAY_SUBJECT, body: DEFAULT_BDAY_BODY, reminderDays: '7,1,0' },
       probation: { assessmentWebappUrl: 'https://hr-unified-system.vercel.app/probation' },
@@ -911,7 +912,7 @@ function migrateDB(raw){
 
   // Arrays: ต้องมีอยู่และเป็น array เสมอ ห้าม undefined ไม่งั้นทุก DB.xxx.push() จะพัง
   ['employees','performanceReviews','goals','jd','kpiDefinitions','competencies','competencyDictionary','kpiDictionary',
-   'orgChartSnapshots','positionRevisions','probationActions','trainingCourses','trainingEnrollments','attendanceRecords','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','leaveEntitlementDefaults','leaveEntitlementOverrides','importedRequestIds','employeeJdOverrides'
+   'orgChartSnapshots','positionRevisions','probationActions','trainingCourses','trainingEnrollments','attendanceRecords','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','trainingFollowupLinks','leaveEntitlementDefaults','leaveEntitlementOverrides','importedRequestIds','employeeJdOverrides'
   ].forEach(k => {
     if(!Array.isArray(merged[k])) merged[k] = base[k];
   });
@@ -3445,7 +3446,7 @@ var v4OriginalMigrateDB = migrateDB;
 
 migrateDB = function(raw){
   var merged = v4OriginalMigrateDB(raw);
-  ['probationActions','trainingCourses','trainingEnrollments','positionRevisions','orgChartSnapshots','attendanceRecords','performanceReviews','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','leaveEntitlementOverrides','importedRequestIds'].forEach(function(k){ if(!Array.isArray(merged[k])) merged[k]=[]; });
+  ['probationActions','trainingCourses','trainingEnrollments','positionRevisions','orgChartSnapshots','attendanceRecords','performanceReviews','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','trainingFollowupLinks','leaveEntitlementOverrides','importedRequestIds'].forEach(function(k){ if(!Array.isArray(merged[k])) merged[k]=[]; });
   if(!Array.isArray(merged.leaveEntitlementDefaults)||!merged.leaveEntitlementDefaults.length) merged.leaveEntitlementDefaults=defaultDB().leaveEntitlementDefaults;
   if(!merged.orgCharts || typeof merged.orgCharts!=='object') merged.orgCharts={};
   return merged;
@@ -9016,8 +9017,8 @@ window.refreshPerfEmployeeSelects=function(){
   function renderFuPending(){
     var b=document.getElementById('hrdFuPending'); if(!b) return;
     var list=pendingFollowups(), t=today(), td=new Date().toISOString().slice(0,10);
-    b.innerHTML='<section class="card hrd-card"><h3>รอติดตามผล ('+list.length+')</h3><div class="hrd-sub-note">พนักงานที่เข้าอบรมแล้วแต่ยังไม่มีบันทึกติดตามผล กด "ประเมิน" เพื่อบันทึกได้ทันที</div><div class="table-wrap"><table><thead><tr><th>พนักงาน</th><th>หลักสูตร</th><th>ครบกำหนดติดตาม</th><th></th></tr></thead><tbody>'
-      + (list.slice(0,100).map(function(x){ var late=x.due&&x.due<t; return '<tr><td>'+empCell(x.code)+'</td><td>'+esc(x.course.title)+'</td><td>'+(x.due?dshort(x.due):'-')+(late?' '+pill('เลยกำหนด','s-bad'):'')+'</td><td><button class="btn-primary btn-sm" onclick="hrdCrud.followup.add({courseId:\''+attr(x.course.id)+'\',empCode:\''+attr(x.code)+'\',followDate:\''+td+'\',applied:\'นำไปใช้ได้ดี\'})">ประเมิน</button></td></tr>'; }).join('')||'<tr><td colspan="4" class="empty">ไม่มีรายการค้าง 🎉</td></tr>')
+    b.innerHTML='<section class="card hrd-card"><div class="hrd-bar"><h3 style="margin:0">รอติดตามผล ('+list.length+')</h3><button class="btn-ghost btn-sm" onclick="hrdSyncResponses(true)">📥 ดึงผลที่หัวหน้าตอบกลับ</button></div><div class="hrd-sub-note">กด "🔗 สร้างลิงก์" เพื่อส่งให้หัวหน้างานประเมินผ่านมือถือ คะแนนจะวิ่งเข้าระบบเอง หรือกด "ประเมิน" เพื่อกรอกเองก็ได้</div><div class="table-wrap"><table><thead><tr><th>พนักงาน</th><th>หลักสูตร</th><th>ครบกำหนดติดตาม</th><th>ลิงก์ให้หัวหน้าประเมิน</th><th></th></tr></thead><tbody>'
+      + (list.slice(0,100).map(function(x){ var late=x.due&&x.due<t; return '<tr><td>'+empCell(x.code)+'</td><td>'+esc(x.course.title)+'</td><td>'+(x.due?dshort(x.due):'-')+(late?' '+pill('เลยกำหนด','s-bad'):'')+'</td><td>'+hrdLinkCell(x.course.id,x.code)+'</td><td><button class="btn-primary btn-sm" onclick="hrdCrud.followup.add({courseId:\''+attr(x.course.id)+'\',empCode:\''+attr(x.code)+'\',followDate:\''+td+'\',applied:\'นำไปใช้ได้ดี\'})">ประเมิน</button></td></tr>'; }).join('')||'<tr><td colspan="5" class="empty">ไม่มีรายการค้าง 🎉</td></tr>')
       +'</tbody></table></div></section>';
   }
 
@@ -9405,6 +9406,94 @@ window.refreshPerfEmployeeSelects=function(){
     var head=box.querySelector('.hrd-head');
     if(head) head.insertAdjacentHTML('beforeend','<div class="actions" style="align-self:center"><button class="btn-ghost btn-sm" onclick="hrdPrintReport()">🖨 รายงานผู้บริหาร (PDF)</button> <button class="btn-ghost btn-sm" onclick="hrdExportReportXlsx()">⬇ Excel</button></div>');
     box.insertAdjacentHTML('beforeend', remindersHtml()+'<div class="hrd-two">'+budgetHtml(H.getYear())+hoursCard(H.getYear())+'</div>');
+  };
+})();
+</script>
+<script id="hrd-followup-link-script">
+(function(){
+  var H = window.hrdCore, esc = H.esc;
+  function attr(v){ return v4EscapeAttr(v); }
+  function links(){ DB.trainingFollowupLinks = DB.trainingFollowupLinks || []; return DB.trainingFollowupLinks; }
+  function findLink(courseId,code){ return links().find(function(l){ return l.courseId===courseId && l.empCode===code && l.status!=='answered'; }); }
+  function byToken(t){ return links().find(function(l){ return l.token===t; }); }
+  function hex32(){ var a=new Uint8Array(16); crypto.getRandomValues(a); return Array.from(a).map(function(b){return ('0'+b.toString(16)).slice(-2);}).join(''); }
+  function urlFor(t){ return location.origin+'/followup.html?t='+t; }
+  function session(){ return supabaseClient.auth.getSession().then(function(r){ return r&&r.data&&r.data.session; }); }
+  function setupHint(err){ var m=String(err&&err.message||err||''); return /followup|schema cache|does not exist|42P01|PGRST/i.test(m) ? 'ยังไม่ได้ตั้งค่าฐานข้อมูล: ต้องรันไฟล์ followup_setup.sql ใน Supabase (SQL Editor) ก่อน 1 ครั้ง' : 'เกิดข้อผิดพลาด: '+m; }
+  function supOf(code){ var e=getEmployeeByCode(code)||{}; var name=e.parentId?(getEmployeeName(e.parentId)||''):''; var mail=e.supervisorEmail||((getEmployeeByCode(e.parentId)||{}).email)||''; return {name:name,email:mail}; }
+
+  window.hrdLinkCell = function(courseId,code){
+    var l=findLink(courseId,code);
+    if(l) return '<span class="hrd-pill s-run">ส่งลิงก์แล้ว</span> <button class="btn-ghost btn-sm" onclick="hrdLinkShow(\''+attr(l.token)+'\')">ส่งอีกครั้ง</button>';
+    return '<button class="btn-ghost btn-sm" onclick="hrdLinkMake(\''+attr(courseId)+'\',\''+attr(code)+'\')">🔗 สร้างลิงก์</button>';
+  };
+  window.hrdLinkMake = function(courseId,code){
+    session().then(function(sess){
+      if(!sess){ toast('ต้องล็อกอินก่อนจึงจะสร้างลิงก์ได้'); return; }
+      var c=(DB.trainingCourses||[]).find(function(x){return x.id===courseId;}), e=getEmployeeByCode(code); if(!c||!e) return;
+      var sp=supOf(code), token=hex32();
+      supabaseClient.from('training_followup_links').insert({token:token,course_title:c.title,employee_name:e.fullName,employee_code:code,supervisor_name:sp.name||null}).then(function(r){
+        if(r.error){ toast(setupHint(r.error)); return; }
+        links().push({token:token,courseId:courseId,empCode:code,status:'sent',supName:sp.name,supEmail:sp.email,createdAt:v4Now()});
+        saveDB(); if(window.hrdRenderers.followup) window.hrdRenderers.followup(); hrdLinkShow(token);
+      });
+    });
+  };
+  function msgText(l){
+    var c=(DB.trainingCourses||[]).find(function(x){return x.id===l.courseId;})||{}, e=getEmployeeByCode(l.empCode)||{};
+    return 'เรียน '+(l.supName?'คุณ'+l.supName:'หัวหน้างาน')+'\n\nขอความอนุเคราะห์ประเมินผลการนำความรู้จากหลักสูตร "'+(c.title||'')+'" ของคุณ'+(e.fullName||'')+' ไปใช้ในการปฏิบัติงาน (ใช้เวลาประมาณ 2 นาที ผ่านมือถือได้)\n\n'+urlFor(l.token)+'\n\nขอบคุณครับ/ค่ะ\nฝ่ายทรัพยากรบุคคล';
+  }
+  window.hrdLinkShow = function(token){
+    var l=byToken(token); if(!l) return;
+    var old=document.getElementById('hrdLinkModal'); if(old) old.remove();
+    var d=document.createElement('div'); d.id='hrdLinkModal';
+    d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
+    d.innerHTML='<div style="background:#fff;color:#1f2a44;border-radius:16px;padding:20px;max-width:560px;width:100%;max-height:90vh;overflow:auto"><h3 style="margin:0 0 8px">ลิงก์ให้หัวหน้างานประเมิน</h3><div class="small" style="color:#4a5468;margin-bottom:8px">ส่งข้อความนี้ให้หัวหน้างาน (ลิงก์ใช้ได้ครั้งเดียว ไม่ต้องล็อกอิน)</div>'
+      +'<div class="field"><label style="color:#1f2a44">ลิงก์</label><input id="hrdLinkUrl" readonly value="'+attr(urlFor(token))+'" onclick="this.select()"/></div>'
+      +'<div class="field" style="margin-top:8px"><label style="color:#1f2a44">ข้อความ (แก้ไขได้)</label><textarea id="hrdLinkMsg" rows="8">'+esc(msgText(l))+'</textarea></div>'
+      +'<div class="field" style="margin-top:8px"><label style="color:#1f2a44">อีเมลหัวหน้างาน</label><input id="hrdLinkMail" value="'+attr(l.supEmail||'')+'" placeholder="name@company.com"/></div>'
+      +'<div class="actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-primary btn-sm" onclick="hrdLinkAct(\'copy\')">📋 คัดลอกข้อความ</button><button class="btn-ghost btn-sm" onclick="hrdLinkAct(\'gmail\',\''+attr(token)+'\')">✉️ เปิด Gmail</button><button class="btn-ghost btn-sm" onclick="hrdLinkAct(\'line\')">💬 ส่งทาง LINE</button><button class="btn-ghost btn-sm" onclick="document.getElementById(\'hrdLinkModal\').remove()">ปิด</button></div></div>';
+    d.addEventListener('click',function(ev){ if(ev.target===d) d.remove(); });
+    document.body.appendChild(d);
+  };
+  window.hrdLinkAct = function(kind,token){
+    var msg=document.getElementById('hrdLinkMsg').value;
+    if(kind==='copy'){ (navigator.clipboard?navigator.clipboard.writeText(msg):Promise.reject()).then(function(){ toast('คัดลอกข้อความแล้ว'); }).catch(function(){ document.getElementById('hrdLinkMsg').select(); document.execCommand('copy'); toast('คัดลอกข้อความแล้ว'); }); }
+    else if(kind==='line'){ window.open('https://line.me/R/msg/text/?'+encodeURIComponent(msg),'_blank'); }
+    else if(kind==='gmail'){
+      var to=document.getElementById('hrdLinkMail').value.trim(), l=byToken(token); if(l){ l.supEmail=to; saveDB(); }
+      window.open('https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(to)+'&su='+encodeURIComponent('ขอความอนุเคราะห์ประเมินผลหลังการฝึกอบรม')+'&body='+encodeURIComponent(msg),'_blank');
+    }
+  };
+
+  var lastSync=0, syncing=false;
+  window.hrdSyncResponses = function(manual){
+    if(syncing) return; syncing=true;
+    return session().then(function(sess){
+      if(!sess){ syncing=false; if(manual) toast('ต้องล็อกอินก่อนจึงจะดึงผลได้'); return; }
+      return supabaseClient.from('training_followup_responses').select('*').eq('imported',false).then(function(r){
+        if(r.error){ syncing=false; if(manual) toast(setupHint(r.error)); return; }
+        var n=0, ids=[];
+        (r.data||[]).forEach(function(x){
+          var l=byToken(x.token); if(!l) return;
+          DB.trainingFollowups=DB.trainingFollowups||[];
+          DB.trainingFollowups.push({id:uid('followup_'),courseId:l.courseId,empCode:l.empCode,followDate:String(x.responded_at||'').slice(0,10)||new Date().toISOString().slice(0,10),supervisor:x.supervisor||l.supName||'',rating:String(x.rating),applied:x.applied||'',impact:x.impact||'',nextAction:x.next_action||'',source:'link',token:x.token,createdAt:v4Now(),updatedAt:v4Now()});
+          l.status='answered'; ids.push(x.id); n++;
+        });
+        lastSync=Date.now();
+        var done=ids.length?supabaseClient.from('training_followup_responses').update({imported:true}).in('id',ids):Promise.resolve();
+        return done.then(function(){
+          syncing=false;
+          if(n){ saveDB(); if(window.hrdRenderers.followup) window.hrdRenderers.followup(); if(manual) toast('ได้รับผลประเมินจากหัวหน้างานใหม่ '+n+' รายการ'); }
+          else if(manual) toast('ยังไม่มีผลประเมินใหม่');
+        });
+      });
+    }).catch(function(e){ syncing=false; if(manual) toast(setupHint(e)); });
+  };
+  var prevFu = window.hrdRenderers.followup;
+  window.hrdRenderers.followup = function(){
+    prevFu();
+    if(Date.now()-lastSync>60000 && !syncing) window.hrdSyncResponses(false);
   };
 })();
 </script>
