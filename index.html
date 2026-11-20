@@ -6937,6 +6937,87 @@ html.theme-soft body :is(.badge,.gs-status-pill){font-weight:700!important}
 html.theme-soft body .auth-gate-error{color:#b42323!important}
 html.theme-soft body .field label{letter-spacing:0!important}
 </style>
+<style id="clean-blue-theme">
+/* ===== Light mode: clean blue (white cards, soft blue-grey page, blue accent). Remove this whole block to go back to the soft grey look ===== */
+html.theme-soft{
+  --neu-bg:#eef3fb;
+  --neu-up:0 2px 12px rgba(40,70,130,.09);
+  --neu-up-sm:0 1px 4px rgba(40,70,130,.10);
+  --neu-in:inset 0 0 0 1px #d3ddee;
+  --neu-in-sm:inset 0 0 0 1px #d3ddee;
+  --v4-bg:#eef3fb;--v4-nav:#fff;--v4-surface:#fff;--v4-surface-2:#f4f7fd;
+  --v4-border:#e2e8f3;--v4-text:#1f2a44;--v4-muted:#556580;--v4-subtle:#6b7a94;
+  --gs-glass-1:#fff;--gs-glass-2:#fff;
+}
+html.theme-soft body{--module-accent:#2f6fe4;--module-accent-soft:#e6efff;--module-accent-border:#b9d0fa;background:#eef3fb!important;color:#1f2a44!important}
+html.theme-soft body .gs-bg{background:#eef3fb!important}
+/* top bar */
+html.theme-soft body .topbar{background:#fff!important;box-shadow:0 1px 8px rgba(40,70,130,.10)!important}
+html.theme-soft body .brand .mark{background:linear-gradient(145deg,#4d8cf5,#2f6fe4)!important;box-shadow:none!important}
+html.theme-soft body .company-toggle{background:#eef3fb!important;box-shadow:none!important;border:1px solid #dbe4f3!important}
+html.theme-soft body .cf-btn.active,html.theme-soft body .cf-btn.active[data-c]{background:#2f6fe4!important;color:#fff!important;box-shadow:none!important}
+html.theme-soft body .global-search input{background:#f2f5fb!important;border:1px solid #dbe4f3!important;box-shadow:none!important}
+html.theme-soft body .global-search-results{background:#fff!important;border:1px solid #e2e8f3!important;box-shadow:0 8px 24px rgba(40,70,130,.15)!important}
+html.theme-soft body .gs-res-item:hover{background:#eef4ff!important}
+html.theme-soft body :is(.topbar-bell,.sidebar-toggle-btn,.theme-toggle-btn){background:#fff!important;border:1px solid #dbe4f3!important;box-shadow:none!important}
+/* sidebar */
+html.theme-soft body .app-shell > .tabbar{background:#fff!important;box-shadow:2px 0 12px rgba(40,70,130,.07)!important;border-right:1px solid #e2e8f3!important;gap:6px!important}
+html.theme-soft body .app-shell > .tabbar .tab-btn{background:transparent!important;box-shadow:none!important;border-radius:12px!important;color:#33415c!important;padding:11px 14px!important}
+html.theme-soft body .app-shell > .tabbar .tab-btn:hover:not(.active){background:#f1f5fd!important;color:#1f2a44!important}
+html.theme-soft body .app-shell > .tabbar .tab-btn.active{background:#e3edff!important;color:#2450b8!important;box-shadow:none!important;font-weight:700}
+html.theme-soft body .sidebar-profile{background:#f4f7fd!important;box-shadow:none!important;border:1px solid #e2e8f3!important}
+/* cards & panels */
+html.theme-soft body :is(.card,.summary-card,.compare-pane,.job-group,.gs-stat-card,.diff-card,.org-outline-panel,.org-canvas-panel,#view-employees .module-intro,#view-employees > section.card){background:#fff!important;border:1px solid #e2e8f3!important;border-radius:16px!important;box-shadow:0 2px 12px rgba(40,70,130,.07)!important}
+html.theme-soft body :is(.clean-note,.notice,.original-block,.participant-picker,.theme-swatch,.dash-list-row,.position-list-item,.course-item){background:#f6f9ff!important;border:1px solid #e2e8f3!important;box-shadow:none!important;border-radius:12px!important}
+html.theme-soft body :is(.position-list-item,.course-item,.dash-list-row):hover,html.theme-soft body :is(.position-list-item,.course-item).active{background:#e9f1ff!important;border-color:#b9d0fa!important;box-shadow:none!important}
+html.theme-soft body :is(.org-outline-head,.org-canvas-toolbar,.compare-pane-head){background:#f4f7fd!important}
+html.theme-soft body .modal{background:#fff!important;border:1px solid #e2e8f3!important;box-shadow:0 12px 40px rgba(40,70,130,.22)!important}
+html.theme-soft body .modal-bg{background:rgba(31,42,68,.45)!important}
+html.theme-soft body .auth-gate{background:#eef3fb!important}
+html.theme-soft body .auth-gate-box{background:#fff!important;border:1px solid #e2e8f3!important;box-shadow:0 8px 30px rgba(40,70,130,.15)!important}
+html.theme-soft body .org-card{background:#fff!important;border:1px solid #dbe4f3!important;box-shadow:0 1px 6px rgba(40,70,130,.10)!important}
+html.theme-soft body .org-card.group{background:#f1f5fd!important}
+html.theme-soft body .combo-options{background:#fff!important;border:1px solid #e2e8f3!important;box-shadow:0 8px 24px rgba(40,70,130,.15)!important}
+html.theme-soft body :is(.combo-option:hover,.combo-option.active){background:#eef4ff!important}
+html.theme-soft body :is(.bar-track,.dash-progress-track){background:#e8eef9!important;box-shadow:none!important}
+/* summary tiles */
+html.theme-soft body .summary-card .num{color:#2450b8!important}
+/* buttons */
+html.theme-soft body :is(.btn-primary,.btn-green,.btn-gold,.btn-purple,#view-employees .btn-primary){background:#2f6fe4!important;color:#fff!important;border:0!important;box-shadow:0 2px 6px rgba(47,111,228,.30)!important;border-radius:10px!important}
+html.theme-soft body :is(.btn-primary,.btn-green,.btn-gold,.btn-purple):hover{background:#245fcf!important;box-shadow:0 3px 10px rgba(47,111,228,.35)!important}
+html.theme-soft body :is(.btn-ghost,.subnav-btn,.report-topic-btn,.detail-tab,#view-employees .btn-ghost,#view-employees .subnav-btn){background:#fff!important;color:#2a3a5c!important;border:1px solid #cfdaee!important;box-shadow:none!important;border-radius:10px!important}
+html.theme-soft body :is(.btn-ghost,.subnav-btn,.report-topic-btn,.detail-tab):hover{background:#eef4ff!important;border-color:#b9d0fa!important}
+html.theme-soft body :is(.subnav-btn.active,.report-topic-btn.active,.detail-tab.active,#view-employees .subnav-btn.active){background:#2f6fe4!important;color:#fff!important;border-color:#2f6fe4!important;box-shadow:none!important}
+html.theme-soft body :is(.btn-danger,.danger-outline,#view-employees .btn-danger){background:#fff!important;color:#c53030!important;border:1px solid #f0c4c4!important;box-shadow:none!important;border-radius:10px!important}
+html.theme-soft body :is(.btn-danger,.danger-outline):hover{background:#fff0f0!important}
+html.theme-soft body :is(.btn-primary,.btn-green,.btn-gold,.btn-purple,.btn-ghost,.btn-danger,.subnav-btn,.detail-tab):active{box-shadow:none!important;transform:translateY(1px)!important}
+/* form fields */
+html.theme-soft body :is(.field input:not([type=checkbox]):not([type=radio]),.field select,.field textarea,.search-input,select,textarea,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),#view-employees .field input,#view-employees .field select,#view-employees .field textarea){background:#fff!important;border:1px solid #cdd8ec!important;box-shadow:none!important;border-radius:10px!important;color:#1f2a44!important}
+html.theme-soft body :is(input,select,textarea):focus{border-color:#2f6fe4!important;box-shadow:0 0 0 3px rgba(47,111,228,.18)!important}
+/* tables */
+html.theme-soft body :is(.table-wrap,#view-employees .table-wrap){background:#fff!important;border:1px solid #e2e8f3!important;box-shadow:none!important;border-radius:12px!important}
+html.theme-soft body :is(thead th,#view-employees thead th){background:#f1f5fd!important;color:#33415c!important;border-color:#e2e8f3!important}
+html.theme-soft body :is(tbody td,#view-employees tbody td){border-color:#edf1f8!important;color:#1f2a44!important}
+html.theme-soft body :is(tbody tr:hover,#view-employees tbody tr:hover){background:#f5f8ff!important}
+/* badges */
+html.theme-soft body .badge{box-shadow:none!important;border:0!important}
+html.theme-soft body .badge.CMN{background:#e3edff!important;color:#2450b8!important}
+html.theme-soft body :is(.badge.CIL,.badge.active){background:#dcf5ea!important;color:#0a6e4b!important}
+html.theme-soft body .badge.inactive{background:#fde4e4!important;color:#b42323!important}
+html.theme-soft body :is(.badge.b-today,.badge.b-soon,.badge.b-month,.badge.b-normal,.badge.b-none){background:#eef2f9!important;color:#33415c!important}
+html.theme-soft body :is(.gs-co-badge,.gs-status-pill){background:#eef4ff!important;box-shadow:none!important}
+html.theme-soft body .gs-stat-card .gs-chip{background:#eef4ff!important;box-shadow:none!important}
+/* text colours */
+html.theme-soft body :is(.sub,.small,.muted,.job-meta,.job-row .job-meta,.card .sub,.empty,.position-list-meta,.course-meta,.bar-label,.field label,#view-employees label){color:#556580!important}
+html.theme-soft body :is(.card h2,.card h3,.modal h3,.section-title,.job-group-head,.summary-card .label){color:#1f2a44!important}
+html.theme-soft body .table-wrap table{color:#1f2a44!important}
+html.theme-soft input[type=checkbox],html.theme-soft input[type=radio]{accent-color:#2f6fe4}
+/* HRD & employee profile pages use the same look */
+html.theme-soft body .hrd-card,html.theme-soft body .hrd-kpi{background:#fff}
+html.theme-soft body .hrd-kpi{border-color:#e2e8f3}
+html.theme-soft body .hrd-form{background:#f6f9ff;border-color:#dbe4f3}
+</style>
+
 <script id="company-scope-helpers">
 window.empInCompany=function(code,company){ if(!company||company==='ALL')return true; var e=(DB.employees||[]).find(function(x){return x.empCode===code;}); return !!e&&e.company===company; };
 window.courseInCompany=function(c,company){
@@ -9495,6 +9576,42 @@ window.refreshPerfEmployeeSelects=function(){
     prevFu();
     if(Date.now()-lastSync>60000 && !syncing) window.hrdSyncResponses(false);
   };
+})();
+</script>
+<style id="side-submenu-style">
+.side-sub{display:none;flex-direction:column;gap:2px;margin:-2px 0 6px 14px;padding-left:12px;border-left:2px solid #dbe4f3}
+body[data-module="training"] #sideSub-training{display:flex}
+.side-sub button{display:flex;align-items:center;gap:8px;text-align:left;white-space:normal!important;line-height:1.35;border:0;background:transparent;color:#4a5a78;font-family:inherit;font-size:13.5px;padding:7px 10px;border-radius:8px;cursor:pointer;width:100%}
+.side-sub button::before{content:"";width:6px;height:6px;border-radius:50%;background:#b6c3dc;flex:none}
+.side-sub button:hover{background:#f1f5fd;color:#1f2a44}
+.side-sub button.on{background:#e3edff;color:#2450b8;font-weight:700}
+.side-sub button.on::before{background:#2f6fe4}
+@media(min-width:901px){#view-training .subnav{display:none!important}}
+@media(max-width:900px){.side-sub{display:none!important}}
+html:not(.theme-soft) .side-sub{border-left-color:rgba(255,255,255,.18)}
+html:not(.theme-soft) .side-sub button{color:#c9d1e6}
+html:not(.theme-soft) .side-sub button:hover{background:rgba(255,255,255,.08);color:#fff}
+html:not(.theme-soft) .side-sub button.on{background:rgba(255,255,255,.14);color:#fff}
+</style>
+<script id="side-submenu-script">
+(function(){
+  var LABELS=[['overview','ภาพรวม'],['ojt','OJT (On-the-Job Training)'],['history','ประวัติการฝึกอบรม'],['budget','งบประมาณการฝึกอบรม'],['dsd','ยื่นหลักสูตรกรมพัฒนาฝีมือแรงงาน'],['followup','ติดตามผลหลังอบรม'],['need','Training Need & Roadmap']];
+  var cur='overview';
+  function build(){
+    if(document.getElementById('sideSub-training')) return true;
+    var btn=document.querySelector('.tabbar .tab-btn[data-tab="training"]'); if(!btn) return false;
+    btn.insertAdjacentHTML('afterend','<div class="side-sub" id="sideSub-training">'+LABELS.map(function(x){return '<button type="button" data-k="'+x[0]+'" onclick="hrdSideGo(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')+'</div>');
+    return true;
+  }
+  function mark(){ var box=document.getElementById('sideSub-training'); if(!box) return; [].forEach.call(box.children,function(b){ b.classList.toggle('on',b.dataset.k===cur); }); }
+  window.hrdSideGo=function(k){ showTab('training'); showTrainingSubtab(k); window.scrollTo({top:0,behavior:'smooth'}); };
+  var prevSub=window.showTrainingSubtab;
+  window.showTrainingSubtab=function(k){ cur=k; var r=prevSub.apply(this,arguments); mark(); return r; };
+  showTrainingSubtab=window.showTrainingSubtab;
+  var prevTab=window.showTab;
+  window.showTab=function(){ var r=prevTab.apply(this,arguments); build(); mark(); return r; };
+  showTab=window.showTab;
+  build(); mark();
 })();
 </script>
 </body>
