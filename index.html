@@ -9611,13 +9611,17 @@ window.refreshPerfEmployeeSelects=function(){
 </script>
 <style id="side-submenu-style">
 .side-sub{display:none;flex-direction:column;gap:2px;margin:-2px 0 6px 14px;padding-left:12px;border-left:2px solid #dbe4f3}
-body[data-module="training"] #sideSub-training{display:flex}
-.side-sub button{display:flex;align-items:center;gap:8px;text-align:left;white-space:normal!important;line-height:1.35;border:0;background:transparent;color:#4a5a78;font-family:inherit;font-size:13.5px;padding:7px 10px;border-radius:8px;cursor:pointer;width:100%}
+.side-sub button{display:flex;align-items:center;gap:8px;text-align:left;border:0;background:transparent;color:#4a5a78;font-family:inherit;font-size:13.5px;padding:7px 10px;border-radius:8px;cursor:pointer;width:100%;white-space:normal!important;line-height:1.35}
 .side-sub button::before{content:"";width:6px;height:6px;border-radius:50%;background:#b6c3dc;flex:none}
 .side-sub button:hover{background:#f1f5fd;color:#1f2a44}
 .side-sub button.on{background:#e3edff;color:#2450b8;font-weight:700}
 .side-sub button.on::before{background:#2f6fe4}
-@media(min-width:901px){#view-training .subnav{display:none!important}}
+body[data-module="employees"] #sideSub-employees,body[data-module="onboarding"] #sideSub-onboarding,body[data-module="training"] #sideSub-training,body[data-module="performance-tracking"] #sideSub-performance-tracking,body[data-module="recruitment"] #sideSub-recruitment,body[data-module="reports"] #sideSub-reports{display:flex}
+@media(min-width:901px){
+  #view-training .subnav,#view-employees .subnav,#view-onboarding .subnav,#view-recruitment .subnav,#view-performance-tracking .detail-tabs{display:none!important}
+  #view-reports .report-menu{display:none!important}
+  #view-reports .report-layout{grid-template-columns:1fr!important}
+}
 @media(max-width:900px){.side-sub{display:none!important}}
 html:not(.theme-soft) .side-sub{border-left-color:rgba(255,255,255,.18)}
 html:not(.theme-soft) .side-sub button{color:#c9d1e6}
@@ -9626,23 +9630,47 @@ html:not(.theme-soft) .side-sub button.on{background:rgba(255,255,255,.14);color
 </style>
 <script id="side-submenu-script">
 (function(){
-  var LABELS=[['overview','ภาพรวม'],['ojt','OJT (On-the-Job Training)'],['history','ประวัติการฝึกอบรม'],['budget','งบประมาณการฝึกอบรม'],['dsd','ยื่นหลักสูตรกรมพัฒนาฝีมือแรงงาน'],['followup','ติดตามผลหลังอบรม'],['need','Training Need & Roadmap']];
-  var cur='overview';
+  function call(fn){ var a=[].slice.call(arguments,1); return function(){ var f=window[fn]; if(typeof f==='function') return f.apply(null,a); }; }
+  var MODS = {
+    employees:[['search','ค้นหาพนักงาน',call('showEmployeeSubtab','search')],['add','เพิ่มข้อมูลพนักงาน',call('showEmployeeSubtab','add')]],
+    onboarding:[['checklist','Checklist เริ่มงานใหม่',call('showOnboardingSubtab','checklist')],['birthday','วันเกิด',call('showOnboardingSubtab','birthday')],['anniversary','ครบรอบการทำงาน',call('showOnboardingSubtab','anniversary')],['probation','ทดลองงาน',call('showOnboardingSubtab','probation')],['namecard','นามบัตร QR',call('showOnboardingSubtab','namecard')]],
+    recruitment:[['dashboard','ภาพรวม',call('rcShowSub','dashboard')],['pipeline','Pipeline',call('rcShowSub','pipeline')],['jobs','ตำแหน่งงาน / ใบขอ',call('rcShowSub','jobs')],['candidates','ผู้สมัคร',call('rcShowSub','candidates')],['reports','KPI & SLA',call('rcShowSub','reports')],['settings','ตั้งค่าการสรรหา',call('rcOpenSettings')]],
+    training:[['overview','ภาพรวม',call('showTrainingSubtab','overview')],['ojt','OJT (On-the-Job Training)',call('showTrainingSubtab','ojt')],['history','ประวัติการฝึกอบรม',call('showTrainingSubtab','history')],['budget','งบประมาณการฝึกอบรม',call('showTrainingSubtab','budget')],['dsd','ยื่นหลักสูตรกรมพัฒนาฝีมือแรงงาน',call('showTrainingSubtab','dsd')],['followup','ติดตามผลหลังอบรม',call('showTrainingSubtab','followup')],['need','Training Need & Roadmap',call('showTrainingSubtab','need')]],
+    'performance-tracking':[['attendance','การขาด ลา มาสาย',call('setPerfSubTab','attendance')],['leavequota','โควตาวันลา',call('setPerfSubTab','leavequota')],['goals','เป้าหมาย / OKR',call('setPerfSubTab','goals')],['kpi','ประเมินผลรายเดือน',call('setPerfSubTab','kpi')]],
+    reports:[['headcount','อัตรากำลัง',call('showReportTopic','headcount')],['tenure','อายุงาน / อายุคน',call('showReportTopic','tenure')],['lifecycle','สถานะพนักงาน',call('showReportTopic','lifecycle')],['turnover','การลาออก (Turnover)',call('showReportTopic','turnover')],['onboarding','Onboarding',call('showReportTopic','onboarding')],['positions','ตำแหน่งงาน',call('showReportTopic','positions')],['training','การฝึกอบรม',call('showReportTopic','training')],['orgquality','ผังองค์กรและ Data Quality',call('showReportTopic','orgquality')]]
+  };
+  var cur = { employees:'search', onboarding:'checklist', recruitment:'dashboard', training:'overview', 'performance-tracking':'attendance', reports:'headcount' };
   function build(){
-    if(document.getElementById('sideSub-training')) return true;
-    var btn=document.querySelector('.tabbar .tab-btn[data-tab="training"]'); if(!btn) return false;
-    btn.insertAdjacentHTML('afterend','<div class="side-sub" id="sideSub-training">'+LABELS.map(function(x){return '<button type="button" data-k="'+x[0]+'" onclick="hrdSideGo(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')+'</div>');
-    return true;
+    Object.keys(MODS).forEach(function(mod){
+      if(document.getElementById('sideSub-'+mod)) return;
+      var btn=document.querySelector('.tabbar .tab-btn[data-tab="'+mod+'"]'); if(!btn) return;
+      btn.insertAdjacentHTML('afterend','<div class="side-sub" id="sideSub-'+mod+'">'+MODS[mod].map(function(x){ return '<button type="button" data-k="'+x[0]+'" onclick="hrdSideGo(\''+mod+'\',\''+x[0]+'\')">'+x[1]+'</button>'; }).join('')+'</div>');
+    });
   }
-  function mark(){ var box=document.getElementById('sideSub-training'); if(!box) return; [].forEach.call(box.children,function(b){ b.classList.toggle('on',b.dataset.k===cur); }); }
-  window.hrdSideGo=function(k){ showTab('training'); showTrainingSubtab(k); window.scrollTo({top:0,behavior:'smooth'}); };
-  var prevSub=window.showTrainingSubtab;
-  window.showTrainingSubtab=function(k){ cur=k; var r=prevSub.apply(this,arguments); mark(); return r; };
-  showTrainingSubtab=window.showTrainingSubtab;
+  function mark(mod){
+    var box=document.getElementById('sideSub-'+mod); if(!box) return;
+    [].forEach.call(box.children,function(b){ b.classList.toggle('on',b.dataset.k===cur[mod]); });
+  }
+  function markAll(){ Object.keys(MODS).forEach(mark); }
+  window.hrdSideGo=function(mod,k){
+    showTab(mod); cur[mod]=k;
+    var item=MODS[mod].filter(function(x){return x[0]===k;})[0]; if(item) item[2]();
+    mark(mod); window.scrollTo({top:0,behavior:'smooth'});
+  };
+  function wrap(fn,mod,keepArg){
+    var prev=window[fn]; if(typeof prev!=='function') return;
+    window[fn]=function(a){ if(keepArg!==false && typeof a==='string') cur[mod]=a; var r=prev.apply(this,arguments); mark(mod); return r; };
+    try{ (0,eval)(fn+'=window.'+fn); }catch(e){}
+  }
+  wrap('showEmployeeSubtab','employees'); wrap('showOnboardingSubtab','onboarding'); wrap('showTrainingSubtab','training');
+  wrap('setPerfSubTab','performance-tracking'); wrap('rcShowSub','recruitment'); wrap('showReportTopic','reports');
+  var prevOpen=window.openEmployeeProfile;
+  if(typeof prevOpen==='function'){ window.openEmployeeProfile=function(){ cur.employees='profile'; var r=prevOpen.apply(this,arguments); mark('employees'); return r; }; }
   var prevTab=window.showTab;
-  window.showTab=function(){ var r=prevTab.apply(this,arguments); build(); mark(); return r; };
+  window.showTab=function(){ var r=prevTab.apply(this,arguments); build(); markAll(); return r; };
   showTab=window.showTab;
-  build(); mark();
+  build(); markAll();
+  setTimeout(function(){ build(); markAll(); },1500);
 })();
 </script>
 </body>
