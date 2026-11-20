@@ -6892,6 +6892,45 @@ html.theme-soft .org-canvas-toolbar,html.theme-soft .org-canvas-toolbar *{text-s
 html.theme-soft .org-canvas-toolbar .small,html.theme-soft .org-canvas-toolbar label{font-size:13px!important;color:#4a5163!important}
 html.theme-soft .org-outline-item{font-size:14px!important;color:#2b3244!important}
 </style>
+<style id="soft-readability">
+/* ===== Light mode readability: stronger text contrast, larger small text, visible field/button edges ===== */
+html.theme-soft body{--module-accent:#2450b8;--module-accent-soft:rgba(36,80,184,.14);--module-accent-border:rgba(36,80,184,.5);font-size:15px;line-height:1.55}
+html.theme-soft{--v4-muted:#4a5468;--v4-subtle:#5f677a;--gs-ink-500:#4a5468;--gs-ink-300:#5f677a;--gs-cmn:#1f4fb8;--gs-cil:#0a6e4b;--gs-ok:#0a6e4b;--gs-danger:#b42323;--gs-amber:#8a5200;--gs-violet:#4f3fb0}
+/* secondary text: 4.0:1 -> 6.2:1, and a readable minimum size */
+html.theme-soft body :is(.sub,.small,.muted,.job-meta,.job-row .job-meta,.card .sub,.empty,.position-list-meta,.course-meta,.bar-label,.brand p,.cloud-sync-status,.gs-res-group,.gs-res-item small,.sidebar-profile-role,.auth-gate-sub,.auth-gate-status,.gs-muted,.gs-dept){color:#4a5468!important}
+html.theme-soft body :is(.small,.position-list-meta,.course-meta,.job-meta,.bar-label,.gs-muted,.gs-dept){font-size:13px!important}
+html.theme-soft body :is(.sub,.card .sub){font-size:14px!important}
+html.theme-soft body .tab-label-en,html.theme-soft body .tab-btn.active .tab-label-en{color:#5f677a!important;font-size:10.5px!important}
+html.theme-soft body .tab-btn .tab-label-th{font-size:14px!important}
+html.theme-soft body input::placeholder,html.theme-soft body textarea::placeholder,html.theme-soft body .global-search input::placeholder{color:#5f677a!important;opacity:1}
+/* form labels */
+html.theme-soft body :is(.field label,#view-employees label){color:#3a4153!important;font-size:13px!important;font-weight:600!important}
+/* fields get a visible edge (previously only a faint inner shadow) */
+html.theme-soft body :is(.field input:not([type=checkbox]):not([type=radio]),.field select,.field textarea,.search-input,select,textarea,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),#view-employees .field input,#view-employees .field select,#view-employees .field textarea){border:1px solid rgba(80,90,115,.42)!important;font-size:14.5px!important}
+html.theme-soft body :is(input,select,textarea):focus{border-color:var(--module-accent)!important;box-shadow:var(--neu-in-sm),0 0 0 3px rgba(36,80,184,.35)!important}
+/* buttons: darker primary (white text 3.6:1 -> 10:1), edge on ghost buttons */
+html.theme-soft body :is(.btn-primary,.btn-green,.btn-gold,.btn-purple,#view-employees .btn-primary){background:linear-gradient(145deg,#46557a,#35425f)!important;color:#fff!important;font-weight:600!important}
+html.theme-soft body :is(.btn-ghost,.subnav-btn,.report-topic-btn,.detail-tab,#view-employees .btn-ghost,#view-employees .subnav-btn,.btn-danger,.danger-outline){border:1px solid rgba(80,90,115,.3)!important;color:#2b3142!important;font-size:13px!important;font-weight:600!important}
+html.theme-soft body :is(.btn-danger,.danger-outline,#view-employees .btn-danger){color:#b42323!important}
+html.theme-soft body :is(.subnav-btn.active,.report-topic-btn.active,.detail-tab.active,#view-employees .subnav-btn.active){color:var(--module-accent)!important;border-color:var(--module-accent)!important}
+html.theme-soft body .app-shell > .tabbar .tab-btn{color:#2b3142!important}
+html.theme-soft body .app-shell > .tabbar .tab-btn.active{color:var(--module-accent)!important}
+/* tables: bigger header text, stronger row lines */
+html.theme-soft body :is(thead th,#view-employees thead th){background:#d3d5dd!important;color:#2b3142!important;font-size:12.5px!important;font-weight:700!important;letter-spacing:0!important;border-bottom:1px solid rgba(80,90,115,.4)!important}
+html.theme-soft body :is(tbody td,#view-employees tbody td){color:#1d2230!important;font-size:14px!important;border-color:rgba(80,90,115,.28)!important}
+html.theme-soft body :is(tbody tr:hover,#view-employees tbody tr:hover){background:rgba(255,255,255,.75)!important}
+/* list items & notes */
+html.theme-soft body :is(.clean-note,.notice,.original-block,.participant-picker,.dash-list-row,.position-list-item,.course-item){color:#2b3142!important}
+html.theme-soft body .position-list-title{font-size:14.5px!important;color:#1d2230!important}
+/* status colours that were below 4.5:1 on the grey background */
+html.theme-soft body .badge.CMN{color:#1f4fb8!important}
+html.theme-soft body :is(.badge.CIL,.badge.active){color:#0a6e4b!important}
+html.theme-soft body .badge.inactive{color:#b42323!important}
+html.theme-soft body :is(.badge.b-today,.badge.b-soon,.badge.b-month,.badge.b-normal,.badge.b-none){color:#2b3142!important}
+html.theme-soft body :is(.badge,.gs-status-pill){font-weight:700!important}
+html.theme-soft body .auth-gate-error{color:#b42323!important}
+html.theme-soft body .field label{letter-spacing:0!important}
+</style>
 <script id="company-scope-helpers">
 window.empInCompany=function(code,company){ if(!company||company==='ALL')return true; var e=(DB.employees||[]).find(function(x){return x.empCode===code;}); return !!e&&e.company===company; };
 window.courseInCompany=function(c,company){
