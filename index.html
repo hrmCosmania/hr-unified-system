@@ -7031,7 +7031,7 @@ window.refreshPerfEmployeeSelects=function(){
     return (DB.employees||[]).filter(function(e){ return e.status !== 'Inactive' && (scope==='ALL' || e.company===scope); });
   }
   function buildICS(types, scope){
-    var emps = scopeEmployees(scope), lines = [], counts = { birthday:0, anniversary:0, probation:0 };
+    var emps = scopeEmployees(scope), lines = [], counts = { birthday:0, anniversary:0, probation:0, training:0 };
     var today = todayStart();
     emps.forEach(function(e){
       if(types.birthday && e.birthDate){
@@ -7066,10 +7066,35 @@ window.refreshPerfEmployeeSelects=function(){
         });
       }
     });
+    if(types.training){
+      var coOk = function(co){ return scope==='ALL' || !co || co===scope; };
+      var nmOf = function(code){ var m = getEmployeeByCode(code); return m ? m.fullName : code; };
+      (DB.trainingCourses||[]).forEach(function(c){
+        var d = parseDate(c.startDate); if(c.status==='เสร็จสิ้น' || !d || d<today || !coOk(c.company)) return;
+        lines = lines.concat(vevent('trn-c-'+c.id, d, '🎓 อบรม: '+c.title, 'ประเภท: '+(c.type||'-')+'\nสถานที่: '+(c.location||'-')+'\nวิทยากร: '+(c.instructor||c.provider||'-'), { alarms:[7,1] })); counts.training++;
+      });
+      (DB.ojtPlans||[]).forEach(function(r){
+        var d = parseDate(r.endDate), m = getEmployeeByCode(r.empCode); if(!d || d<today || r.status==='เสร็จสิ้น' || r.status==='ยกเลิก' || !m || !coOk(m.company)) return;
+        lines = lines.concat(vevent('trn-ojt-'+r.id, d, '🧑‍💻 ครบกำหนด OJT: '+m.fullName+' — '+r.topic, 'พี่เลี้ยง: '+(r.mentor||'-'), { alarms:[3,0] })); counts.training++;
+      });
+      (DB.dsdSubmissions||[]).forEach(function(r){
+        var d = parseDate(r.trainDate); if(!d || d<today || !coOk(r.company)) return;
+        lines = lines.concat(vevent('trn-dsd-'+r.id, d, '🏛️ จัดอบรมตามที่ยื่น กพร.: '+r.title, 'สถานะ: '+(r.status||'-')+'\nเลขที่: '+(r.refNo||'-'), { alarms:[7,1] })); counts.training++;
+      });
+      (DB.trainingEnrollments||[]).forEach(function(e){
+        var d = parseDate(e.certificateExpiryDate), m = getEmployeeByCode(e.employeeCode); if(!d || d<today || !m || !coOk(m.company)) return;
+        var c = (DB.trainingCourses||[]).find(function(x){return x.id===e.courseId;})||{};
+        lines = lines.concat(vevent('trn-cert-'+e.id, d, '📜 ใบรับรองหมดอายุ: '+m.fullName+' — '+(c.title||''), 'เลขที่ใบรับรอง: '+(e.certificate||'-'), { alarms:[30,7] })); counts.training++;
+      });
+      if(window.hrdPendingFollowups){ var keepCo = companyFilter; try{ companyFilter = scope; window.hrdPendingFollowups().forEach(function(x){
+        if(!x.due || x.due<today) return;
+        lines = lines.concat(vevent('trn-fu-'+x.course.id+'-'+x.code, x.due, '📈 ติดตามผลหลังอบรม: '+nmOf(x.code)+' — '+x.course.title, 'ให้หัวหน้างานประเมินการนำความรู้ไปใช้', { alarms:[0] })); counts.training++;
+      }); } finally { companyFilter = keepCo; } }
+    }
     var head = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//HR Unified//Calendar//TH', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
       'X-WR-CALNAME:HR · วันเกิด/ครบรอบ/ทดลองงาน', 'X-WR-TIMEZONE:Asia/Bangkok', 'REFRESH-INTERVAL;VALUE=DURATION:PT6H', 'X-PUBLISHED-TTL:PT6H'];
     var all = head.concat(lines, ['END:VCALENDAR']).map(fold);
-    return { ics: all.join('\r\n') + '\r\n', counts: counts, total: counts.birthday + counts.anniversary + counts.probation };
+    return { ics: all.join('\r\n') + '\r\n', counts: counts, total: counts.birthday + counts.anniversary + counts.probation + counts.training };
   }
 
   function feedUrl(){ var c = cfg(); return location.origin + '/api/calendar?token=' + c.token; }
@@ -7114,6 +7139,7 @@ window.refreshPerfEmployeeSelects=function(){
       + '<div class="sub" style="margin-bottom:12px">รวมวันเกิด ครบรอบอายุงาน และกำหนดการทดลองงานของพนักงานทุกคนไว้ในปฏิทินเดียว ไม่ต้องเพิ่มทีละคนทีละช่วง</div>'
       + chk('birthday', '🎂 วันเกิดพนักงาน', 'ซ้ำทุกปีอัตโนมัติ · แจ้งเตือนล่วงหน้าตามที่ตั้งไว้ในหน้า "วันเกิด"')
       + chk('anniversary', '🎉 ครบรอบการทำงาน 1 / 3 / 5 ปี', 'ใส่ทุกรอบที่ยังมาไม่ถึงของพนักงานแต่ละคนพร้อมกัน · แจ้งเตือนล่วงหน้า 7 วันและวันครบรอบ')
+      + chk('training', '🎓 การฝึกอบรม (HRD)', 'วันอบรม · ครบกำหนด OJT · วันจัดอบรมตามที่ยื่น กพร. · ใบรับรองหมดอายุ · ถึงเวลาติดตามผลหลังอบรม')
       + chk('probation', '📋 ทดลองงาน', 'ทุกช่วง: ครบ 30 / 60 / 90 วัน และครบกำหนดทดลองงาน · แจ้งเตือน 7 วัน, 1 วัน และวันครบกำหนด')
       + '<div class="form-grid two" style="margin-top:12px"><div class="field"><label>ขอบเขตบริษัท</label>' + scopeSel + '</div>'
       + '<div class="field"><label>จำนวนนัดหมายที่จะสร้าง</label><div class="clean-note"><strong>' + built.total + '</strong> รายการ · วันเกิด ' + built.counts.birthday + ' · ครบรอบ ' + built.counts.anniversary + ' · ทดลองงาน ' + built.counts.probation + '</div></div></div>'
@@ -8956,7 +8982,7 @@ window.refreshPerfEmployeeSelects=function(){
     beforeSave:function(r){ if(r.courseId && !r.title) r.title=courseTitle(r.courseId); },
     inCo:coOK, text:function(r){return [r.title,r.refNo,r.trainer,r.status,r.company].join(' ');},
     sort:function(a,b){return String(b.submitDate||'').localeCompare(String(a.submitDate||''));},
-    cols:[['หลักสูตร',function(r){return '<strong>'+esc(r.title)+'</strong><div class="small">'+esc(r.trainer||'')+'</div>';}],['บริษัท',function(r){return esc(r.company||'-');}],['วันที่ยื่น',function(r){return dshort(r.submitDate);}],['เลขที่',function(r){return esc(r.refNo||'-');}],['วันที่จัดอบรม',function(r){return dshort(r.trainDate);}],
+    cols:[['หลักสูตร',function(r){return '<strong>'+esc(r.title)+'</strong><div class="small">'+esc(r.trainer||'')+'</div>';}],['บริษัท',function(r){return esc(r.company||'-');}],['วันที่ยื่น',function(r){return dshort(r.submitDate);}],['เลขที่',function(r){return esc(r.refNo||'-');}],['วันที่จัดอบรม',function(r){return dshort(r.trainDate);}],['ไฟล์แนบ',function(r){return window.hrdFilesHtml('dsd',r);}],
       ['สถานะ',function(r){return pill(r.status,r.status==='อนุมัติ'?'s-open':r.status==='ไม่อนุมัติ'?'s-bad':(r.status==='ขอแก้ไข'||r.status==='รออนุมัติ')?'s-wait':r.status==='ยื่นแล้ว'?'s-run':'s-plan');}]],
     summary:function(rows){ function n(x){return rows.filter(function(r){return r.status===x;}).length;} return kpi('เตรียมเอกสาร',n('เตรียมเอกสาร'))+kpi('ยื่นแล้ว/รออนุมัติ',n('ยื่นแล้ว')+n('รออนุมัติ'))+kpi('ขอแก้ไข',n('ขอแก้ไข'),n('ขอแก้ไข')?'#c53030':'')+kpi('อนุมัติแล้ว',n('อนุมัติ'),'#0a8a4f'); } });
 
@@ -9049,7 +9075,7 @@ window.refreshPerfEmployeeSelects=function(){
   function renderHistory(){
     var box=document.getElementById('training-sub-history'); if(!box) return;
     if(!document.getElementById('hrdHistTable')){
-      box.innerHTML='<section class="card hrd-card"><div class="hrd-bar"><div><h3 style="margin:0">ประวัติการฝึกอบรมรายบุคคล</h3><div class="hrd-sub-note" style="margin:4px 0 0">ดูว่าพนักงานแต่ละคนเคยอบรมหลักสูตรอะไร เมื่อไหร่ ผลเป็นอย่างไร — เพิ่มหลักสูตรและรายชื่อผู้เข้าอบรมได้ด้านล่าง ↓</div></div><button class="btn-ghost" onclick="hrdHistExport()">⬇ ส่งออก CSV</button></div>'
+      box.innerHTML='<section class="card hrd-card"><div class="hrd-bar"><div><h3 style="margin:0">ประวัติการฝึกอบรมรายบุคคล</h3><div class="hrd-sub-note" style="margin:4px 0 0">ดูว่าพนักงานแต่ละคนเคยอบรมหลักสูตรอะไร เมื่อไหร่ ผลเป็นอย่างไร — เพิ่มหลักสูตรและรายชื่อผู้เข้าอบรมได้ด้านล่าง ↓</div></div><span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn-ghost" onclick="hrdImportPick()">⬆ นำเข้าจาก Excel</button><button class="btn-ghost" onclick="hrdImportTemplate()">📄 แม่แบบ Excel</button><button class="btn-ghost" onclick="hrdHistExport()">⬇ ส่งออก CSV</button></span></div>'
         +'<div class="hrd-qrow"><input id="hrdHistQ" placeholder="ค้นหา ชื่อ รหัส แผนก หลักสูตร" oninput="hrdHistFilter()"/><select id="hrdHistY" onchange="hrdHistFilter()"></select></div><div class="table-wrap" id="hrdHistTable"></div></section>';
     }
     var ys={}; (DB.trainingCourses||[]).forEach(function(c){var d=parseDate(c.startDate); if(d) ys[d.getFullYear()]=1;});
@@ -9078,6 +9104,307 @@ window.refreshPerfEmployeeSelects=function(){
     var box=document.getElementById('training-sub-need'); if(!box) return;
     if(!document.getElementById('hrdRoadmap')) box.innerHTML='<div id="hrdRoadmap"></div><div id="hrdNeedCrud"></div><section class="card hrd-card"><h3>ความครอบคลุมการอบรมรายบุคคล</h3><div id="hrdCoverageBox"></div></section>';
     fillLists(); renderRoadmap(); need.render(); H.renderCoverage();
+  };
+})();
+</script>
+<script id="hrd-extras-script">
+(function(){
+  var H = window.hrdCore, esc = H.esc, fmt = H.fmt;
+  function attr(v){ return v4EscapeAttr(v); }
+  function today(){ return todayStart(); }
+  function iso(d){ return d.toISOString().slice(0,10); }
+  function dshort(v){ var d=parseDate(v); return d? d.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) : '-'; }
+  function pill(txt,cls){ return '<span class="hrd-pill '+(cls||'')+'">'+esc(txt||'-')+'</span>'; }
+  var CO_NAME = { CMN:'บริษัท คอสเมเนีย แลบอราทอรี่ส์ จำกัด', CIL:'บริษัท คอสซูติค อินโนเวชั่น แลบอราทอรี่ส์ จำกัด' };
+  function coName(c){ return CO_NAME[c] || 'บริษัท คอสเมเนีย แลบอราทอรี่ส์ จำกัด / บริษัท คอสซูติค อินโนเวชั่น แลบอราทอรี่ส์ จำกัด'; }
+  function courseById2(id){ return (DB.trainingCourses||[]).find(function(c){return c.id===id;}); }
+
+  /* ================= 1) ไฟล์แนบ ================= */
+  function filesOwner(kind,id){ return (kind==='course'?DB.trainingCourses:DB.dsdSubmissions).find(function(r){return r.id===id;}); }
+  function rerenderFiles(kind){ if(kind==='dsd' && window.hrdCrud && hrdCrud.dsd) hrdCrud.dsd.render(); else renderTrainingModuleV4(); }
+  window.hrdFilesHtml = function(kind,rec){
+    var fs = rec.files||[];
+    return fs.map(function(f,i){ return '<div class="small"><a href="#" onclick="hrdFileOpen(\''+kind+'\',\''+attr(rec.id)+'\','+i+');return false">📎 '+esc(f.name)+'</a> <a href="#" title="ลบไฟล์" onclick="hrdFileDel(\''+kind+'\',\''+attr(rec.id)+'\','+i+');return false">✕</a></div>'; }).join('')
+      + '<button class="btn-ghost btn-sm" onclick="hrdFileAdd(\''+kind+'\',\''+attr(rec.id)+'\')">+ แนบไฟล์</button>';
+  };
+  window.hrdFileAdd = function(kind,id){
+    var inp=document.createElement('input'); inp.type='file'; inp.multiple=true;
+    inp.onchange=function(){
+      var files=Array.from(inp.files||[]); if(!files.length) return;
+      supabaseClient.auth.getSession().then(function(r){
+        if(!r||!r.data||!r.data.session){ toast('ต้องล็อกอินก่อนจึงจะแนบไฟล์ได้'); return; }
+        var rec=filesOwner(kind,id); if(!rec) return; rec.files=rec.files||[];
+        var jobs=files.map(function(f){
+          if(f.size>10*1024*1024){ toast('ไฟล์ '+f.name+' ใหญ่เกิน 10 MB'); return Promise.resolve(); }
+          var path='hrd/'+kind+'/'+id+'/'+Date.now()+'_'+Math.random().toString(36).slice(2,6)+'_'+f.name.replace(/[^\w.\-]+/g,'_');
+          return supabaseClient.storage.from('resumes').upload(path,f,{contentType:f.type||'application/octet-stream'}).then(function(u){
+            if(u.error) toast('แนบไฟล์ไม่สำเร็จ: '+u.error.message+' (ต้องรัน recruit_setup.sql ใน Supabase ก่อน)');
+            else rec.files.push({name:f.name,path:path,size:f.size,at:v4Now()});
+          });
+        });
+        Promise.all(jobs).then(function(){ rec.updatedAt=v4Now(); saveDB(); rerenderFiles(kind); toast('แนบไฟล์แล้ว'); });
+      });
+    };
+    inp.click();
+  };
+  window.hrdFileOpen = function(kind,id,i){
+    var rec=filesOwner(kind,id), f=rec&&rec.files&&rec.files[i]; if(!f) return;
+    var w=window.open('','_blank');
+    supabaseClient.storage.from('resumes').createSignedUrl(f.path,3600).then(function(r){
+      if(r.error){ if(w) w.close(); toast('เปิดไฟล์ไม่สำเร็จ: '+r.error.message); } else if(w) w.location.href=r.data.signedUrl; else toast('เบราว์เซอร์บล็อกหน้าต่างใหม่ กรุณาอนุญาต pop-up');
+    });
+  };
+  window.hrdFileDel = function(kind,id,i){
+    var rec=filesOwner(kind,id), f=rec&&rec.files&&rec.files[i]; if(!f) return;
+    if(!confirm('ลบไฟล์ "'+f.name+'" ใช่ไหม? (กู้คืนไม่ได้)')) return;
+    try{ supabaseClient.storage.from('resumes').remove([f.path]); }catch(e){}
+    rec.files.splice(i,1); saveDB(); rerenderFiles(kind);
+  };
+
+  /* ================= 3) พิมพ์ใบลงชื่อ / แบบประเมิน ================= */
+  var PRINT_CSS = '@page{size:A4;margin:14mm}body{font-family:"Sarabun","Tahoma",sans-serif;font-size:14px;color:#111}h1{font-size:18px;text-align:center;margin:0 0 4px}h2{font-size:15px;text-align:center;margin:0 0 12px;font-weight:600}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #444;padding:6px 8px;text-align:left;vertical-align:middle}th{background:#eee}.meta td{border:0;padding:2px 6px}.sig{height:34px}.pb{page-break-after:always}.c{text-align:center}.sm{font-size:12px;color:#444}';
+  function openPrint(title,body){
+    var w=window.open('','_blank'); if(!w){ toast('เบราว์เซอร์บล็อกหน้าต่างใหม่ กรุณาอนุญาต pop-up'); return; }
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title><link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet"><style>'+PRINT_CSS+'</style></head><body>'+body+'</body></html>');
+    w.document.close(); setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 700);
+  }
+  function courseParticipants(c){ return (DB.trainingEnrollments||[]).filter(function(e){return e.courseId===c.id;}).map(function(e){ var m=getEmployeeByCode(e.employeeCode)||{}; return {code:e.employeeCode,name:m.fullName||e.employeeCode,dept:m.department||'',company:m.company}; }); }
+  function courseMeta(c,pp){
+    var co=c.company||(pp[0]&&pp[0].company)||'';
+    var dt=c.startDate?formatThaiDate(c.startDate)+(c.endDate&&c.endDate!==c.startDate?' – '+formatThaiDate(c.endDate):''):'-';
+    return '<h1>'+esc(coName(co))+'</h1>'+'<table class="meta"><tr><td colspan="2"><b>หลักสูตร:</b> '+esc(c.title)+'</td></tr><tr><td><b>วันที่:</b> '+esc(dt)+(c.startTime?' เวลา '+esc(c.startTime)+(c.endTime?'–'+esc(c.endTime):''):'')+'</td><td><b>สถานที่:</b> '+esc(c.location||'-')+'</td></tr><tr><td><b>วิทยากร:</b> '+esc(c.instructor||c.provider||'-')+'</td><td><b>จำนวนชั่วโมง:</b> '+esc(c.hours||'-')+'</td></tr></table>';
+  }
+  window.hrdPrintSignin = function(id){
+    var c=courseById2(id); if(!c) return; var pp=courseParticipants(c), rows=[];
+    for(var i=0;i<Math.max(pp.length,15);i++){ var p=pp[i]||{}; rows.push('<tr><td class="c">'+(i+1)+'</td><td>'+esc(p.code||'')+'</td><td>'+esc(p.name||'')+'</td><td>'+esc(p.dept||'')+'</td><td class="sig"></td><td class="sig"></td></tr>'); }
+    openPrint('ใบลงชื่อผู้เข้าอบรม - '+c.title, '<h2>ใบลงชื่อผู้เข้าอบรม</h2>'+courseMeta(c,pp)+'<table><thead><tr><th class="c" style="width:36px">ลำดับ</th><th style="width:80px">รหัส</th><th>ชื่อ-นามสกุล</th><th>แผนก</th><th style="width:130px">ลายมือชื่อ (เช้า)</th><th style="width:130px">ลายมือชื่อ (บ่าย)</th></tr></thead><tbody>'+rows.join('')+'</tbody></table><p class="sm">ผู้ควบคุมการอบรม: ______________________________ &nbsp;&nbsp; วันที่: ____________</p>');
+  };
+  window.hrdPrintEval = function(id){
+    var c=courseById2(id); if(!c) return; var pp=courseParticipants(c); if(!pp.length) pp=[{name:'',dept:'',code:''}];
+    var items=['เนื้อหาหลักสูตรตรงตามวัตถุประสงค์','ลำดับการนำเสนอและความเข้าใจง่าย','วิทยากรมีความรู้และถ่ายทอดได้ชัดเจน','สื่อ / เอกสารประกอบการอบรม','สถานที่ อุปกรณ์ และการอำนวยความสะดวก','ระยะเวลาการอบรมเหมาะสม','สามารถนำความรู้ไปใช้กับงานได้'];
+    var th='<th class="c" style="width:44px">5<br>มากที่สุด</th><th class="c" style="width:44px">4<br>มาก</th><th class="c" style="width:44px">3<br>ปานกลาง</th><th class="c" style="width:44px">2<br>น้อย</th><th class="c" style="width:44px">1<br>น้อยที่สุด</th>';
+    var pages=pp.map(function(p){ return '<div class="pb"><h2>แบบประเมินความพึงพอใจหลังการฝึกอบรม</h2>'+courseMeta(c,pp)+'<table class="meta"><tr><td><b>ชื่อผู้ประเมิน:</b> '+esc(p.name||'______________________')+'</td><td><b>แผนก:</b> '+esc(p.dept||'______________')+'</td></tr></table><table><thead><tr><th>หัวข้อประเมิน</th>'+th+'</tr></thead><tbody>'+items.map(function(t,i){return '<tr><td>'+(i+1)+'. '+esc(t)+'</td><td></td><td></td><td></td><td></td><td></td></tr>';}).join('')+'</tbody></table><p><b>สิ่งที่ได้เรียนรู้ / จะนำไปใช้:</b> ________________________________________________<br><br>________________________________________________________________________</p><p><b>ข้อเสนอแนะเพิ่มเติม / หัวข้อที่อยากอบรมเพิ่ม:</b> _____________________________________<br><br>________________________________________________________________________</p></div>'; }).join('');
+    openPrint('แบบประเมินความพึงพอใจ - '+c.title, pages);
+  };
+  var prevDetail = window.renderTrainingCourseDetail;
+  window.renderTrainingCourseDetail = function(){
+    var r = prevDetail.apply(this, arguments);
+    try{
+      var panel=document.getElementById('trainingCourseDetail'), c=courseById2(v4SelectedCourseId);
+      if(panel && c){
+        panel.insertAdjacentHTML('beforeend','<div class="hrd-form" style="margin-top:12px"><div class="hrd-bar" style="margin:0"><b>เอกสารของหลักสูตร</b><span><button class="btn-ghost btn-sm" onclick="hrdPrintSignin(\''+attr(c.id)+'\')">🖨 ใบลงชื่อ</button> <button class="btn-ghost btn-sm" onclick="hrdPrintEval(\''+attr(c.id)+'\')">🖨 แบบประเมินความพึงพอใจ</button></span></div><div style="margin-top:8px">'+hrdFilesHtml('course',c)+'</div></div>');
+      }
+    }catch(e){}
+    return r;
+  };
+  renderTrainingCourseDetail = window.renderTrainingCourseDetail;
+
+  /* ================= 4) งบประมาณเทียบการใช้จริง ================= */
+  function budgetRows(year){
+    var act={};
+    H.coursesOf(year).forEach(function(c){
+      var cost=courseTotalCost(c); if(!cost) return;
+      var en=(DB.trainingEnrollments||[]).filter(function(e){return e.courseId===c.id && empInCompany(e.employeeCode,companyFilter);});
+      if(!en.length){ act['(ยังไม่ระบุผู้เข้าอบรม)']=(act['(ยังไม่ระบุผู้เข้าอบรม)']||0)+cost; return; }
+      en.forEach(function(e){ var d=(getEmployeeByCode(e.employeeCode)||{}).department||'(ไม่ระบุแผนก)'; act[d]=(act[d]||0)+cost/en.length; });
+    });
+    var bud={}; (DB.trainingBudgets||[]).forEach(function(b){ if(Number(b.year)===year && (companyFilter==='ALL'||!b.company||b.company===companyFilter)) bud[b.department]=(bud[b.department]||0)+Number(b.budgetAmount||0); });
+    var keys={}; Object.keys(act).forEach(function(k){keys[k]=1;}); Object.keys(bud).forEach(function(k){keys[k]=1;});
+    return Object.keys(keys).map(function(k){ var b=bud[k]||0,a=act[k]||0; return {dept:k,budget:b,actual:a,pct:b?Math.round(a*100/b):null}; }).sort(function(x,y){ return (y.pct==null?-1:y.pct)-(x.pct==null?-1:x.pct) || y.actual-x.actual; });
+  }
+  function budgetHtml(year){
+    var rows=budgetRows(year), tb=0, ta=0; rows.forEach(function(r){tb+=r.budget;ta+=r.actual;});
+    var body=rows.map(function(r){
+      var p=r.pct, color=p==null?'#a8adb8':p>100?'#c53030':p>=80?'#e08a1e':'#22b573';
+      return '<div style="margin:10px 0"><div style="display:flex;justify-content:space-between;gap:8px;font-size:14px"><span>'+esc(r.dept)+'</span><span><b>'+fmt(r.actual)+'</b> / '+(r.budget?fmt(r.budget):'ไม่ได้ตั้งงบ')+' บาท'+(p!=null?' · <b style="color:'+color+'">'+p+'%</b>':'')+'</span></div><div class="hrd-prog" style="height:10px;margin-top:4px"><i style="width:'+Math.min(100,p==null?0:p)+'%;background:'+color+'"></i></div></div>';
+    }).join('')||'<div class="small">ยังไม่มีข้อมูลงบประมาณ/ค่าใช้จ่ายในปีนี้ — ตั้งงบที่เมนู "งบประมาณการฝึกอบรม" และกรอกค่าใช้จ่ายในหลักสูตร</div>';
+    return '<section class="card hrd-card"><h3>งบประมาณเทียบค่าใช้จ่ายจริง ปี '+(year+543)+'</h3><div class="hrd-sub-note">ค่าใช้จ่ายหลักสูตรถูกแบ่งเท่าๆ กันตามแผนกของผู้เข้าอบรม · เหลือง = ใช้ถึง 80% · แดง = เกินงบ</div>'
+      +(rows.length?'<div style="font-size:15px;margin-bottom:6px">รวม: ใช้ <b>'+fmt(ta)+'</b> บาท จากงบ <b>'+fmt(tb)+'</b> บาท'+(tb?' ('+Math.round(ta*100/tb)+'%)':'')+'</div>':'')+body+'</section>';
+  }
+
+  /* ================= 6) ชั่วโมงอบรมขั้นต่ำ ================= */
+  window.hrdMinHours = function(){ var v=Number((DB.settings||{}).trainingMinHours); return v>0?v:12; };
+  function empHours(year){
+    var ids={}; H.coursesOf(year).forEach(function(c){ids[c.id]=c;});
+    var emps=(DB.employees||[]).filter(function(e){return e.status==='Active' && (companyFilter==='ALL'||e.company===companyFilter);});
+    return emps.map(function(e){
+      var en=(DB.trainingEnrollments||[]).filter(function(x){return x.employeeCode===e.empCode && ids[x.courseId] && x.attendance!=='Absent';});
+      return {emp:e,count:en.length,hours:en.reduce(function(s,x){return s+Number(ids[x.courseId].hours||0);},0),titles:en.map(function(x){return ids[x.courseId].title;})};
+    });
+  }
+  function hoursCard(year){
+    var rows=empHours(year), t=hrdMinHours(), ok=rows.filter(function(r){return r.hours>=t;}).length, tot=rows.reduce(function(s,r){return s+r.hours;},0);
+    var pct=rows.length?Math.round(ok*100/rows.length):0;
+    return '<section class="card hrd-card"><h3>ชั่วโมงอบรมเทียบเป้าหมายต่อคน</h3><div class="hrd-kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="hrd-kpi"><div class="l">เป้าหมายขั้นต่ำ</div><div class="v">'+t+' <small>ชม./คน/ปี</small></div></div><div class="hrd-kpi"><div class="l">เฉลี่ยจริง</div><div class="v">'+(rows.length?(tot/rows.length).toFixed(1):'0')+' <small>ชม./คน</small></div></div><div class="hrd-kpi"><div class="l">ถึงเป้าแล้ว</div><div class="v">'+ok+' <small>/ '+rows.length+' คน ('+pct+'%)</small></div></div></div><div class="hrd-prog" style="height:10px;margin-top:12px"><i style="width:'+pct+'%;background:'+(pct>=80?'#22b573':pct>=50?'#e08a1e':'#c53030')+'"></i></div><div style="margin-top:8px"><button class="btn-ghost btn-sm" onclick="hrdGo(\'need\')">ดูรายชื่อที่ยังไม่ถึงเป้า →</button></div></section>';
+  }
+  window.hrdSetMinHours = function(v){ DB.settings=DB.settings||{}; DB.settings.trainingMinHours=Math.max(0,Number(v)||0); saveDB(); H.renderCoverage(); };
+
+  /* ---- ความครอบคลุมรายบุคคล (แทนของเดิม) ---- */
+  H.renderCoverage = function(){
+    var box=document.getElementById('hrdCoverageBox'); if(!box) return;
+    var year=H.getYear(), t=hrdMinHours();
+    if(!document.getElementById('hrdCovTable')){
+      box.innerHTML='<div class="hrd-qrow"><label class="small">เป้าหมายชั่วโมงอบรมขั้นต่ำ/คน/ปี <input id="hrdMinH" type="number" min="0" style="width:90px" value="'+t+'" onchange="hrdSetMinHours(this.value)"/></label><label class="small"><input type="checkbox" id="hrdOnlyLow" onchange="hrdNeedSearchChange()"/> เฉพาะที่ยังไม่ถึงเป้า</label></div><div class="hrd-sub-note" id="hrdCovNote"></div><div class="field"><input id="hrdNeedSearch" oninput="hrdNeedSearchChange()" placeholder="ค้นหา ชื่อ รหัส แผนก ตำแหน่ง"/></div><div id="hrdCovTable" class="table-wrap" style="margin-top:10px"></div>';
+    }
+    var q=document.getElementById('hrdNeedSearch').value.trim().toLowerCase(), low=document.getElementById('hrdOnlyLow').checked;
+    var all=empHours(year).sort(function(a,b){return a.hours-b.hours||String(a.emp.department||'').localeCompare(String(b.emp.department||''),'th');});
+    var below=all.filter(function(r){return r.hours<t;}).length;
+    var rows=all.filter(function(r){ if(low&&r.hours>=t) return false; return !q||(r.emp.fullName+' '+r.emp.empCode+' '+(r.emp.department||'')+' '+(r.emp.position||'')).toLowerCase().indexOf(q)>=0; });
+    document.getElementById('hrdCovNote').textContent='ปี '+(year+543)+': ยังไม่ถึงเป้า '+t+' ชม. จำนวน '+below+' คน จากทั้งหมด '+all.length+' คน (เรียงคนที่ชั่วโมงน้อยสุดไว้ก่อน)';
+    document.getElementById('hrdCovTable').innerHTML='<table><thead><tr><th>พนักงาน</th><th>แผนก</th><th>ตำแหน่ง</th><th>จำนวนหลักสูตร</th><th style="min-width:140px">ชั่วโมง / เป้า</th><th>หลักสูตรที่วางแผน/เข้าร่วม</th></tr></thead><tbody>'
+      +(rows.slice(0,200).map(function(r){ var p=t?Math.min(100,Math.round(r.hours*100/t)):100; return '<tr><td><strong>'+esc(r.emp.fullName)+'</strong><div class="small">'+esc(r.emp.empCode)+'</div></td><td>'+esc(r.emp.department||'-')+'</td><td>'+esc(r.emp.position||'-')+'</td><td>'+(r.count?r.count:pill('ยังไม่มีแผน','s-wait'))+'</td><td><div class="hrd-prog"><i style="width:'+p+'%;background:'+(p>=100?'#22b573':'#3b82f6')+'"></i></div><div class="small">'+fmt(r.hours)+' / '+t+' ชม.</div></td><td>'+(esc(r.titles.join(', '))||'-')+'</td></tr>'; }).join('')||'<tr><td colspan="6" class="empty">ไม่พบข้อมูล</td></tr>')+'</tbody></table>'+(rows.length>200?'<div class="small">แสดง 200 รายการแรก — พิมพ์ค้นหาเพื่อกรอง</div>':'');
+  };
+  window.hrdNeedSearchChange = function(){ H.renderCoverage(); };
+
+  /* ================= 5) Training Need อัตโนมัติจาก Competency Gap ================= */
+  function suggestions(){
+    var emps=(DB.employees||[]).filter(function(e){return e.status==='Active' && (companyFilter==='ALL'||e.company===companyFilter);});
+    var cnt={}; emps.forEach(function(e){ var k=(e.company||'')+'|'+(e.jobCode||'')+'|'+(e.position||''); cnt[k]=(cnt[k]||0)+1; });
+    var needs=(DB.trainingNeeds||[]), courses=(DB.trainingCourses||[]), seen={}, out=[];
+    (DB.competencies||[]).forEach(function(cp){
+      if(Number(cp.expectedLevel)<4) return;
+      var k=(cp.company||'')+'|'+(cp.jobCode||'')+'|'+(cp.position||''); var n=cnt[k]; if(!n) return;
+      var nm=String(cp.name||'').trim(); if(!nm) return;
+      var dk=k+'|'+nm; if(seen[dk]) return; seen[dk]=1;
+      var covered=needs.some(function(x){return x.status!=='ยกเลิก' && String(x.topic||'').indexOf(nm)>=0 && (!x.position||x.position===cp.position);})
+        || courses.some(function(c){var l=String(c.kpiCompetencyLink||''); return l && (l.indexOf(nm)>=0 || (cp.code && l.indexOf(cp.code)>=0));});
+      if(covered) return;
+      out.push({pos:cp.position||cp.jobCode,name:nm,level:Number(cp.expectedLevel),n:n,company:cp.company,type:cp.type});
+    });
+    return out.sort(function(a,b){return b.level*b.n-a.level*a.n;});
+  }
+  window.hrdSuggestAdd = function(i){
+    var s=suggestions()[i]; if(!s) return;
+    hrdCrud.need.add({topic:'พัฒนาสมรรถนะ: '+s.name,position:s.pos,source:'Competency Gap',priority:s.level>=5?'สูง':'กลาง',status:'รอพิจารณา',targetYear:H.getYear(),targetQuarter:'Q1',company:s.company||''});
+  };
+  function suggestHtml(){
+    var list=suggestions();
+    return '<section class="card hrd-card"><h3>💡 ข้อเสนอ Training Need จาก Competency</h3><div class="hrd-sub-note">ตำแหน่งที่ระบบกำหนดระดับ Competency ที่ต้องการ ≥ 4 แต่ยังไม่มี Training Need หรือหลักสูตรที่ปิดช่องว่างนี้ — กด "เพิ่ม" เพื่อสร้างเป็นรายการ Training Need</div>'
+      +'<div class="table-wrap"><table><thead><tr><th>ตำแหน่ง</th><th>Competency</th><th>ระดับที่ต้องการ</th><th>จำนวนคน</th><th></th></tr></thead><tbody>'
+      +(list.slice(0,25).map(function(s,i){return '<tr><td>'+esc(s.pos)+'</td><td>'+esc(s.name)+'</td><td>'+s.level+'/5</td><td>'+s.n+'</td><td><button class="btn-primary btn-sm" onclick="hrdSuggestAdd('+i+')">+ เพิ่ม</button></td></tr>';}).join('')||'<tr><td colspan="5" class="empty">ไม่มีข้อเสนอ (ครอบคลุมครบแล้ว หรือยังไม่มีข้อมูล Competency)</td></tr>')
+      +'</tbody></table></div>'+(list.length>25?'<div class="small">แสดง 25 อันดับแรก จาก '+list.length+' รายการ</div>':'')+'</section>';
+  }
+  var prevNeed = window.hrdRenderers.need;
+  window.hrdRenderers.need = function(){
+    prevNeed();
+    var box=document.getElementById('training-sub-need'), rm=document.getElementById('hrdRoadmap'); if(!box||!rm) return;
+    var s=document.getElementById('hrdSuggest'); if(!s){ s=document.createElement('div'); s.id='hrdSuggest'; rm.insertAdjacentElement('afterend',s); }
+    s.innerHTML=suggestHtml();
+  };
+
+  /* ================= 2) เตือนความจำ (ภาพรวม) ================= */
+  function reminders(){
+    var t=today(), out=[], d14=new Date(t.getTime()+14*86400000), d60=new Date(t.getTime()+60*86400000), d30=new Date(t.getTime()+30*86400000);
+    function nm(c){ return (getEmployeeByCode(c)||{}).fullName||c; }
+    (DB.trainingEnrollments||[]).forEach(function(e){ var d=parseDate(e.certificateExpiryDate); if(!d||d>d60||!empInCompany(e.employeeCode,companyFilter)) return; var c=courseById2(e.courseId)||{}; out.push({ic:'📜',txt:'ใบรับรอง '+(c.title||'')+' ของ '+nm(e.employeeCode)+(d<t?' หมดอายุแล้ว':' ใกล้หมดอายุ'),date:d,go:'history',bad:d<t}); });
+    (DB.ojtPlans||[]).forEach(function(r){ if(r.status==='เสร็จสิ้น'||r.status==='ยกเลิก'||!empInCompany(r.empCode,companyFilter)) return; var d=parseDate(r.endDate); if(d&&d<=d14) out.push({ic:'🧑‍💻',txt:'OJT "'+r.topic+'" ของ '+nm(r.empCode)+(d<t?' เลยกำหนด':' ใกล้ครบกำหนด'),date:d,go:'ojt',bad:d<t}); });
+    window.hrdPendingFollowups().forEach(function(x){ if(x.due&&x.due<=new Date(t.getTime()+7*86400000)) out.push({ic:'📈',txt:'ถึงเวลาติดตามผล '+nm(x.code)+' — '+x.course.title,date:x.due,go:'followup',bad:x.due<t}); });
+    (DB.dsdSubmissions||[]).forEach(function(r){ if(!coOKx(r)||r.status==='อนุมัติ'||r.status==='ไม่อนุมัติ') return; var d=parseDate(r.trainDate); if(d&&d<=d30) out.push({ic:'🏛️',txt:'หลักสูตร "'+r.title+'" ใกล้วันอบรมแต่ยังไม่ได้รับอนุมัติจาก กพร. (สถานะ: '+r.status+')',date:d,go:'dsd',bad:d<t}); });
+    (DB.trainingCourses||[]).forEach(function(c){ if(c.status==='เสร็จสิ้น'||!courseInCompany(c,companyFilter)) return; var d=parseDate(c.startDate); if(d&&d>=t&&d<=new Date(t.getTime()+7*86400000)) out.push({ic:'🎓',txt:'หลักสูตร "'+c.title+'" เริ่มภายใน 7 วัน',date:d,go:'history',bad:false}); });
+    budgetRows(new Date().getFullYear()).forEach(function(r){ if(r.pct!=null&&r.pct>=80) out.push({ic:'💰',txt:'งบอบรมแผนก '+r.dept+' ใช้ไปแล้ว '+r.pct+'%'+(r.pct>100?' (เกินงบ)':''),date:null,go:'overview',bad:r.pct>100}); });
+    return out.sort(function(a,b){ return (a.date?a.date.getTime():9e15)-(b.date?b.date.getTime():9e15); });
+  }
+  function coOKx(r){ return companyFilter==='ALL'||!r.company||r.company===companyFilter; }
+  function remindersHtml(){
+    var l=reminders();
+    return '<section class="card hrd-card"><h3>🔔 เตือนความจำ — ใกล้ถึงกำหนด ('+l.length+')</h3>'+(l.slice(0,12).map(function(r){ return '<div class="hrd-alert" onclick="hrdGo(\''+r.go+'\')"><span style="font-size:20px">'+r.ic+'</span><span>'+esc(r.txt)+'</span><span style="margin-left:auto;white-space:nowrap">'+(r.date?pill(dshort(r.date),r.bad?'s-bad':'s-wait'):'')+'</span></div>'; }).join('')||'<div class="small">ไม่มีรายการใกล้ถึงกำหนด 🎉</div>')+(l.length>12?'<div class="small">และอีก '+(l.length-12)+' รายการ</div>':'')+'<div class="small" style="margin-top:8px">เปิดให้เตือนในปฏิทิน Google ได้ที่ ตั้งค่า → ปฏิทินรวม → ติ๊ก "🎓 การฝึกอบรม"</div></section>';
+  }
+
+  /* ================= 7) รายงานผู้บริหาร ================= */
+  function reportData(year){
+    var cs=H.coursesOf(year), en=H.enrollsOf(cs), people={}; en.forEach(function(e){people[e.employeeCode]=1;});
+    var pass=en.filter(function(e){return e.result==='ผ่าน';}).length, fail=en.filter(function(e){return e.result==='ไม่ผ่าน';}).length;
+    var cost=cs.reduce(function(s,c){return s+courseTotalCost(c);},0), hours=cs.reduce(function(s,c){return s+Number(c.hours||0)*en.filter(function(e){return e.courseId===c.id&&e.attendance!=='Absent';}).length;},0);
+    var types={}; cs.forEach(function(c){var k=H.typeOf(c); types[k]=(types[k]||0)+1;});
+    var courses=cs.map(function(c){ var ee=en.filter(function(e){return e.courseId===c.id;}); return {title:c.title,type:H.typeOf(c),start:c.startDate,hours:c.hours||0,people:ee.length,cost:courseTotalCost(c),pass:ee.filter(function(e){return e.result==='ผ่าน';}).length}; }).sort(function(a,b){return b.people-a.people;});
+    var dsd=(DB.dsdSubmissions||[]).filter(coOKx), ojt=(DB.ojtPlans||[]).filter(function(r){return empInCompany(r.empCode,companyFilter);}), fu=(DB.trainingFollowups||[]).filter(function(r){return empInCompany(r.empCode,companyFilter);});
+    var dept={}; var eh=empHours(year); eh.forEach(function(r){ var d=r.emp.department||'(ไม่ระบุแผนก)'; var o=dept[d]=dept[d]||{dept:d,staff:0,trained:0,hours:0}; o.staff++; if(r.count) o.trained++; o.hours+=r.hours; });
+    var brows=budgetRows(year);
+    return {year:year,courses:courses,count:cs.length,people:Object.keys(people).length,enrolls:en.length,passRate:(pass+fail)?Math.round(pass*100/(pass+fail)):null,cost:cost,hours:hours,types:types,dsd:dsd,ojt:ojt,fu:fu,dept:Object.keys(dept).map(function(k){return dept[k];}).sort(function(a,b){return b.hours-a.hours;}),budget:brows,staff:eh.length,minH:hrdMinHours(),reached:eh.filter(function(r){return r.hours>=hrdMinHours();}).length};
+  }
+  window.hrdPrintReport = function(){
+    var d=reportData(H.getYear()), co=companyFilter==='ALL'?'ทุกบริษัท (CMN + CIL)':companyFilter;
+    function tr(a){ return '<tr>'+a.map(function(x){return '<td>'+esc(x)+'</td>';}).join('')+'</tr>'; }
+    function cnt(arr,k,v){ return arr.filter(function(r){return r[k]===v;}).length; }
+    var body='<h1>รายงานสรุปการพัฒนาบุคลากร (HRD) ปี '+(d.year+543)+'</h1><h2>'+esc(co)+' · จัดทำเมื่อ '+esc(formatThaiDate(iso(new Date())))+'</h2>'
+      +'<table><tr><th>จำนวนหลักสูตร</th><th>พนักงานที่ได้อบรม</th><th>ชั่วโมงอบรมรวม (คน-ชม.)</th><th>ค่าใช้จ่ายรวม (บาท)</th><th>อัตราผ่านอบรม</th></tr><tr><td>'+d.count+'</td><td>'+d.people+' / '+d.staff+' คน</td><td>'+fmt(d.hours)+'</td><td>'+fmt(d.cost)+'</td><td>'+(d.passRate==null?'-':d.passRate+'%')+'</td></tr></table>'
+      +'<p>พนักงานที่อบรมถึงเป้า '+d.minH+' ชม./ปี: <b>'+d.reached+'</b> จาก '+d.staff+' คน</p>'
+      +'<h2 style="text-align:left;margin-top:16px">สัดส่วนประเภทการฝึกอบรม</h2><table><tr><th>ประเภท</th><th>จำนวนหลักสูตร</th></tr>'+Object.keys(d.types).map(function(k){return tr([k,d.types[k]]);}).join('')+'</table>'
+      +'<h2 style="text-align:left;margin-top:16px">งบประมาณเทียบใช้จริงรายแผนก</h2><table><tr><th>แผนก</th><th>งบ (บาท)</th><th>ใช้จริง (บาท)</th><th>%</th></tr>'+(d.budget.map(function(r){return tr([r.dept,fmt(r.budget),fmt(r.actual),r.pct==null?'-':r.pct+'%']);}).join('')||'<tr><td colspan="4">-</td></tr>')+'</table>'
+      +'<h2 style="text-align:left;margin-top:16px">การอบรมรายแผนก</h2><table><tr><th>แผนก</th><th>พนักงาน</th><th>ได้อบรม</th><th>ชั่วโมงรวม</th></tr>'+d.dept.map(function(r){return tr([r.dept,r.staff,r.trained,fmt(r.hours)]);}).join('')+'</table>'
+      +'<h2 style="text-align:left;margin-top:16px">หลักสูตรที่จัด</h2><table><tr><th>หลักสูตร</th><th>ประเภท</th><th>วันที่</th><th>ชม.</th><th>ผู้เข้าอบรม</th><th>ผ่าน</th><th>ค่าใช้จ่าย</th></tr>'+(d.courses.map(function(c){return tr([c.title,c.type,c.start?formatThaiDate(c.start):'-',c.hours,c.people,c.pass,fmt(c.cost)]);}).join('')||'<tr><td colspan="7">-</td></tr>')+'</table>'
+      +'<h2 style="text-align:left;margin-top:16px">สถานะงานอื่นๆ</h2><table><tr><th>เรื่อง</th><th>รายละเอียด</th></tr>'
+      +tr(['ยื่นหลักสูตร กพร.','ทั้งหมด '+d.dsd.length+' · อนุมัติ '+cnt(d.dsd,'status','อนุมัติ')+' · รอผล/ยื่นแล้ว '+(cnt(d.dsd,'status','ยื่นแล้ว')+cnt(d.dsd,'status','รออนุมัติ'))+' · ขอแก้ไข '+cnt(d.dsd,'status','ขอแก้ไข')])
+      +tr(['OJT','ทั้งหมด '+d.ojt.length+' · เสร็จสิ้น '+cnt(d.ojt,'status','เสร็จสิ้น')+' · กำลังดำเนินการ '+cnt(d.ojt,'status','กำลังดำเนินการ')])
+      +tr(['ติดตามผลหลังอบรม','ติดตามแล้ว '+d.fu.length+' · รอติดตาม '+hrdPendingFollowups().length])+'</table>';
+    openPrint('รายงาน HRD ปี '+(d.year+543), body);
+  };
+  window.hrdExportReportXlsx = function(){
+    if(typeof XLSX==='undefined'){ toast('ไม่พบไลบรารี Excel กรุณาเชื่อมต่ออินเทอร์เน็ต'); return; }
+    var d=reportData(H.getYear()), wb=XLSX.utils.book_new();
+    function sheet(name,aoa){ XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),name); }
+    sheet('สรุป',[['ปี (พ.ศ.)',d.year+543],['จำนวนหลักสูตร',d.count],['พนักงานที่ได้อบรม',d.people],['พนักงานทั้งหมด',d.staff],['ชั่วโมงอบรมรวม (คน-ชม.)',d.hours],['ค่าใช้จ่ายรวม',d.cost],['อัตราผ่าน (%)',d.passRate==null?'':d.passRate],['ถึงเป้าชั่วโมง',d.reached]]);
+    sheet('งบประมาณรายแผนก',[['แผนก','งบ','ใช้จริง','%']].concat(d.budget.map(function(r){return [r.dept,r.budget,Math.round(r.actual),r.pct==null?'':r.pct];})));
+    sheet('รายแผนก',[['แผนก','พนักงาน','ได้อบรม','ชั่วโมงรวม']].concat(d.dept.map(function(r){return [r.dept,r.staff,r.trained,r.hours];})));
+    sheet('หลักสูตร',[['หลักสูตร','ประเภท','วันที่เริ่ม','ชั่วโมง','ผู้เข้าอบรม','ผ่าน','ค่าใช้จ่าย']].concat(d.courses.map(function(c){return [c.title,c.type,c.start||'',c.hours,c.people,c.pass,c.cost];})));
+    XLSX.writeFile(wb,'HRD_Report_'+(d.year+543)+'.xlsx');
+  };
+
+  /* ================= 8) นำเข้าประวัติจาก Excel ================= */
+  var IMP_COLS=['รหัสพนักงาน','ชื่อหลักสูตร','ประเภท','ผู้จัด/สถาบัน','วันที่เริ่ม','วันที่สิ้นสุด','ชั่วโมง','ค่าใช้จ่ายหลักสูตร','ผล','เลขที่ใบรับรอง','วันหมดอายุใบรับรอง'];
+  window.hrdImportTemplate = function(){
+    if(typeof XLSX==='undefined'){ toast('ไม่พบไลบรารี Excel กรุณาเชื่อมต่ออินเทอร์เน็ต'); return; }
+    var ws=XLSX.utils.aoa_to_sheet([IMP_COLS,['CB001','การใช้งานระบบ ERP เบื้องต้น','หลักสูตรภายใน','ฝ่ายไอที','2026-01-15','2026-01-15',6,5000,'ผ่าน','',''],['CB002','การใช้งานระบบ ERP เบื้องต้น','หลักสูตรภายใน','ฝ่ายไอที','2026-01-15','2026-01-15',6,5000,'ผ่าน','','']]);
+    var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'ประวัติอบรม'); XLSX.writeFile(wb,'template_นำเข้าประวัติฝึกอบรม.xlsx');
+  };
+  function normDate(v){
+    if(v==null||v==='') return '';
+    if(v instanceof Date && !isNaN(v)) return iso(new Date(v.getTime()-v.getTimezoneOffset()*60000));
+    var s=String(v).trim(), m;
+    if((m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))){ var y=Number(m[1]); if(y>2400) y-=543; return y+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2); }
+    if((m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/))){ var yy=Number(m[3]); if(yy<100) yy+=2000; if(yy>2400) yy-=543; return yy+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2); }
+    return '';
+  }
+  window.hrdImportPick = function(){
+    if(typeof XLSX==='undefined'){ toast('ไม่พบไลบรารี Excel กรุณาเชื่อมต่ออินเทอร์เน็ต'); return; }
+    var inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xls,.csv';
+    inp.onchange=function(){
+      var f=inp.files&&inp.files[0]; if(!f) return;
+      var rd=new FileReader();
+      rd.onload=function(ev){
+        try{
+          var wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:true}), rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:'',raw:true});
+          var added=0, skipped=[], newCourses=0, dup=0;
+          rows.forEach(function(r,i){
+            var code=String(r['รหัสพนักงาน']||'').trim(), title=String(r['ชื่อหลักสูตร']||'').trim();
+            if(!code&&!title) return;
+            if(!getEmployeeByCode(code)){ skipped.push('แถว '+(i+2)+': ไม่พบรหัส "'+code+'"'); return; }
+            if(!title){ skipped.push('แถว '+(i+2)+': ไม่มีชื่อหลักสูตร'); return; }
+            var sd=normDate(r['วันที่เริ่ม']), ed=normDate(r['วันที่สิ้นสุด'])||sd;
+            var c=(DB.trainingCourses||[]).find(function(x){return x.title===title&&(x.startDate||'')===sd;});
+            if(!c){ c={id:uid('course_'),title:title,type:String(r['ประเภท']||'').trim(),provider:String(r['ผู้จัด/สถาบัน']||'').trim(),startDate:sd,endDate:ed,hours:Number(r['ชั่วโมง'])||0,cost:Number(r['ค่าใช้จ่ายหลักสูตร'])||0,status:'เสร็จสิ้น',description:'นำเข้าจาก Excel',company:'',updatedAt:v4Now()}; DB.trainingCourses.push(c); newCourses++; }
+            if(DB.trainingEnrollments.some(function(e){return e.courseId===c.id&&e.employeeCode===code;})){ dup++; return; }
+            var res=String(r['ผล']||'').trim()||'เข้าร่วม';
+            DB.trainingEnrollments.push({id:uid('enr_'),courseId:c.id,employeeCode:code,attendance:'Attended',result:res,score:'',certificate:String(r['เลขที่ใบรับรอง']||'').trim(),certificateExpiryDate:normDate(r['วันหมดอายุใบรับรอง']),note:'',updatedAt:v4Now()});
+            added++;
+          });
+          saveDB(); renderTrainingModuleV4();
+          alert('นำเข้าเสร็จแล้ว\n• เพิ่มประวัติ '+added+' รายการ\n• สร้างหลักสูตรใหม่ '+newCourses+' หลักสูตร\n• ข้ามเพราะซ้ำ '+dup+' รายการ\n• ข้ามเพราะข้อมูลไม่ถูกต้อง '+skipped.length+' รายการ'+(skipped.length?'\n\n'+skipped.slice(0,10).join('\n')+(skipped.length>10?'\n...':''):''));
+        }catch(e){ alert('อ่านไฟล์ไม่สำเร็จ: '+(e&&e.message||e)); }
+      };
+      rd.readAsArrayBuffer(f);
+    };
+    inp.click();
+  };
+
+  /* ================= ภาพรวม: ต่อท้ายส่วนใหม่ ================= */
+  var prevOverview = window.hrdRenderers.overview;
+  window.hrdRenderers.overview = function(){
+    prevOverview();
+    var box=document.getElementById('training-sub-overview'); if(!box) return;
+    var head=box.querySelector('.hrd-head');
+    if(head) head.insertAdjacentHTML('beforeend','<div class="actions" style="align-self:center"><button class="btn-ghost btn-sm" onclick="hrdPrintReport()">🖨 รายงานผู้บริหาร (PDF)</button> <button class="btn-ghost btn-sm" onclick="hrdExportReportXlsx()">⬇ Excel</button></div>');
+    box.insertAdjacentHTML('beforeend', remindersHtml()+'<div class="hrd-two">'+budgetHtml(H.getYear())+hoursCard(H.getYear())+'</div>');
   };
 })();
 </script>
