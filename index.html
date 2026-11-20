@@ -8785,6 +8785,35 @@ window.refreshPerfEmployeeSelects=function(){
 @media(max-width:1100px){.hrd-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}.hrd-kpis{grid-template-columns:repeat(2,1fr)}.hrd-two{grid-template-columns:1fr}}
 @media(max-width:600px){.hrd-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.hrd-kpis{grid-template-columns:1fr}}
 </style>
+<style id="hrd-mockup-polish">
+#view-training .hrd-card{margin-bottom:20px;padding:20px 22px;border-radius:18px}
+#view-training .hrd-two{gap:20px}
+#view-training .hrd-tiles{gap:16px;margin-bottom:20px}
+#view-training .hrd-tile{min-height:132px;padding:18px 14px;border-radius:18px;box-shadow:none!important}
+#view-training .hrd-tile .ic{font-size:46px}
+#view-training .hrd-tile b{font-size:15.5px;margin-top:10px}
+#view-training .hrd-head{margin-bottom:20px}
+#view-training .hrd-head h2{font-size:40px;line-height:1.1}
+#view-training .hrd-head .hrd-tag{font-size:17px;margin-top:4px}
+#view-training .hrd-kpis{gap:16px}
+#view-training .hrd-kpi{border:1px solid #e6ecf6;border-radius:14px;padding:16px 18px}
+#view-training .hrd-kpi .l{font-size:14px}
+#view-training .hrd-kpi .v{font-size:38px;font-weight:700;margin:8px 0 6px}
+#view-training .hrd-kpi .v small{font-size:16px;font-weight:500}
+#view-training .hrd-card h3{font-size:19px;font-weight:700}
+#view-training .hrd-alert{padding:14px 0;font-size:15px}
+#view-training .hrd-alert:hover{background:#f6f9ff}
+.hrd-all{font-size:14px;font-weight:600;color:#2f6fe4;text-decoration:none}
+.hrd-all:hover{text-decoration:underline}
+#view-training .table-wrap th{font-weight:600}
+#view-training .table-wrap td,#view-training .table-wrap th{padding:12px 14px}
+.hrd-more{margin-bottom:20px}
+.hrd-more>summary{cursor:pointer;list-style:none;padding:14px 18px;border-radius:14px;background:#fff;border:1px dashed #b9d0fa;color:#2450b8;font-weight:600;margin-bottom:16px}
+.hrd-more[open]>summary{margin-bottom:20px}
+@media(min-width:901px){#view-training.hrd-ov>section.card{display:none}}
+#view-training .hrd-tile{white-space:normal!important;overflow:hidden;word-break:break-word;text-align:left}
+#view-training .hrd-tile>span:last-child{display:block;min-width:0}
+</style>
 <script id="hrd-script">
 (function(){
   var hrdYear = new Date().getFullYear();
@@ -8882,8 +8911,8 @@ window.refreshPerfEmployeeSelects=function(){
       + '<div class="hrd-kpi"><div class="l">อัตราการผ่านอบรม</div><div class="v">'+(cur.rate==null?'—':cur.rate+'%')+'</div>'+delta(cur.rate,prev.rate,'pt')+'</div>'
       + '</div></section>'
       + '<div class="hrd-two"><section class="card hrd-card"><h3>สรุปประเภทการฝึกอบรม</h3><div class="hrd-donut">'+donut+'<div class="hrd-legend" style="flex:1;min-width:170px">'+legend+'</div></div></section>'
-      + '<section class="card hrd-card"><h3>กิจกรรม / แจ้งเตือนที่ต้องดำเนินการ</h3>'+alerts+'</section></div>'
-      + '<section class="card hrd-card"><h3>หลักสูตรที่กำลังจะจัดขึ้น</h3><div class="table-wrap"><table><thead><tr><th>วันที่จัด</th><th>หลักสูตร</th><th>ประเภท</th><th>กลุ่มเป้าหมาย</th><th>สถานะ</th></tr></thead><tbody>'+upRows+'</tbody></table></div></section>';
+      + '<section class="card hrd-card"><div class="hrd-bar"><h3 style="margin:0">กิจกรรม / แจ้งเตือนที่ต้องดำเนินการ</h3><a href="#" class="hrd-all" onclick="hrdOpenMore();return false">ดูทั้งหมด</a></div>'+alerts+'</section></div>'
+      + '<section class="card hrd-card"><div class="hrd-bar"><h3 style="margin:0">หลักสูตรที่กำลังจะจัดขึ้น</h3><a href="#" class="hrd-all" onclick="hrdGo(\'history\');return false">ดูทั้งหมด</a></div><div class="table-wrap"><table><thead><tr><th>วันที่จัด</th><th>หลักสูตร</th><th>ประเภท</th><th>กลุ่มเป้าหมาย</th><th>สถานะ</th></tr></thead><tbody>'+upRows+'</tbody></table></div></section>';
   }
   function needList(){
     var rows = (DB.employees||[]).filter(function(e){ return e.status==='Active' && (companyFilter==='ALL'||e.company===companyFilter); });
@@ -8918,9 +8947,11 @@ window.refreshPerfEmployeeSelects=function(){
     var man = document.getElementById('training-sub-manage'); if(man) man.classList.toggle('active',name==='history');
     var view = document.getElementById('view-training');
     view.classList.toggle('hrd-nosum', name!=='history');
+    view.classList.toggle('hrd-ov', name==='overview');
     var r = window.hrdRenderers[name]; if(r) r();
   };
   showTrainingSubtab = window.showTrainingSubtab;
+  window.hrdOpenMore = function(){ window.__hrdMoreOpen=true; var d=document.getElementById('hrdMore'); if(d){ d.open=true; d.scrollIntoView({behavior:'smooth'}); } };
   window.hrdGo = function(name){ showTrainingSubtab(name); window.scrollTo({top:0,behavior:'smooth'}); };
   window.hrdSetYear = function(v){ hrdYear = Number(v)||hrdYear; var r=window.hrdRenderers[curSub]; if(r) r(); };
   window.hrdNeedSearchChange = function(){ renderCoverage(); };
@@ -9486,7 +9517,7 @@ window.refreshPerfEmployeeSelects=function(){
     var box=document.getElementById('training-sub-overview'); if(!box) return;
     var head=box.querySelector('.hrd-head');
     if(head) head.insertAdjacentHTML('beforeend','<div class="actions" style="align-self:center"><button class="btn-ghost btn-sm" onclick="hrdPrintReport()">🖨 รายงานผู้บริหาร (PDF)</button> <button class="btn-ghost btn-sm" onclick="hrdExportReportXlsx()">⬇ Excel</button></div>');
-    box.insertAdjacentHTML('beforeend', remindersHtml()+'<div class="hrd-two">'+budgetHtml(H.getYear())+hoursCard(H.getYear())+'</div>');
+    box.insertAdjacentHTML('beforeend','<details class="hrd-more" id="hrdMore"'+(window.__hrdMoreOpen?' open':'')+' ontoggle="window.__hrdMoreOpen=this.open"><summary>รายละเอียดเพิ่มเติม: เตือนความจำ · งบประมาณเทียบใช้จริง · ชั่วโมงอบรมต่อคน</summary>'+remindersHtml()+'<div class="hrd-two">'+budgetHtml(H.getYear())+hoursCard(H.getYear())+'</div></details>');
   };
 })();
 </script>
