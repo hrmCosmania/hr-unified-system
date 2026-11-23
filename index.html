@@ -3430,9 +3430,9 @@ function restorePositionOriginal(){
 }
 
 
-// TAB_RENDERERS.onboarding / .jobpositions / .training / .reports ถูกตั้งค่าจริงที่ท้ายไฟล์ (บล็อก v4)
-// ตัดของเก่าออกเพราะชี้ไปยังฟังก์ชัน render ชุดเดิมที่ถูกลบทิ้งแล้ว
-TAB_RENDERERS.settings=renderSettingsTab;
+// TAB_RENDERERS.onboarding / .jobpositions / .training / .reports / .settings ถูกตั้งค่าจริงที่ท้ายไฟล์ (บล็อก v4)
+// (เดิมบรรทัด TAB_RENDERERS.settings=renderSettingsTab อยู่ตรงนี้ แต่ฟังก์ชันถูกประกาศในบล็อกถัดไป
+//  ทำให้เกิด error "renderSettingsTab is not defined" และโค้ด INIT ด้านล่างไม่ทำงาน — ย้ายไปตั้งที่บล็อก v4 อย่างเดียว)
 
 /* ======================================================================
    INIT
@@ -6987,8 +6987,23 @@ body{background:transparent!important}
   };
 
   window.authGateLogout = function(){
-    if(!confirm('ต้องการออกจากระบบใช่หรือไม่?')) return;
-    supabaseClient.auth.signOut().then(function(){ location.reload(); });
+    if(!confirm('ต้องการออกจากระบบใช่หรือไม่?\n(เพื่อความปลอดภัย ระบบจะล้างข้อมูลพนักงานที่แคชไว้ในเครื่องนี้ด้วย)')) return;
+    var finish = function(){
+      try{ Object.keys(localStorage).filter(function(k){ return k.indexOf('cmncil_hr_unified_v1')===0; }).forEach(function(k){ localStorage.removeItem(k); }); }catch(e){}
+      supabaseClient.auth.signOut().then(function(){ location.reload(); }, function(){ location.reload(); });
+    };
+    // มีการแก้ไขที่ยังรอบันทึกขึ้นคลาวด์ -> บันทึกให้เสร็จก่อนล้างข้อมูลในเครื่อง (ไม่ push ถ้าไม่มีอะไรค้าง เพื่อไม่ทับงานของคนอื่น)
+    if(cloudReady && saveDebounceTimer){
+      clearTimeout(saveDebounceTimer); saveDebounceTimer = null;
+      setSyncLabel('กำลังบันทึกก่อนออกจากระบบ...');
+      pushToCloud(DB).then(function(res){
+        if(res && res.error && !confirm('บันทึกขึ้นคลาวด์ไม่สำเร็จ ('+res.error.message+')\nถ้าออกจากระบบตอนนี้ การแก้ไขล่าสุดในเครื่องนี้จะหายไป\nต้องการออกจากระบบต่อไปหรือไม่?')){ setSyncLabel('ยกเลิกการออกจากระบบ'); return; }
+        finish();
+      }, function(){
+        if(confirm('เชื่อมต่อคลาวด์ไม่ได้ จึงบันทึกการแก้ไขล่าสุดไม่ได้\nถ้าออกจากระบบตอนนี้ การแก้ไขนั้นจะหายไป\nต้องการออกจากระบบต่อไปหรือไม่?')) finish();
+        else setSyncLabel('ยกเลิกการออกจากระบบ');
+      });
+    } else finish();
   };
 
   var originalSaveDB = window.saveDB;

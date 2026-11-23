@@ -79,8 +79,20 @@ function pull() {
   console.log(git(['log', '--format=   %h %s', before + '..HEAD']).out);
 }
 
+function runChecks() {
+  if (flags.has('--skip-check')) { console.log('\n⚠️  ข้ามการตรวจก่อนส่ง (--skip-check)'); return; }
+  console.log('\n🔎 ตรวจความผิดพลาดก่อนส่ง (node check.js)...');
+  const r = spawnSync(process.execPath, ['check.js'], { encoding: 'utf8' });
+  if (r.status !== 0) {
+    console.log((r.stdout || '').trim());
+    fail('ตรวจก่อนส่งไม่ผ่าน — แก้ข้อที่ขึ้น ❌ ก่อน แล้วรันใหม่ (ถ้ามั่นใจจริงๆ ข้ามได้ด้วย --skip-check)');
+  }
+  console.log('✅ ตรวจผ่าน');
+}
+
 async function push() {
   prepare();
+  runChecks();
   let ch = changes();
   if (ch.untracked.length) {
     console.log('\nไฟล์ใหม่ที่ยังไม่เคยอยู่ใน Git:');

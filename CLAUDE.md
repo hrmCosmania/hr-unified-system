@@ -18,7 +18,10 @@ Live site: https://hr-unified-system.vercel.app (`/probation` for the probation 
 | Path | What it is |
 |---|---|
 | `index.html` | The whole main app (~8,100 lines, 3.8 MB). HTML, CSS and JS in one file. No build step, no framework. |
-| `probation/index.html` | Standalone probation evaluation form. It does not use Supabase: it posts to a Google Apps Script web app (`SHEET_URL`, about line 1089) and exports PDF with html2pdf. |
+| `probation/form/index.html` | The one probation evaluation form. No Supabase: it posts to a Google Apps Script web app (`SHEET_URL`) and exports PDF with html2pdf. The HR dialog (`probationEvalOpen`) builds its link with the employee's details and KPI rows (`?emp_id=&…&job_code=&kpi=`), and the form fills itself from them. |
+| `probation/results/index.html` | Search and print past probation evaluations, read from the same Apps Script (`doGet`). `?q=<code or name>` searches on load. **Known gap: it is public and needs no login, and the Google Sheet is "anyone with the link", so anyone with the URL can read evaluation scores. Protect it before relying on it.** |
+| `probation/index.html` | Redirect only: old links to `/probation` go to `/probation/form/` and keep the query string. |
+| `check.js` | `node check.js` — syntax check of every script, a check that `TAB_RENDERERS.x = fn` points to a function that already exists, unit tests of the employee Excel import (fake data), and a list of functions declared twice. `node sync.js push` runs it first and stops on failure. |
 | `namecard.html` + `namecard-assets/` | Business-card QR generator. `cardbg*.js` are ~2.3 MB base64 card backgrounds; `index.html` also loads them. |
 | `api/*.js` | Vercel serverless functions (Node, CommonJS `module.exports = handler`). |
 | `*.sql` | One-time Supabase setup scripts. The owner runs them by hand in Supabase Dashboard → SQL Editor. |
@@ -64,7 +67,7 @@ Project ref: `zkqewnwulnugbhndtnkr`. The anon key is hard-coded in `index.html` 
 | `recruit_pulse_tokens`, `recruit_pulse_responses` + RPC `submit_recruit_pulse` | Click Pulse survey | RPC callable by anon; one-time token |
 | `hr_calendar_feed` + RPC `get_calendar_feed` | HR calendar ICS feed | RPC callable by anon with a 48-hex secret token |
 
-Users log in with email and password (`supabaseClient.auth.signInWithPassword`), through the `#authGate` overlay. RLS policies grant `auth.role() = 'authenticated'`.
+Users log in with email and password (`supabaseClient.auth.signInWithPassword`), through the `#authGate` overlay. `#authGate` is only a cover on the page — real protection is the database policy. **Logging out saves any pending edit first, then deletes the cached copy of the HR data in this browser** (`localStorage` keys starting with `cmncil_hr_unified_v1`). Locally kept résumé files in IndexedDB are not deleted, because they may be the only copy. RLS policies grant `auth.role() = 'authenticated'`.
 
 ## API routes (`/api/…`)
 
@@ -94,7 +97,9 @@ Flags: `--yes` (no prompts, includes new files) and `--dry-run` (show only). Dou
 
 ## Checking changes
 
-There are no automated tests. Serve the folder and open it in a browser:
+**Run `node check.js` before every commit.** It catches syntax errors and the "`X is not defined` at load" class of bug (a top-level statement that refers to a function declared in a *later* `<script>` — function hoisting only works inside one script block). When you add a new top-level `TAB_RENDERERS.x = fn` line, put it in the same block as `fn` or after it.
+
+Beyond that there are no automated UI tests. Serve the folder and open it in a browser:
 
 ```bash
 python3 -m http.server 8000
