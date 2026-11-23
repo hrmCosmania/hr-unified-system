@@ -143,6 +143,40 @@ if (regOk) ok('index.html: บรรทัดตั้งค่า TAB_RENDERERS
   if (!fails) ok('ตัวนำเข้าทะเบียนพนักงาน: ผ่านการทดสอบ 18 ข้อ');
 })();
 
+/* ---------- 3b) annual appraisal scoring (same cases as the original appraisal app's tests) ---------- */
+(function appraisalTests() {
+  const blk = main.find((s) => s.code.includes('AP_SCORING') && s.code.includes('computeResult'));
+  if (!blk) { bad('ไม่พบโค้ดคำนวณคะแนนประเมินประจำปีใน index.html'); return; }
+  const sandbox = {};
+  vm.createContext(sandbox);
+  try { vm.runInContext(blk.code, sandbox); } catch (e) { bad('โหลดโค้ดคำนวณคะแนนประเมินประจำปีไม่ได้: ' + e.message); return; }
+  const S = sandbox.AP_SCORING;
+  let fails = 0;
+  const eq = (name, a, b) => { if (JSON.stringify(a) !== JSON.stringify(b)) { fails++; bad(`คะแนนประเมินประจำปี "${name}": ได้ ${JSON.stringify(a)} ควรเป็น ${JSON.stringify(b)}`); } };
+  const c = S.combine({ group: 'ops', level: 'S1', behaviorRaw: 35, attTotal: 42, discScore: 40 });
+  eq('ปฏิบัติการ 35/50,42/50,40/40 -> ผลงาน 42%', c.behaviorPct, 42);
+  eq('สถิติ 25.2%', c.attendancePct, 25.2); eq('ระเบียบ 10%', c.regulationPct, 10);
+  eq('รวม 77.2%', c.total, 77.2); eq('เกรด B+', c.grade.grade, 'B+');
+  eq('O1 ขึ้นไป คะแนนเต็ม = 100', S.combine({ group: 'office', level: 'O1', behaviorRaw: 50, attTotal: 50, discScore: 40 }).total, 100);
+  eq('สัดส่วน office 70/20/10', S.WEIGHTS.office, { behavior: 70, attendance: 20, regulation: 10 });
+  eq('คะแนนสถิติตัวอย่าง = 44', S.attendanceScore({ late: 2, sick: 8, personal: 4, absent: 0 }).total, 44);
+  eq('ลาป่วย 31 วัน = 0', S.attendanceItemScore('sick', 31), 0); eq('ขาดงาน 3 ครั้ง = 0', S.attendanceItemScore('absent', 3), 0);
+  eq('เกรด 79.99 = B+', S.gradeOf(79.99).grade, 'B+'); eq('เกรด 54.9 = D', S.gradeOf(54.9).grade, 'D'); eq('เกรด 55 = D+', S.gradeOf(55).grade, 'D+');
+  const comps = [{ id: 'a', weight: 40, rating: 5 }, { id: 'b', weight: 60, rating: 3 }];
+  eq('สมรรถนะถ่วงน้ำหนัก (S1 เต็ม 15) = 11.4', S.competencyScore('S1', comps).score, 11.4);
+  const kpis = [{ name: 'x', weight: 70, rating: 4 }, { name: 'y', weight: 30, rating: 5 }];
+  const k = S.kpiScore('S1', kpis);
+  eq('KPI ถ่วงน้ำหนัก (S1 เต็ม 35) = 30.1', k.score, 30.1); eq('KPI ครบ', k.complete, true);
+  eq('KPI น้ำหนักไม่ครบ 100 = ไม่ครบ', S.kpiScore('S1', [{ name: 'x', weight: 70, rating: 4 }]).complete, false);
+  eq('M1 เต็ม 75', S.behaviorMax('M1'), 75); eq('O3 เต็ม 50', S.behaviorMax('O3'), 50);
+  eq('ผู้ประเมินต้อง M1 ขึ้นไป', [S.canEvaluateLevel('M1'), S.canEvaluateLevel('C'), S.canEvaluateLevel('O3')], [true, true, false]);
+  const r = S.computeResult({ emp: { level: 'S1', hireDate: '2020-01-01' }, ev: { comps, kpi: kpis }, att: {}, discCode: 'none', cycleEnd: '2025-12-31' });
+  eq('ผลงานดิบรวม 41.5', r.behaviorRaw, 41.5); eq('มีสิทธิ์โบนัสและปรับเงินเดือน', [r.bonusEligible, r.raiseEligible], [true, true]);
+  eq('อายุงานไม่ครบ 1 ปี ไม่มีสิทธิ์โบนัส', S.computeResult({ emp: { level: 'S1', hireDate: '2025-06-01' }, ev: { comps, kpi: kpis }, att: {}, discCode: 'none', cycleEnd: '2025-12-31' }).bonusEligible, false);
+  eq('ทดลองงานไม่ได้ปรับเงินเดือน', S.computeResult({ emp: { level: 'S1', hireDate: '2020-01-01', status: 'probation' }, ev: { comps, kpi: kpis }, att: {}, discCode: 'none', cycleEnd: '2025-12-31' }).raiseEligible, false);
+  if (!fails) ok('คะแนนประเมินประจำปี: ผ่านการทดสอบ 26 ข้อ (ชุดเดียวกับแอปต้นฉบับ)');
+})();
+
 /* ---------- 4) functions declared more than once (information) ---------- */
 (function duplicates() {
   const seen = new Map();

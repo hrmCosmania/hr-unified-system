@@ -865,6 +865,7 @@ function defaultDB(){
     attendanceRecords: [],
     offboardingRecords: [],
     evaluationForms: [],
+    annualAppraisal: {},
     onboardingChecklists: [],
     positionMeta: [],
     trainingBudgets: [],
@@ -5709,30 +5710,13 @@ var EVAL_ONEYEAR_ITEMS = [
   ['วินัยและการปฏิบัติตามระเบียบ','ปฏิบัติตามนโยบาย ระเบียบ และข้อกำหนดขององค์กร'],
   ['ศักยภาพในการรับงานที่ซับซ้อนขึ้น','พร้อมรับความรับผิดชอบหรือโครงการที่ใหญ่ขึ้นในอนาคต']
 ];
-var EVAL_ANNUAL_COMP_ITEMS = [
-  ['ความรู้ความสามารถในงาน (Functional Competency)','ใช้ความรู้และทักษะเฉพาะด้านปฏิบัติงานได้อย่างเชี่ยวชาญ'],
-  ['คุณภาพและความต่อเนื่องของผลงาน','ผลงานมีคุณภาพสม่ำเสมอตลอดทั้งปี'],
-  ['การทำงานเป็นทีมและการประสานงาน','ทำงานร่วมกับผู้อื่นและข้ามแผนกได้ดี'],
-  ['การสื่อสาร','สื่อสารชัดเจน ตรงประเด็น และสร้างความเข้าใจที่ตรงกัน'],
-  ['ความรับผิดชอบและการยึดมั่นในหน้าที่','รับผิดชอบต่องานและผลลัพธ์ แก้ไขปัญหาเมื่อเกิดขึ้น'],
-  ['การเรียนรู้ ปรับตัว และความคิดริเริ่ม','เรียนรู้สิ่งใหม่ ปรับตัวต่อการเปลี่ยนแปลง และเสนอการปรับปรุง'],
-  ['ทัศนคติและค่านิยมองค์กร','ปฏิบัติตามค่านิยม วัฒนธรรม และจรรยาบรรณขององค์กร'],
-  ['วินัยและการปฏิบัติตามระเบียบ (รวมการขาด ลา มาสาย)','ปฏิบัติตามระเบียบ ตรงต่อเวลา และมีสถิติการมาทำงานที่ดี']
-];
 var EVAL_TYPES = {
   oneyear: { key:'oneyear', icon:'🎂', label:'ประเมินอายุงานครบ 1 ปี', en:'1-Year Service Evaluation', doc:'',
     intro:'ประเมินพนักงานที่ทำงานครบ 1 ปี เพื่อพิจารณาปรับเงินเดือน ตำแหน่ง และแผนพัฒนา',
     sections:[{key:'main', title:'หัวข้อการประเมินอายุงานครบ 1 ปี', weight:100, items:EVAL_ONEYEAR_ITEMS}],
     resultLabel:'ข้อเสนอแนะจากการประเมิน', results:['คงเดิม','พิจารณาปรับเงินเดือน','พิจารณาเลื่อนตำแหน่ง/ปรับระดับ','ส่งพัฒนาเพิ่มเติม','ติดตามผลต่อ'] },
-  annual: { key:'annual', icon:'📅', label:'ประเมินประจำปี', en:'Annual Performance Evaluation', doc:'',
-    intro:'ประเมินผลปฏิบัติงานรอบปี = ผลสัมฤทธิ์ KPI (น้ำหนัก 70%) + สมรรถนะและพฤติกรรม (น้ำหนัก 30%)',
-    sections:[
-      {key:'kpi', title:'ส่วนที่ 1 ผลสัมฤทธิ์ตาม KPI', weight:70, auto:'kpi', items:[['ผลงานตาม KPI ประจำปี','คะแนนเฉลี่ยจากการประเมินผลปฏิบัติงานรายเดือนของปีนี้ (ระบบเติมให้ถ้ามีข้อมูล แก้ไขได้ 1–5)']]},
-      {key:'comp', title:'ส่วนที่ 2 สมรรถนะและพฤติกรรม', weight:30, items:EVAL_ANNUAL_COMP_ITEMS}],
-    resultLabel:'ข้อเสนอแนะจากการประเมิน', results:['คงเดิม','พิจารณาปรับเงินเดือน/โบนัส','พิจารณาเลื่อนตำแหน่ง/ปรับระดับ','ส่งพัฒนาเพิ่มเติม','ปรับปรุงผลงาน (แผนปรับปรุง)'] }
 };
-var EVAL_TYPE_KEYS = ['oneyear','annual'];
-var evalUI = { annualYear:new Date().getFullYear(), annualSearch:'' };
+var EVAL_TYPE_KEYS = ['oneyear'];
 
 function evalEsc(s){ return escapeHtml(String(s==null?'':s)); }
 function evalAttr(s){ return v4EscapeAttr(s); }
@@ -5764,17 +5748,14 @@ function evalCalc(cfg, scores){
   var complete = secs.every(function(s){ return s.answered===s.total; });
   return { secs:secs, overall:overall, percent: overall==null ? null : overall/5*100, band:evalBand(overall), complete:complete };
 }
-function evalKpiAuto(code, year){
-  var rev = (DB.performanceReviews||[]).find(function(r){ return r.employeeCode===code && Number(r.evaluationYear)===Number(year) && r.yearAverageScore!=null; });
-  return rev ? Number(rev.yearAverageScore) : null;
-}
-
 /* ---- แท็บย่อย / โครงหน้า ---- */
 function evalTabsHtml(){
-  return EVAL_TYPE_KEYS.map(function(k){ return '<button class="detail-tab" data-perf-tab="eval_'+k+'" onclick="setPerfSubTab(\'eval_'+k+'\')">'+EVAL_TYPES[k].icon+' '+EVAL_TYPES[k].label+'</button>'; }).join('');
+  return EVAL_TYPE_KEYS.map(function(k){ return '<button class="detail-tab" data-perf-tab="eval_'+k+'" onclick="setPerfSubTab(\'eval_'+k+'\')">'+EVAL_TYPES[k].icon+' '+EVAL_TYPES[k].label+'</button>'; }).join('')
+    + '<button class="detail-tab" data-perf-tab="eval_annual" onclick="setPerfSubTab(\'eval_annual\')">📅 ประเมินประจำปี</button>';
 }
 function evalPanelsHtml(){
-  return EVAL_TYPE_KEYS.map(function(k){ return '<div id="perfEval_'+k+'Panel" class="hidden"></div>'; }).join('');
+  return EVAL_TYPE_KEYS.map(function(k){ return '<div id="perfEval_'+k+'Panel" class="hidden"></div>'; }).join('')
+    + '<div id="perfEval_annualPanel" class="hidden"></div>';
 }
 function evalSyncTabs(view){
   EVAL_TYPE_KEYS.forEach(function(k){
@@ -5782,6 +5763,10 @@ function evalSyncTabs(view){
     if(tab) tab.classList.toggle('active', on);
     if(panel){ panel.classList.toggle('hidden', !on); if(on) evalRenderPanel(k); }
   });
+  // ประเมินประจำปี = โมดูลแยก (script#annual-appraisal-script)
+  var tabA = view.querySelector('[data-perf-tab="eval_annual"]'), panelA = el('perfEval_annualPanel'), onA = (perfSubTab==='eval_annual');
+  if(tabA) tabA.classList.toggle('active', onA);
+  if(panelA){ panelA.classList.toggle('hidden', !onA); if(onA && typeof apRenderPanel==='function') apRenderPanel(panelA); }
 }
 function evalEnsureStyle(){
   if(document.getElementById('ev-style')) return;
@@ -5797,13 +5782,9 @@ function evalRenderPanel(type){
   evalEnsureStyle();
   var cfg = EVAL_TYPES[type], panel = el('perfEval_'+type+'Panel'); if(!panel) return;
   if(!panel.dataset.built){
-    var annualCtl = type==='annual'
-      ? '<div class="form-grid"><div class="field"><label>ปีที่ประเมิน</label><input type="number" id="ev_year_annual" value="'+evalUI.annualYear+'" onchange="evalSetYear(this.value)"></div>'
-        +'<div class="field"><label>ค้นหาพนักงาน</label><input id="ev_search_annual" placeholder="ชื่อ/รหัส/แผนก" oninput="evalSetSearch(this.value)"></div></div>'
-      : '';
     panel.innerHTML = '<section class="card"><h3 class="section-title">'+cfg.icon+' '+cfg.label+' <span class="small">'+cfg.en+(cfg.doc?' · '+cfg.doc:'')+'</span></h3>'
       +'<div class="sub small">'+evalEsc(cfg.intro)+'</div><div id="ev_sum_'+type+'" class="summary-grid" style="margin-top:12px"></div></section>'
-      +'<section class="card"><h3 class="section-title">'+(type==='annual'?'รายชื่อพนักงานที่ต้องประเมินประจำปี':'ถึงกำหนดประเมิน')+'</h3>'+annualCtl+'<div class="table-wrap" id="ev_due_'+type+'"></div></section>'
+      +'<section class="card"><h3 class="section-title">'+'ถึงกำหนดประเมิน'+'</h3>'+'<div class="table-wrap" id="ev_due_'+type+'"></div></section>'
       +'<section class="card"><h3 class="section-title">เริ่มประเมินพนักงานคนอื่น</h3><div class="form-grid"><div class="field"><label>พนักงาน</label><select id="ev_emp_'+type+'"></select></div>'
       +'<div class="field"><label>&nbsp;</label><button class="btn-primary" onclick="evalOpenFromSelect(\''+type+'\')">เริ่มประเมิน</button></div></div><div id="ev_form_'+type+'"></div></section>'
       +'<section class="card"><h3 class="section-title">ประวัติการประเมิน</h3><div class="table-wrap" id="ev_hist_'+type+'"></div></section>';
@@ -5813,9 +5794,6 @@ function evalRenderPanel(type){
   if(sel){ sel.innerHTML = '<option value="">— เลือกพนักงาน —</option>'+perfEmployeeOptionsHtml(true,false); sel.value = keep; }
   evalRenderLists(type);
 }
-window.evalSetYear = function(v){ var y = parseInt(v,10); if(y>1900 && y<2200){ evalUI.annualYear = y; evalRenderLists('annual'); } };
-window.evalSetSearch = function(v){ evalUI.annualSearch = String(v||'').trim().toLowerCase(); evalRenderLists('annual'); };
-
 /* ---- รายการถึงกำหนด + ประวัติ ---- */
 function evalDueRows(type){
   var today = todayStart(), rows = [];
@@ -5844,21 +5822,7 @@ function evalRenderLists(type){
   var sum = el('ev_sum_'+type), due = el('ev_due_'+type), hist = el('ev_hist_'+type);
   if(!sum || !due || !hist) return;
   var card = function(n, label){ return '<div class="summary-card"><div class="num">'+n+'</div><div class="label">'+label+'</div></div>'; };
-  if(type==='annual'){
-    var year = evalUI.annualYear, yEnd = new Date(year,11,31), q = evalUI.annualSearch;
-    var emps = evalEmployees().filter(function(e){ var s = parseDate(e.startDate); return !s || s<=yEnd; });
-    var shown = emps.filter(function(e){ return !q || (e.fullName||'').toLowerCase().indexOf(q)>=0 || (e.empCode||'').toLowerCase().indexOf(q)>=0 || (e.department||'').toLowerCase().indexOf(q)>=0 || (e.position||'').toLowerCase().indexOf(q)>=0; });
-    var doneN = 0, draftN = 0;
-    emps.forEach(function(e){ var r = evalFind('annual', e.empCode, String(year)); if(r){ if(r.status==='completed') doneN++; else draftN++; } });
-    sum.innerHTML = card(doneN+' / '+emps.length,'ประเมินปี '+year+' สรุปผลแล้ว')+card(draftN,'ฉบับร่าง')+card(Math.max(0, emps.length-doneN-draftN),'ยังไม่ได้ประเมิน');
-    due.innerHTML = '<table><thead><tr><th>พนักงาน</th><th>ตำแหน่ง / แผนก</th><th>อายุงาน</th><th>สถานะ</th><th>คะแนน</th><th></th></tr></thead><tbody>'
-      + (shown.map(function(e){
-        var r = evalFind('annual', e.empCode, String(year)), s = parseDate(e.startDate), yrs = s ? ((todayStart()-s)/86400000/365.25) : null;
-        var status = r ? (r.status==='completed' ? '<span class="ev-chip done">สรุปผลแล้ว</span>' : '<span class="ev-chip draft">ฉบับร่าง</span>') : '<span class="ev-chip">ยังไม่ประเมิน</span>';
-        return '<tr><td><b>'+evalEsc(e.fullName)+'</b><div class="small">'+evalEsc(e.empCode)+'</div></td><td>'+evalEsc(e.position||'-')+'<div class="small">'+evalEsc(e.department||'-')+'</div></td><td>'+(yrs==null?'-':yrs.toFixed(1)+' ปี')+'</td><td>'+status+'</td><td>'+(r?evalFmt(r.overall)+' / 5':'-')+'</td>'
-          +'<td><button class="btn-ghost" onclick="evalOpen(\'annual\',\''+evalAttr(e.empCode)+'\',\''+year+'\')">'+(r?'เปิด/แก้ไข':'ประเมิน')+'</button></td></tr>';
-      }).join('') || '<tr><td colspan="6" class="empty">ไม่พบพนักงาน</td></tr>') + '</tbody></table>';
-  } else {
+  {
     var rows = evalDueRows(type);
     sum.innerHTML = card(rows.length,'ถึงกำหนด/รอประเมิน')+card(drafts,'ฉบับร่าง')+card(completed,'สรุปผลแล้ว');
     {
@@ -5885,7 +5849,7 @@ window.evalOpenFromSelect = function(type){
   if(!code){ toast('กรุณาเลือกพนักงานก่อน'); return; }
   var emp = getEmployeeByCode(code), period;
   if(type==='oneyear'){ var ann = evalOneYearDate(emp); period = ann ? dateToInput(ann) : dateToInput(todayStart()); }
-  else period = String(evalUI.annualYear);
+  else period = dateToInput(todayStart());
   evalOpen(type, code, period);
 };
 window.evalOpen = function(type, code, period){
@@ -5900,9 +5864,8 @@ window.evalOpen = function(type, code, period){
   var ann = evalOneYearDate(emp);
   var info = '<div class="ev-info"><div><small>พนักงาน</small><b>'+evalEsc(emp.fullName)+'</b> ('+evalEsc(emp.empCode)+')</div><div><small>ตำแหน่ง / แผนก</small>'+evalEsc(emp.position||'-')+' · '+evalEsc(emp.department||'-')+'</div><div><small>วันที่เริ่มงาน</small>'+evalEsc(formatThaiDate(emp.startDate))+'</div>'
     + (type==='oneyear' ? '<div><small>ครบ 1 ปี</small>'+evalEsc(formatThaiDate(ann))+'</div>' : '') + '</div>';
-  var periodCtl = (type==='annual' ? '<div class="field"><label>ปีที่ประเมิน</label><input type="number" id="ev_period_annual" value="'+evalAttr(period)+'" onchange="evalOpen(\'annual\',\''+evalAttr(code)+'\',this.value)"></div>'
-    : '<div class="field"><label>รอบการประเมิน</label><input id="ev_period_oneyear" value="'+evalAttr(evalPeriodLabel('oneyear',period))+'" disabled></div>');
-  var kpiAuto = type==='annual' ? evalKpiAuto(code, period) : null;
+  var periodCtl = ('<div class="field"><label>รอบการประเมิน</label><input id="ev_period_oneyear" value="'+evalAttr(evalPeriodLabel('oneyear',period))+'" disabled></div>');
+  var kpiAuto = null;
   var secHtml = cfg.sections.map(function(sec){
     var rows = sec.items.map(function(it, i){
       var id = sec.key+'_'+i, v = scores[id];
@@ -11263,6 +11226,928 @@ html:not(.theme-soft) .ps-menu{background:#1c1c1e}
     document.body.appendChild(bg); refreshSettings();
   };
   window.pyMastersClose = function(){ var m=document.getElementById('psModal'); if(m) m.remove(); rerender(); };
+})();
+</script>
+<style id="annual-appraisal-style">
+.ap{--ap-blue:#2f7bf6;--ap-green:#16a34a;--ap-amber:#d97706;--ap-red:#dc2626;--ap-teal:#1fb0a6;--ap-line:rgba(128,138,160,.28);--ap-soft:rgba(128,138,160,.12);font-size:14.5px;line-height:1.5}
+.ap *{box-sizing:border-box}
+.ap .num{font-variant-numeric:tabular-nums}
+.ap-muted{opacity:.68}.ap-muted.sm,.ap .sm{font-size:12px}
+.ap-ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}.ap-ico.sm{width:16px;height:16px}
+.ap h3{display:flex;align-items:center;gap:10px;margin:0 0 14px;font-size:16.5px}.ap h3 .ap-ico{color:var(--ap-blue)}
+.ap-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.ap-head h2{margin:0;font-size:22px}.ap-head p{margin:2px 0 0;opacity:.7}
+.ap-yearbox{display:flex;flex-direction:column;align-items:flex-end;padding:8px 14px;border-radius:12px;background:var(--ap-soft)}.ap-yearbox span{font-size:12px;opacity:.75}
+.ap-nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.ap-navbtn{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:1px solid var(--ap-line);background:transparent;color:inherit;font:inherit;font-weight:500;cursor:pointer}
+.ap-navbtn:hover{border-color:var(--ap-blue)}.ap-navbtn.on{background:var(--ap-blue);border-color:var(--ap-blue);color:#fff;box-shadow:0 4px 14px rgba(47,123,246,.35)}
+.ap-card{margin-bottom:14px}
+.ap-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}.ap-cards.three{grid-template-columns:repeat(3,1fr)}
+.ap-stat{display:flex;gap:14px;align-items:flex-start;padding:16px 18px}.ap-stat>div{flex:1;min-width:0}.ap-stat small{display:block;opacity:.7}
+.ap-stat .big{font-size:27px;font-weight:700;line-height:1.2}.ap-stat .big span{font-size:15px;font-weight:600;margin-left:4px;opacity:.8}
+.ap-badge{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;flex:none}.ap-stat>.ap-badge{flex:none;min-width:44px}
+.ap-badge.blue{background:rgba(47,123,246,.16);color:var(--ap-blue)}.ap-badge.green{background:rgba(22,163,74,.16);color:var(--ap-green)}.ap-badge.amber{background:rgba(217,119,6,.18);color:var(--ap-amber)}
+.ap-pill{display:inline-flex;align-items:center;gap:6px;padding:2px 11px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.ap-pill.green{background:rgba(22,163,74,.16);color:color-mix(in srgb,#16a34a 78%,currentColor)}.ap-pill.amber{background:rgba(217,119,6,.18);color:color-mix(in srgb,#d97706 80%,currentColor)}
+.ap-pill.blue{background:rgba(47,123,246,.16);color:color-mix(in srgb,#2f7bf6 78%,currentColor)}.ap-pill.gray{background:var(--ap-soft)}.ap-pill.red{background:rgba(220,38,38,.16);color:color-mix(in srgb,#dc2626 78%,currentColor)}
+.ap-bar{height:8px;border-radius:6px;background:var(--ap-soft);overflow:hidden;margin:8px 0 4px}.ap-bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--ap-teal),var(--ap-blue));border-radius:6px}
+.ap-grid2{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;margin-bottom:14px}.ap-grid2.wide{grid-template-columns:1.4fr 1fr}.ap-grid2.even{grid-template-columns:1fr 1fr}.ap-grid2.dist{grid-template-columns:1fr 1.7fr}
+.ap-grid2>.ap-card{margin-bottom:0}
+.ap-steps{display:grid;grid-template-columns:repeat(4,1fr);text-align:center;margin-bottom:14px}
+.ap-step{position:relative;font-size:13px;padding:0 6px}.ap-step .dot{width:30px;height:30px;border-radius:50%;margin:0 auto 8px;display:grid;place-items:center;background:var(--ap-soft);font-weight:600;position:relative;z-index:1}
+.ap-step::before{content:'';position:absolute;top:14px;left:-50%;width:100%;height:3px;background:var(--ap-soft);z-index:0}.ap-step:first-child::before{display:none}
+.ap-step.done .dot{background:var(--ap-teal);color:#fff}.ap-step.done::before,.ap-step.current::before{background:var(--ap-blue)}.ap-step.current .dot{background:var(--ap-blue);color:#fff;box-shadow:0 0 0 5px rgba(47,123,246,.2)}
+.ap-step b{display:block;font-weight:600}.ap-step small{display:block;opacity:.7}
+.ap-note{display:flex;gap:10px;padding:11px 13px;border-radius:10px;background:rgba(47,123,246,.12);font-size:13.5px}.ap-note.warn{background:rgba(217,119,6,.15)}
+.ap-crit{list-style:none;padding:0;margin:0 0 12px}.ap-crit li{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--ap-line)}.ap-crit li:last-child{border:0}.ap-crit li .ap-ico{color:var(--ap-blue)}.ap-crit li .v{margin-left:auto}
+.ap-tabs{display:inline-flex;background:var(--ap-soft);border-radius:10px;padding:3px;margin-bottom:10px}.ap-tabs button{border:0;background:transparent;color:inherit;font:inherit;padding:6px 14px;border-radius:8px;cursor:pointer;font-weight:500;opacity:.7}.ap-tabs button.on{background:var(--ap-blue);color:#fff;opacity:1}
+.ap-stack{display:flex;height:22px;border-radius:8px;overflow:hidden;margin:6px 0 10px;font-size:12px;color:#fff}.ap-stack>span{display:grid;place-items:center;font-weight:600}
+.ap-cardhead{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}.ap-cardhead h3{margin:0}
+.ap-tools{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;align-items:center}
+.ap-search{position:relative}.ap-search .ap-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.6;width:18px;height:18px}.ap-search input{padding-left:34px;width:230px}
+.ap input:not([type=radio]):not([type=checkbox]),.ap select,.ap textarea{font:inherit;color:inherit;background:transparent;border:1px solid var(--ap-line);border-radius:10px;padding:7px 11px;min-width:0}
+.ap textarea{width:100%;min-height:74px;resize:vertical}.ap input:focus,.ap select:focus,.ap textarea:focus{outline:2px solid rgba(47,123,246,.4);border-color:var(--ap-blue)}
+.ap select option{color:#111}
+.ap-tablewrap{overflow-x:auto}.ap table{width:100%;border-collapse:collapse}.ap th{text-align:left;font-weight:600;padding:9px 10px;font-size:13px;white-space:nowrap;border-bottom:1px solid var(--ap-line);background:var(--ap-soft)}
+.ap td{padding:10px;border-bottom:1px solid var(--ap-line);vertical-align:middle}.ap tr:last-child td{border-bottom:0}.ap td.r,.ap th.r{text-align:right}.ap td.c,.ap th.c{text-align:center}
+.ap-btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--ap-line);border-radius:10px;padding:7px 14px;font:inherit;font-weight:600;cursor:pointer;background:transparent;color:inherit}
+.ap-btn:hover{border-color:var(--ap-blue)}.ap-btn.primary{background:var(--ap-blue);border-color:var(--ap-blue);color:#fff}.ap-btn.green{background:var(--ap-green);border-color:var(--ap-green);color:#fff}
+.ap-btn.sm{padding:4px 10px;font-size:13px}.ap-btn.ghost{border-color:transparent}.ap-btn.danger{color:var(--ap-red)}.ap-btn[disabled]{opacity:.45;cursor:not-allowed}
+.ap-pager{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:13.5px;opacity:.85}
+.ap-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}.ap-actions.left{justify-content:flex-start}.ap-actions.between{justify-content:space-between;align-items:center}
+.ap-empty{text-align:center;padding:30px 10px;opacity:.7}
+.ap-formgrid{display:grid;grid-template-columns:1fr 340px;gap:14px;align-items:start}.ap-sticky{position:sticky;top:12px}
+.ap-empcard{display:flex;gap:16px;align-items:center;flex-wrap:wrap}.ap-avatar{width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#7aa7f7,#2f7bf6);color:#fff;display:grid;place-items:center;font-weight:600;font-size:20px;flex:none}
+.ap-kv{display:flex;gap:20px;flex-wrap:wrap;margin-top:8px;font-size:14px}.ap-kv small{display:block;opacity:.65;font-size:12px}
+.ap-empopts{display:grid;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--ap-line)}.ap-empopts label{display:grid;gap:4px;font-size:13.5px;font-weight:600}.ap-empopts label.chk{display:flex;gap:8px;align-items:center;font-weight:500}
+.ap .chk{display:flex;gap:8px;align-items:center;margin:6px 0}
+.ap-sect>h3{justify-content:space-between}.ap-sect>h3 small{font-weight:500;opacity:.65;font-size:13px}
+.ap-comp{padding:14px 0;border-bottom:1px solid var(--ap-line)}.ap-comp:last-child{border-bottom:0}.ap-comp .t{font-weight:600}.ap-comp .h{opacity:.7;font-size:13px;margin:2px 0 8px}
+.ap-comphead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}.ap-chips{display:flex;gap:6px;flex-wrap:wrap}
+.ap-rating{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.ap-rating label{cursor:pointer}.ap-rating input{position:absolute;opacity:0;pointer-events:none}
+.ap-rating span{display:block;text-align:center;border:1.5px solid var(--ap-line);border-radius:10px;padding:7px 2px;font-size:12.5px;transition:.12s}.ap-rating span b{display:block;font-size:17px}
+.ap-rating label:hover span{border-color:var(--ap-blue)}.ap-rating input:checked+span{background:var(--ap-blue);border-color:var(--ap-blue);color:#fff;box-shadow:0 3px 10px rgba(47,123,246,.35)}
+.ap-rating input:focus-visible+span{outline:2px solid var(--ap-blue);outline-offset:2px}.ap-rating span.exp{box-shadow:inset 0 -3px 0 var(--ap-teal)}
+.ap-rating.kpi span{padding:6px;min-height:78px}.ap-rating.kpi span small{display:block;font-size:11.5px;line-height:1.3;margin-top:3px;opacity:.85}
+.ap details{margin-top:8px;font-size:13.5px}.ap details summary{cursor:pointer;color:var(--ap-blue);font-weight:500}
+.ap-lv{margin:8px 0 0;padding:0;list-style:none}.ap-lv li{padding:5px 8px;border-radius:8px}.ap-lv li.exp{background:rgba(31,176,166,.16)}
+.ap-kpimeta{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:12.5px;opacity:.75;margin-bottom:8px}
+.ap-kpirow{display:grid;grid-template-columns:1fr 90px 130px 34px;gap:8px;margin-bottom:8px;align-items:center}.ap-kpirow input,.ap-kpirow select{width:100%}
+.ap-sumrow{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed var(--ap-line);font-size:14px}.ap-sumrow b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.ap-total{text-align:center;padding:14px 0 6px}.ap-total .pct{font-size:38px;font-weight:700;line-height:1.1}
+.ap-grade{display:inline-grid;place-items:center;min-width:54px;height:54px;padding:0 10px;border-radius:14px;color:#fff;font-weight:700;font-size:24px}.ap-grade.sm{min-width:34px;height:28px;font-size:14px;border-radius:8px;padding:0 8px}
+.ap-checks{list-style:none;padding:0;margin:10px 0 0;font-size:13.5px}.ap-checks li{display:flex;gap:8px;padding:3px 0;align-items:flex-start}.ap-checks .ok{color:var(--ap-green)}.ap-checks .no{color:var(--ap-red)}.ap-checks .wait{color:var(--ap-amber)}
+.ap-gdist{display:grid;gap:8px}.ap-gdist .gd{display:grid;grid-template-columns:48px 1fr 40px;gap:10px;align-items:center}.ap-gdist .b{height:22px;background:var(--ap-soft);border-radius:6px;overflow:hidden}.ap-gdist .b i{display:block;height:100%;border-radius:6px}
+.ap-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.ap .field{margin-bottom:12px}.ap .field label{display:block;font-weight:600;margin-bottom:4px;font-size:13.5px}.ap .field input,.ap .field select{width:100%}
+.ap-attgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.ap-attgrid table{font-size:13px}
+.ap input.inline{width:70px;text-align:center;padding:5px 4px}.ap input.inline.ov{border-color:var(--ap-amber);box-shadow:0 0 0 2px rgba(217,119,6,.22)}
+.ap-flash{position:fixed;left:50%;bottom:26px;transform:translate(-50%,30px);background:#0f172a;color:#fff;padding:10px 18px;border-radius:10px;opacity:0;pointer-events:none;transition:.25s;z-index:99999;max-width:90vw;font-size:14px}.ap-flash.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:1100px){.ap-cards,.ap-cards.three{grid-template-columns:repeat(2,1fr)}.ap-grid2,.ap-grid2.wide,.ap-grid2.even,.ap-grid2.dist,.ap-formgrid{grid-template-columns:1fr}.ap-sticky{position:static}.ap-attgrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.ap-cards,.ap-cards.three{grid-template-columns:1fr}.ap-row2,.ap-attgrid{grid-template-columns:1fr}.ap-kpirow{grid-template-columns:1fr 70px 100px 30px}.ap-rating.kpi{grid-template-columns:1fr}.ap-rating.kpi span{min-height:0;text-align:left;display:flex;gap:10px;align-items:baseline}.ap-rating.kpi span b{display:inline}.ap-search input{width:100%}.ap-tools{width:100%}.ap-search{flex:1}.ap-steps{font-size:12px}}
+</style>
+<script id="annual-appraisal-script">
+(function(){
+'use strict';
+/* ===== คะแนนตาม "ประกาศหลักเกณฑ์การพิจารณาการจ่ายเงินรางวัลการทำงาน (โบนัส) และการปรับเงินเดือนประจำปี" =====
+   ฟังก์ชันล้วน (ไม่แตะ DOM / DB) ย้ายมาจากแอป "ระบบประเมินผลการปฏิบัติงานประจำปี" (js/scoring.js) โดยไม่แก้สูตร
+   ทดสอบด้วย node check.js */
+const LEVELS = [
+  { code: 'S0', name: 'พนักงานปฏิบัติการ', group: 'ops' },
+  { code: 'S1', name: 'พนักงาน', group: 'ops' },
+  { code: 'S2', name: 'พนักงานอาวุโส', group: 'ops' },
+  { code: 'O1', name: 'เจ้าหน้าที่', group: 'office' },
+  { code: 'O2', name: 'เจ้าหน้าที่อาวุโส', group: 'office' },
+  { code: 'O3', name: 'หัวหน้าแผนก', group: 'office' },
+  { code: 'M1', name: 'ผู้ช่วยผู้จัดการ/ผู้จัดการ', group: 'office' },
+  { code: 'M2', name: 'ผู้จัดการอาวุโส', group: 'office' },
+  { code: 'D1', name: 'กรรมการบริหาร', group: 'office' },
+  { code: 'D2', name: 'กรรมการผู้จัดการ', group: 'office' },
+  { code: 'C', name: 'ผู้บริหารสูงสุด (C-level)', group: 'office' },
+];
+const levelOf = (code) => LEVELS.find((l) => l.code === code) || LEVELS[1];
+const isDirectorLevel = (code) => code === 'D1' || code === 'D2' || code === 'C';
+// ลำดับชั้น ใช้เลือกผู้ประเมิน: ผู้ประเมินต้องเป็นระดับ M1 ขึ้นไป (ข้อ 3.1)
+const LEVEL_RANK = { S0: 0, S1: 1, S2: 2, O1: 3, O2: 4, O3: 5, M1: 6, M2: 7, D1: 8, D2: 9, C: 10 };
+const rankOf = (code) => (LEVEL_RANK[code] != null ? LEVEL_RANK[code] : 3);
+const canEvaluateLevel = (code) => rankOf(code) >= LEVEL_RANK.M1;
+
+// ข้อ 5: สัดส่วนคะแนน — ปฏิบัติการ: พฤติกรรม 60 + สถิติ 30 + ระเบียบ 10 · เจ้าหน้าที่ขึ้นไป: 70 + 20 + 10
+const WEIGHTS = {
+  ops: { behavior: 60, attendance: 30, regulation: 10 },
+  office: { behavior: 70, attendance: 20, regulation: 10 },
+};
+function groupOf(emp) {
+  if (emp.productionLineLead) return 'ops';
+  return levelOf(emp.level).group;
+}
+const weightsFor = (emp) => WEIGHTS[groupOf(emp)];
+
+// ข้อ 4.1: คะแนนเต็มด้านความสามารถ/ประสิทธิภาพ M1 ขึ้นไป = 75, ต่ำกว่า = 50 · สมรรถนะ 30% + KPI 70%
+const behaviorMax = (level) => (rankOf(level) >= LEVEL_RANK.M1 ? 75 : 50);
+const competencyMax = (level) => round(behaviorMax(level) * 0.3, 2);
+const kpiMax = (level) => round(behaviorMax(level) * 0.7, 2);
+
+// ข้อ 4.2.1: สถิติการมาทำงาน 50 คะแนน
+const ATTENDANCE_RULES = {
+  late: { label: 'สาย', unit: 'ครั้ง', max: 10, steps: [[3, 10], [8, 7], [13, 5], [18, 3]], over: 0 },
+  sick: { label: 'ลาป่วย', unit: 'วัน', max: 10, steps: [[5, 10], [12, 7], [20, 5], [30, 3]], over: 0 },
+  personal: { label: 'ลากิจ', unit: 'วัน', max: 10, steps: [[2, 10], [5, 7], [9, 4], [14, 1]], over: 0 },
+  absent: { label: 'ขาดงาน', unit: 'ครั้ง', max: 20, steps: [[0, 20], [1, 10]], over: 0 },
+};
+const ATTENDANCE_BANDS = {
+  late: ['0 - 3 ครั้ง', '4 - 8 ครั้ง', '9 - 13 ครั้ง', '14 - 18 ครั้ง', '19 ครั้งขึ้นไป'],
+  sick: ['0 - 5 วัน', '6 - 12 วัน', '13 - 20 วัน', '21 - 30 วัน', '30 วันขึ้นไป'],
+  personal: ['0 - 2 วัน', '3 - 5 วัน', '6 - 9 วัน', '10 - 14 วัน', '15 วันขึ้นไป'],
+  absent: ['ไม่เคยขาดงาน', 'ขาดงาน 1 ครั้ง', 'ขาดงาน 2 ครั้งขึ้นไป'],
+};
+function attendanceItemScore(key, value) {
+  const rule = ATTENDANCE_RULES[key];
+  const v = Number(value) || 0;
+  for (const [upto, pts] of rule.steps) if (v <= upto) return pts;
+  return rule.over;
+}
+function attendanceScore(att) {
+  const a = att || {};
+  const parts = {};
+  let total = 0;
+  for (const k of Object.keys(ATTENDANCE_RULES)) {
+    parts[k] = attendanceItemScore(k, a[k]);
+    total += parts[k];
+  }
+  return { parts, total, max: 50 };
+}
+
+// ข้อ 4.2.2: การปฏิบัติตามระเบียบข้อบังคับ 40 คะแนน (ตีความ 10/20/0 เป็นคะแนนที่ถูกหัก — HR ปรับตารางได้ที่หน้าตั้งค่า)
+const DISCIPLINE_DEFAULT = [
+  { code: 'none', label: 'ไม่เคยถูกตักเตือน', score: 40 },
+  { code: 'verbal', label: 'ตักเตือนด้วยวาจา (เป็นลายลักษณ์อักษร)', score: 30 },
+  { code: 'written1', label: 'ตักเตือนเป็นลายลักษณ์อักษรครั้งที่ 1', score: 20 },
+  { code: 'written2', label: 'ตักเตือนเป็นลายลักษณ์อักษรครั้งที่ 2 / พักงาน', score: 0 },
+];
+function disciplineScore(code, table) {
+  const t = table || DISCIPLINE_DEFAULT;
+  const row = t.find((r) => r.code === code) || t[0];
+  return { score: row.score, max: 40, label: row.label };
+}
+
+// ข้อ 5: เกณฑ์เกรด
+const GRADES = [
+  { grade: 'A', level: 'ดีเยี่ยม', min: 80, max: 100, color: '#16a34a', desc: 'ปฏิบัติงานได้เกินความคาดหวังอย่างมาก แสดงให้เห็นถึงความเชี่ยวชาญ ความคิดริเริ่ม และสามารถเป็นแบบอย่างให้ผู้อื่นได้ ผลงานโดดเด่นและสร้างคุณค่าเพิ่มให้กับองค์กรอย่างชัดเจน' },
+  { grade: 'B+', level: 'ดีมาก', min: 75, max: 79, color: '#22a6a0', desc: 'ปฏิบัติงานได้ดีกว่ามาตรฐานที่กำหนด มีความรับผิดชอบสูง ทำงานได้อย่างมีประสิทธิภาพ มีผลงานที่มั่นคงและสม่ำเสมอ อาจมีบางส่วนที่สามารถพัฒนาเพิ่มเติมได้' },
+  { grade: 'B', level: 'ดี', min: 70, max: 74, color: '#2563eb', desc: 'ปฏิบัติงานได้ตามเป้าหมายและความคาดหวังของตำแหน่งงาน มีความเข้าใจในหน้าที่และสามารถทำงานได้อย่างมีคุณภาพในระดับที่น่าพอใจ' },
+  { grade: 'C+', level: 'มาตรฐาน', min: 65, max: 69, color: '#6366f1', desc: 'ปฏิบัติงานได้ตามมาตรฐานขั้นต่ำของตำแหน่ง มีความเข้าใจในงาน แต่ยังขาดความสม่ำเสมอ หรือยังต้องได้รับการติดตามบางส่วนเพื่อคงคุณภาพผลงาน' },
+  { grade: 'C', level: 'พอใช้', min: 60, max: 64, color: '#d97706', desc: 'ปฏิบัติงานได้เพียงบางส่วนของมาตรฐาน ยังมีข้อบกพร่องหรือขาดความต่อเนื่อง ต้องได้รับการแนะนำและควบคุมดูแลใกล้ชิด' },
+  { grade: 'D+', level: 'ปรับปรุง', min: 55, max: 59, color: '#ea580c', desc: 'ผลการปฏิบัติงานต่ำกว่ามาตรฐานในหลายด้าน ต้องได้รับการพัฒนาอย่างจริงจัง มีข้อผิดพลาดบ่อยหรือไม่สามารถทำงานได้ตามกำหนด' },
+  { grade: 'D', level: 'ต่ำกว่ามาตรฐาน', min: 50, max: 54, color: '#dc2626', desc: 'ผลงานไม่เป็นไปตามที่คาดหวังในเกือบทุกด้าน ขาดความเข้าใจในงานหรือไม่สามารถทำงานได้ด้วยตนเอง จำเป็นต้องได้รับการอบรมและติดตามอย่างใกล้ชิด' },
+  { grade: 'E', level: 'ต่ำกว่ามาตรฐานมาก', min: 0, max: 49.99, color: '#991b1b', desc: 'ปฏิบัติงานไม่ได้ตามหน้าที่ที่มอบหมาย ไม่สามารถรับผิดชอบงานได้ แม้ได้รับคำแนะนำและช่วยเหลือแล้ว ต้องได้รับการประเมินใหม่หรือพิจารณาปรับบทบาทหน้าที่' },
+];
+function gradeOf(percent) {
+  const p = Number(percent) || 0;
+  return GRADES.find((g) => p >= g.min) || GRADES[GRADES.length - 1];
+}
+function round(n, d) {
+  const dd = d == null ? 2 : d;
+  const f = Math.pow(10, dd);
+  return Math.round((Number(n) + Number.EPSILON) * f) / f;
+}
+
+// แบบประเมินโดยผู้ประเมิน (Competency + KPI): คะแนน = Σ(น้ำหนัก × ระดับ/5) ÷ Σน้ำหนัก × คะแนนเต็มของส่วนนั้น
+const RATING_LABELS = { 5: 'ดีเยี่ยม', 4: 'ดีมาก', 3: 'ตามมาตรฐาน', 2: 'ต้องปรับปรุง', 1: 'ต่ำกว่ามาตรฐาน' };
+const validRating = (v) => Number(v) >= 1 && Number(v) <= 5;
+function scoreRows(rows, max) {
+  const list = (rows || []).filter((r) => Number(r.weight) > 0 || String(r.name || '').trim());
+  const weightSum = list.reduce((s, r) => s + (Number(r.weight) || 0), 0);
+  const got = list.reduce((s, r) => s + (Number(r.weight) || 0) * (validRating(r.rating) ? Number(r.rating) / 5 : 0), 0);
+  const answered = list.filter((r) => validRating(r.rating)).length;
+  return { score: weightSum > 0 ? round((got / weightSum) * max) : 0, max, weightSum, answered, total: list.length, list };
+}
+function competencyScore(level, rows) {
+  const r = scoreRows(rows, competencyMax(level));
+  return Object.assign({}, r, { complete: r.total > 0 && r.answered === r.total });
+}
+function kpiScore(level, rows) {
+  const r = scoreRows(rows, kpiMax(level));
+  const named = r.list.every((x) => String(x.name || '').trim() !== '');
+  return Object.assign({}, r, { count: r.total, complete: r.total > 0 && r.answered === r.total && Math.abs(r.weightSum - 100) < 0.001 && named });
+}
+
+function tenureYears(hireDate, asOf) {
+  if (!hireDate) return 0;
+  const h = new Date(hireDate), e = new Date(asOf);
+  let y = e.getFullYear() - h.getFullYear();
+  const m = e.getMonth() - h.getMonth();
+  if (m < 0 || (m === 0 && e.getDate() < h.getDate())) y--;
+  return y;
+}
+
+/** รวมคะแนนดิบทั้ง 3 ส่วนเป็น % ตามสัดส่วนของกลุ่ม */
+function combine(o) {
+  const w = WEIGHTS[o.group] || WEIGHTS.office;
+  const behaviorPct = round((o.behaviorRaw / behaviorMax(o.level)) * w.behavior);
+  const attendancePct = round((o.attTotal / 50) * w.attendance);
+  const regulationPct = round((o.discScore / 40) * w.regulation);
+  const total = round(behaviorPct + attendancePct + regulationPct);
+  return { weights: w, behaviorPct, attendancePct, regulationPct, total, grade: gradeOf(total) };
+}
+
+/** คำนวณผลรวมทั้งหมดของพนักงาน 1 คน (emp: level, hireDate, status('probation'|...), specialRaise, productionLineLead) */
+function computeResult(o) {
+  const emp = o.emp, ev = o.ev;
+  const w = weightsFor(emp);
+  const comp = competencyScore(emp.level, ev && ev.comps);
+  const kpi = kpiScore(emp.level, ev && ev.kpi);
+  const behaviorRaw = round(comp.score + kpi.score);
+  const behaviorMaxV = behaviorMax(emp.level);
+  const a = attendanceScore(o.att);
+  const d = disciplineScore(o.discCode, o.discTable);
+  const c = combine({ group: groupOf(emp), level: emp.level, behaviorRaw, attTotal: a.total, discScore: d.score });
+  const years = tenureYears(emp.hireDate, o.cycleEnd);
+  const permanent = emp.status !== 'probation';
+  const bonusEligible = permanent && years >= 1 && c.total >= 60;
+  const raiseReasons = [];
+  if (!permanent) raiseReasons.push('ยังไม่ได้บรรจุเป็นพนักงานประจำ');
+  if (years < 1) raiseReasons.push('อายุงานไม่ครบ 1 ปี');
+  if (emp.specialRaise) raiseReasons.push('ได้รับการปรับเงินเดือนพิเศษระหว่างปีแล้ว');
+  if (c.total < 55) raiseReasons.push('เกรด ' + c.grade.grade + ' (ต่ำกว่า 55%)');
+  const bonusReasons = [];
+  if (!permanent) bonusReasons.push('ยังไม่ได้บรรจุเป็นพนักงานประจำ');
+  if (years < 1) bonusReasons.push('อายุงานไม่ครบ 1 ปี');
+  if (c.total < 60) bonusReasons.push('เกรด ' + c.grade.grade + ' (ต่ำกว่าเกรด C)');
+  return {
+    weights: w, comp, kpi, behaviorRaw, behaviorMax: behaviorMaxV, attendance: a, discipline: d,
+    behaviorPct: c.behaviorPct, attendancePct: c.attendancePct, regulationPct: c.regulationPct, total: c.total, grade: c.grade,
+    tenure: years, bonusEligible, bonusReasons, raiseEligible: raiseReasons.length === 0, raiseReasons,
+    ready: comp.complete && kpi.complete,
+  };
+}
+
+const S = {
+  LEVELS, levelOf, isDirectorLevel, LEVEL_RANK, rankOf, canEvaluateLevel, WEIGHTS, groupOf, weightsFor,
+  behaviorMax, competencyMax, kpiMax, ATTENDANCE_RULES, ATTENDANCE_BANDS, attendanceItemScore, attendanceScore,
+  DISCIPLINE_DEFAULT, disciplineScore, GRADES, gradeOf, round, RATING_LABELS, competencyScore, kpiScore, tenureYears, combine, computeResult,
+};
+
+/* =====================================================================
+   หน้าจอ "ประเมินประจำปี" (แท็บย่อยใน ติดตามผลการปฏิบัติงาน) — โครงสร้างหน้าตามแอปประเมินผลประจำปีที่ HR จัดทำ
+   ภาพรวม · ประเมินผลปฏิบัติงาน(รายการ+แบบประเมิน) · รายงานผล · สถิติ/วินัย · ตั้งค่ารอบ · หลักเกณฑ์/เครื่องคิดคะแนน
+   ข้อมูลพนักงาน/JD/KPI/สมรรถนะ/ขาด ลา มาสาย ใช้ชุดเดียวกับระบบหลัก · ผลประเมินเก็บใน DB.annualAppraisal
+   ===================================================================== */
+const ICONS = {
+  home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  star: '<polygon points="12 2 15.1 8.6 22 9.3 16.8 14 18.2 21 12 17.5 5.8 21 7.2 14 2 9.3 8.9 8.6"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  book: '<path d="M4 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4zM20 4h-6a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6z"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5c2.5.6 4 2.6 4 5.5"/>',
+  sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  circleCheck: '<circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+  download: '<path d="M12 4v11M7 11l5 5 5-5M4 20h16"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/>',
+  shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  trophy: '<path d="M8 4h8v6a4 4 0 0 1-8 0zM8 6H4v1a3 3 0 0 0 4 3M16 6h4v1a3 3 0 0 1-4 3M12 14v4M8 20h8"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  hourglass: '<path d="M6 3h12M6 21h12M7 3c0 5 5 6 5 9s-5 4-5 9M17 3c0 5-5 6-5 9s5 4 5 9"/>',
+  print: '<path d="M7 9V3h10v6M7 17H4v-6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6h-3M7 14h10v7H7z"/>',
+  calc: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/>',
+};
+const ico = (n, cls) => '<svg class="ap-ico ' + (cls || '') + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[n] || '') + '</svg>';
+const E = (s) => escapeHtml(String(s == null ? '' : s));
+const A = (s) => v4EscapeAttr(s);
+const fmtN = (n, d) => (Number.isFinite(+n) ? String(+(+n).toFixed(d == null ? 2 : d)) : '—');
+const fmtPct = (n) => (Number.isFinite(+n) ? (+n).toFixed(2) + '%' : '—');
+const fmtD = (v) => (v ? formatThaiDate(v) : '—');
+const isoOf = (d) => dateToInput(d);
+const daysBetweenIso = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+const gradeBadge = (g, small) => (g ? '<span class="ap-grade' + (small ? ' sm' : '') + '" style="background:' + g.color + '" title="' + A(g.level) + '">' + E(g.grade) + '</span>' : '<span class="ap-muted">—</span>');
+
+const PHASES = [
+  { id: 1, title: 'เปิดรอบการประเมิน', sub: 'HR ประกาศรอบและเตรียมข้อมูล' },
+  { id: 2, title: 'ผู้ประเมินให้คะแนน', sub: 'M1 / กรรมการ ประเมินตามสายงาน' },
+  { id: 3, title: 'HR ตรวจสอบและปรับเทียบ', sub: 'ตรวจสถิติ วินัย และผลรวม' },
+  { id: 4, title: 'สรุปและประกาศผล', sub: 'ประกาศเกรด โบนัส ปรับเงินเดือน' },
+];
+const STATUS_LABEL = { none: 'รอการประเมิน', draft: 'อยู่ระหว่างประเมิน', done: 'ประเมินแล้ว' };
+const NAV = [
+  ['home', 'home', 'ภาพรวม'], ['evaluate', 'star', 'ประเมินผลปฏิบัติงาน'], ['results', 'chart', 'รายงานผลการประเมิน'],
+  ['hr', 'clock', 'สถิติการมาทำงาน/วินัย'], ['settings', 'sliders', 'ตั้งค่ารอบประเมิน'], ['criteria', 'book', 'หลักเกณฑ์และเครื่องคิดคะแนน'],
+];
+const PAGE = 10;
+let flashTimer = null;
+function flash(msg) {
+  let el = document.getElementById('ap-flash');
+  if (!el) { el = document.createElement('div'); el.id = 'ap-flash'; el.className = 'ap-flash'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(flashTimer); flashTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+const COMP_TYPE_PILL = { Core: ['blue', 'Core'], Functional: ['green', 'Functional'], Managerial: ['amber', 'Managerial'] };
+const CORE_FALLBACK = ['C01', 'C02', 'C03', 'C04', 'C05', 'C06'];
+const CORE_WEIGHTS = [17, 17, 17, 17, 16, 16];
+
+/* ---------- ข้อมูล / ที่เก็บ (DB.annualAppraisal) ---------- */
+function defaultSettings(year) {
+  const y = Number(year);
+  return { year: y, cycleStart: y + '-01-01', cycleEnd: y + '-12-31', deadline: (y + 1) + '-01-31', payDate: (y + 1) + '-03-31', phase: 1, disciplineTable: JSON.parse(JSON.stringify(DISCIPLINE_DEFAULT)) };
+}
+function store() {
+  let a = DB.annualAppraisal;
+  if (!a || typeof a !== 'object' || Array.isArray(a)) a = DB.annualAppraisal = {};
+  if (!a.settings) a.settings = defaultSettings(new Date().getFullYear());
+  ['evals', 'att', 'disc', 'evaluators', 'flags'].forEach((k) => { if (!a[k]) a[k] = {}; });
+  return a;
+}
+const settings = () => store().settings;
+const cycleEnd = () => settings().cycleEnd;
+function bucket(kind) {
+  const s = store(), y = String(s.settings.year);
+  if (!s[kind][y]) s[kind][y] = {};
+  return s[kind][y];
+}
+function persist() { saveDB(); }
+
+/* ---------- พนักงาน / ผู้ประเมิน / สถิติ ---------- */
+let cache = null;
+const resetCache = () => { cache = null; };
+function normLevel(l) {
+  const c = String(l || '').split(',')[0].trim().toUpperCase();
+  return LEVEL_RANK[c] != null ? c : 'O1';
+}
+function toPerson(e) {
+  const set = settings(), due = probationDueDate(e), f = bucket('flags')[e.empCode] || {}, hire = parseDate(e.startDate);
+  return {
+    id: e.empCode, name: e.fullName || e.empCode, company: e.company || '', dept: e.department || '', position: e.position || '',
+    jobId: e.jobCode || '', level: normLevel(e.level), hireDate: hire ? isoOf(hire) : '',
+    status: due && isoOf(due) > set.cycleEnd ? 'probation' : 'permanent',
+    productionLineLead: f.lineLead != null ? !!f.lineLead : /หัวหน้าไลน์/.test(e.position || ''), specialRaise: !!f.specialRaise,
+    parentId: e.parentId || '',
+  };
+}
+function allPeople() {
+  if (cache) return cache;
+  const list = (DB.employees || []).filter((e) => e.status !== 'Inactive').map(toPerson);
+  const ov = bucket('evaluators');
+  list.forEach((p) => {
+    const chosen = ov[p.id] && list.find((x) => x.id === ov[p.id]);
+    p.evaluatorId = chosen ? chosen.id : defaultEvaluator(p, list);
+    p.evaluatorCustom = !!chosen;
+  });
+  cache = list;
+  return list;
+}
+function defaultEvaluator(p, list) {
+  const rank = rankOf(p.level);
+  const parent = p.parentId ? list.find((x) => x.id === p.parentId) : null;
+  if (parent && rankOf(parent.level) >= LEVEL_RANK.M1 && rankOf(parent.level) > rank) return parent.id;
+  const pool = list.filter((x) => x.company === p.company && x.id !== p.id && rankOf(x.level) >= LEVEL_RANK.M1 && rankOf(x.level) > rank);
+  if (!pool.length) return '';
+  const same = pool.filter((x) => x.dept === p.dept);
+  const pick = same.length ? same.slice().sort((a, b) => rankOf(a.level) - rankOf(b.level))[0] : pool.slice().sort((a, b) => rankOf(b.level) - rankOf(a.level))[0];
+  return pick.id;
+}
+const person = (id) => allPeople().find((p) => p.id === id);
+const inScopeCompany = (p) => companyFilter === 'ALL' || p.company === companyFilter;
+/* เกณฑ์เข้ารอบ: อายุงานครบ 1 ปีขึ้นไป ณ วันสิ้นสุดรอบประเมิน (ตามเงื่อนไขโบนัส/ปรับเงินเดือน) และมีผู้ประเมิน */
+const tenureOk = (p) => !!p.hireDate && tenureYears(p.hireDate, cycleEnd()) >= 1;
+const evaluatees = () => allPeople().filter((p) => tenureOk(p) && p.evaluatorId && inScopeCompany(p));
+function oneYearDate(p) { const d = parseDate(p.hireDate); return d ? isoOf(new Date(d.getFullYear() + 1, d.getMonth(), d.getDate())) : ''; }
+function excludedPeople() {
+  return allPeople().filter((p) => inScopeCompany(p) && !(tenureOk(p) && p.evaluatorId)).map((p) => {
+    const reasons = [];
+    if (!p.hireDate) reasons.push('ไม่มีวันเริ่มงานในระบบ');
+    else if (!tenureOk(p)) reasons.push('อายุงานยังไม่ครบ 1 ปี (ครบวันที่ ' + fmtD(oneYearDate(p)) + ')');
+    if (!p.evaluatorId) reasons.push('ยังไม่มีผู้ประเมิน');
+    return { p, reasons, shortTenure: !tenureOk(p), noEvaluator: !p.evaluatorId };
+  });
+}
+function excludedSummary() {
+  const list = excludedPeople();
+  return { total: list.length, tenure: list.filter((x) => x.shortTenure).length, noEval: list.filter((x) => !x.shortTenure && x.noEvaluator).length };
+}
+function statusOf(id) {
+  const ev = bucket('evals')[id];
+  if (!ev) return 'none';
+  return ev.status === 'submitted' ? 'done' : 'draft';
+}
+function autoAtt(code) {
+  const s = settings(), a = { late: 0, sick: 0, personal: 0, absent: 0 };
+  (DB.attendanceRecords || []).forEach((r) => {
+    if (r.employeeCode !== code) return;
+    const d = parseDate(r.date); if (!d) return;
+    const x = isoOf(d); if (x < s.cycleStart || x > s.cycleEnd) return;
+    if (r.type === 'late') a.late++;
+    else if (r.type === 'absent') a.absent++;
+    else if (r.type === 'leave') { if (r.leaveType === 'ลาป่วย') a.sick++; else if (r.leaveType === 'ลากิจ') a.personal++; }
+  });
+  return a;
+}
+function attOf(code) {
+  const base = autoAtt(code), ov = bucket('att')[code] || {}, out = {};
+  Object.keys(base).forEach((k) => { out[k] = ov[k] != null && ov[k] !== '' ? Number(ov[k]) : base[k]; });
+  return out;
+}
+function resultFor(p) {
+  return computeResult({
+    emp: { level: p.level, hireDate: p.hireDate, status: p.status, specialRaise: p.specialRaise, productionLineLead: p.productionLineLead },
+    ev: bucket('evals')[p.id], att: attOf(p.id), discCode: bucket('disc')[p.id] || 'none', discTable: settings().disciplineTable, cycleEnd: cycleEnd(),
+  });
+}
+
+/* ---------- กรอบสมรรถนะ / KPI ตามรหัสตำแหน่ง (จากฐานข้อมูลเดียวกับเมนู "จัดการตำแหน่งงาน") ---------- */
+function compInfo(code) {
+  const d = (DB.competencyDictionary || []).find((x) => x.code === code);
+  return d ? { th: d.name, en: d.nameEn || '', def: d.definition || '', lv: [d.level1, d.level2, d.level3, d.level4, d.level5] } : { th: code, en: '', def: '', lv: [] };
+}
+function kpiInfo(jobId, code) {
+  const k = (DB.kpiDefinitions || []).find((x) => x.jobCode === jobId && x.code === code);
+  return k ? { def: k.definition || '', formula: k.formula || '', target: k.target || '', unit: k.unit || '', freq: k.frequency || '', source: k.dataSource || '', r: [k.rating1, k.rating2, k.rating3, k.rating4, k.rating5] } : { def: '', formula: '', target: '', unit: '', freq: '', source: '', r: [] };
+}
+function planFor(p) {
+  const comps = (DB.competencies || []).filter((c) => p.jobId && c.jobCode === p.jobId);
+  const kp = (DB.kpiDefinitions || []).filter((k) => p.jobId && k.jobCode === p.jobId).sort((a, b) => String(a.code || '').localeCompare(String(b.code || '')));
+  return {
+    matchedKpi: kp.length > 0,
+    comps: comps.length
+      ? comps.map((c) => ({ id: c.code, type: c.type, name: c.name || compInfo(c.code).th, weight: Number(c.weight) || 0, expected: Number(c.expectedLevel) || '', rating: '' }))
+      : CORE_FALLBACK.map((id, i) => ({ id, type: 'Core', name: compInfo(id).th, weight: CORE_WEIGHTS[i], expected: 3, rating: '' })),
+    kpis: kp.length ? kp.map((k) => ({ code: k.code, name: k.name, weight: Number(k.weight) || 0, rating: '' })) : [1, 2, 3].map(() => ({ code: '', name: '', weight: '', rating: '' })),
+  };
+}
+
+/* ---------- สถานะหน้าจอ ---------- */
+const ui = { page: 'home', arg: '', critGroup: 'office', list: { q: '', status: '', dept: '', grade: '', company: '', page: 1 }, calc: { level: 'O2', line: false, behavior: 35, late: 2, sick: 3, personal: 1, absent: 0, disc: 'none' } };
+let root = null, form = null, formEmp = '';
+const editable = () => settings().phase <= 3;
+
+function shell(title, subtitle, body) {
+  const s = settings();
+  const nav = NAV.map((n) => '<button type="button" class="ap-navbtn' + (ui.page === n[0] || (ui.page === 'form' && n[0] === 'evaluate') || (ui.page === 'result' && n[0] === 'results') ? ' on' : '') + '" data-act="go" data-to="' + n[0] + '">' + ico(n[1]) + '<span>' + n[2] + '</span></button>').join('');
+  return '<div class="ap"><header class="ap-head"><div><h2>' + E(title) + '</h2><p>' + E(subtitle) + '</p></div>'
+    + '<div class="ap-yearbox"><b>รอบประเมินปี ' + s.year + '</b><span>ขั้นตอนที่ ' + s.phase + ' · ' + E(PHASES[s.phase - 1].title) + '</span></div></header>'
+    + '<nav class="ap-nav" aria-label="เมนูประเมินประจำปี">' + nav + '</nav>' + body + '</div>';
+}
+function statusPill(s) {
+  const m = { none: ['amber', 'clock', 'รอการประเมิน'], draft: ['blue', 'hourglass', 'อยู่ระหว่างประเมิน'], done: ['green', 'circleCheck', 'ประเมินแล้ว'] }[s];
+  return '<span class="ap-pill ' + m[0] + '">' + ico(m[1], 'sm') + m[2] + '</span>';
+}
+function actionBtn(p) {
+  const s = statusOf(p.id);
+  if (s === 'done') return '<button type="button" class="ap-btn sm" data-act="go" data-to="result" data-arg="' + A(p.id) + '">' + ico('eye', 'sm') + 'ดูผลการประเมิน</button>';
+  if (!editable()) return '<button type="button" class="ap-btn sm" data-act="go" data-to="form" data-arg="' + A(p.id) + '">' + ico('eye', 'sm') + 'ดูแบบประเมิน</button>';
+  if (s === 'draft') return '<button type="button" class="ap-btn sm" data-act="go" data-to="form" data-arg="' + A(p.id) + '">' + ico('arrow', 'sm') + 'ดำเนินการต่อ</button>';
+  return '<button type="button" class="ap-btn sm primary" data-act="go" data-to="form" data-arg="' + A(p.id) + '">' + ico('edit', 'sm') + 'เริ่มประเมิน</button>';
+}
+function filteredEvaluatees() {
+  const f = ui.list, q = f.q.trim().toLowerCase();
+  return evaluatees().filter((p) => (!q || (p.name + p.position + p.dept + p.level + p.id).toLowerCase().includes(q)) && (!f.status || statusOf(p.id) === f.status) && (!f.dept || p.dept === f.dept) && (!f.company || p.company === f.company));
+}
+function evalTable(limit) {
+  const rows = filteredEvaluatees(), pages = Math.max(1, Math.ceil(rows.length / PAGE));
+  if (ui.list.page > pages) ui.list.page = pages;
+  const slice = limit ? rows.slice(0, limit) : rows.slice((ui.list.page - 1) * PAGE, ui.list.page * PAGE), off = limit ? 0 : (ui.list.page - 1) * PAGE;
+  if (!rows.length) return '<div class="ap-empty">ไม่พบรายการที่ตรงกับเงื่อนไข' + (evaluatees().length ? '' : '<br><small>ยังไม่มีพนักงานที่อยู่ในเกณฑ์ (อายุงานครบ 1 ปีขึ้นไป และมีผู้ประเมิน) — ตรวจวันเริ่มงาน ระดับ และหัวหน้างานที่ ฐานข้อมูลพนักงาน</small>') + '</div>';
+  return '<div class="ap-tablewrap"><table><thead><tr><th>ลำดับ</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>หน่วยงาน</th><th>ระดับ</th><th>ผู้ประเมิน</th><th>สถานะ</th><th>ดำเนินการ</th></tr></thead><tbody>'
+    + slice.map((p, i) => '<tr><td class="num">' + (off + i + 1) + '</td><td><b>' + E(p.name) + '</b><div class="ap-muted sm">' + E(p.id) + '</div></td><td>' + E(p.position || '-') + '</td><td>' + E(p.dept || '-') + ' <small class="ap-muted">' + E(p.company) + '</small></td>'
+      + '<td><span class="ap-pill gray">' + E(p.level) + '</span></td><td>' + E((person(p.evaluatorId) || {}).name || '—') + '</td><td>' + statusPill(statusOf(p.id)) + '</td><td>' + actionBtn(p) + '</td></tr>').join('')
+    + '</tbody></table></div>'
+    + (limit ? '' : '<div class="ap-pager"><span>แสดง ' + (off + 1) + '-' + (off + slice.length) + ' จาก ' + rows.length + ' รายการ</span><span><button type="button" class="ap-btn sm" data-act="page" data-d="-1"' + (ui.list.page <= 1 ? ' disabled' : '') + '>ก่อนหน้า</button> <span style="margin:0 8px">' + ui.list.page + '/' + pages + '</span> <button type="button" class="ap-btn sm" data-act="page" data-d="1"' + (ui.list.page >= pages ? ' disabled' : '') + '>ถัดไป</button></span></div>');
+}
+function deptOptions(selected) {
+  const set = new Set(allPeople().map((p) => p.dept).filter(Boolean));
+  return '<option value="">ทุกหน่วยงาน</option>' + [...set].sort((a, b) => a.localeCompare(b, 'th')).map((d) => '<option' + (selected === d ? ' selected' : '') + '>' + E(d) + '</option>').join('');
+}
+function listTools(extraGrade) {
+  const f = ui.list;
+  return '<div class="ap-tools"><div class="ap-search">' + ico('search') + '<input data-in="list-q" placeholder="ค้นหาชื่อ / รหัสพนักงาน..." value="' + A(f.q) + '" aria-label="ค้นหา"></div>'
+    + '<select data-in="list-company" aria-label="บริษัท"><option value="">ทุกบริษัท</option>' + ['CMN', 'CIL'].map((c) => '<option' + (f.company === c ? ' selected' : '') + '>' + c + '</option>').join('') + '</select>'
+    + '<select data-in="list-dept" aria-label="หน่วยงาน">' + deptOptions(f.dept) + '</select>'
+    + (extraGrade ? '<select data-in="list-grade" aria-label="เกรด"><option value="">ทุกเกรด</option>' + GRADES.map((g) => '<option' + (f.grade === g.grade ? ' selected' : '') + '>' + g.grade + '</option>').join('') + '</select>'
+      : '<select data-in="list-status" aria-label="สถานะ"><option value="">ทุกสถานะ</option>' + Object.keys(STATUS_LABEL).map((k) => '<option value="' + k + '"' + (f.status === k ? ' selected' : '') + '>' + STATUS_LABEL[k] + '</option>').join('') + '</select>') + '</div>';
+}
+function critCard() {
+  const g = ui.critGroup, w = WEIGHTS[g];
+  const seg = (v, c, t) => '<span style="width:' + v + '%;background:' + c + '" title="' + t + '">' + v + '%</span>';
+  return '<section class="card ap-card"><h3>' + ico('star') + ' เกณฑ์การประเมิน</h3>'
+    + '<div class="ap-tabs" role="tablist"><button type="button" class="' + (g === 'ops' ? 'on' : '') + '" data-act="crit-tab" data-g="ops">ปฏิบัติการ (S0-S1)</button><button type="button" class="' + (g === 'office' ? 'on' : '') + '" data-act="crit-tab" data-g="office">เจ้าหน้าที่ขึ้นไป (O1-D2)</button></div>'
+    + '<div class="ap-stack">' + seg(w.behavior, '#1f6feb', 'ด้านผลงาน') + seg(w.attendance, '#1fb0a6', 'สถิติ') + seg(w.regulation, '#f59e0b', 'ระเบียบ') + '</div>'
+    + '<ul class="ap-crit"><li>' + ico('chart') + '<span>ผลงาน: Competency 30% + KPI 70%</span><span class="v ap-pill blue">' + w.behavior + '%</span></li>'
+    + '<li>' + ico('clock') + '<span>สถิติการมาทำงาน (Attendance)</span><span class="v ap-pill gray">' + w.attendance + '% · เต็ม 50</span></li>'
+    + '<li>' + ico('shield') + '<span>การปฏิบัติตามระเบียบ (Regulation)</span><span class="v ap-pill gray">' + w.regulation + '% · เต็ม 40</span></li></ul>'
+    + '<button type="button" class="ap-btn sm" data-act="go" data-to="criteria">ดูรายละเอียดเกณฑ์ ' + ico('arrow', 'sm') + '</button></section>';
+}
+
+/* ---------- หน้า: ภาพรวม ---------- */
+function viewHome() {
+  const s = settings(), scope = evaluatees();
+  const done = scope.filter((p) => statusOf(p.id) === 'done').length, pct = scope.length ? Math.round((done / scope.length) * 100) : 0;
+  const left = daysBetweenIso(isoOf(todayStart()), s.deadline);
+  const steps = PHASES.map((p) => {
+    const cls = p.id < s.phase ? 'done' : p.id === s.phase ? 'current' : '';
+    return '<div class="ap-step ' + cls + '"><div class="dot">' + (p.id < s.phase ? ico('check', 'sm') : p.id) + '</div><b>' + p.title + '</b><small>' + (p.id === 1 ? fmtD(s.cycleStart) : p.id === s.phase ? '<span class="ap-pill blue" style="margin-top:4px">กำลังดำเนินการ</span>' : p.sub) + '</small></div>';
+  }).join('');
+  return shell('ประเมินผลการปฏิบัติงานประจำปี', 'Performance Appraisal · เพื่อพิจารณาโบนัสและปรับเงินเดือน', ''
+    + '<section class="ap-cards">'
+    + '<div class="card ap-stat"><div class="ap-badge blue">' + ico('calendar') + '</div><div><b>รอบการประเมิน ปี ' + s.year + '</b><small>' + fmtD(s.cycleStart) + ' – ' + fmtD(s.cycleEnd) + '</small><span class="ap-pill ' + (s.phase >= 4 ? 'green' : 'blue') + '" style="margin-top:6px">' + E(PHASES[s.phase - 1].title) + '</span></div></div>'
+    + '<div class="card ap-stat"><div class="ap-badge blue">' + ico('users') + '</div><div><small>พนักงานที่อยู่ในเกณฑ์ประเมิน (อายุงานครบ 1 ปีขึ้นไป)</small><div class="big">' + scope.length + '<span>คน</span></div>' + (excludedSummary().total ? '<small>ไม่อยู่ในเกณฑ์ ' + excludedSummary().total + ' คน (อายุงานไม่ครบ 1 ปี ' + excludedSummary().tenure + ' · ไม่มีผู้ประเมิน ' + excludedSummary().noEval + ')</small>' : '') + '</div></div>'
+    + '<div class="card ap-stat"><div class="ap-badge green">' + ico('check') + '</div><div><small>ความคืบหน้าการประเมิน</small><div class="big">' + pct + '%</div><div class="ap-bar"><i style="width:' + pct + '%"></i></div><small>ประเมินแล้ว ' + done + ' / ' + scope.length + ' คน</small></div></div>'
+    + '<div class="card ap-stat"><div class="ap-badge ' + (left < 0 ? 'amber' : 'blue') + '">' + ico('clock') + '</div><div><small>' + (left < 0 ? 'เกินกำหนดส่งมาแล้ว' : 'สิ้นสุดการประเมินในอีก') + '</small><div class="big">' + Math.abs(left) + '<span>วัน</span></div><small>กำหนดส่ง ' + fmtD(s.deadline) + '</small></div></div></section>'
+    + '<section class="ap-grid2"><section class="card ap-card"><h3>' + ico('users') + ' ขั้นตอนการประเมิน</h3><div class="ap-steps">' + steps + '</div>'
+    + '<div class="ap-note">' + ico('info') + '<div><b>ผู้ประเมินระดับ M1:</b> ประเมินพนักงานระดับ S1–O3 ในสายงานของตน<br><b>ผู้ประเมินระดับกรรมการ (D1–D2):</b> ประเมินพนักงานระดับ M1 ขึ้นไป<br><b>HR:</b> บันทึกสถิติการมาทำงานและวินัย ตรวจสอบก่อนประกาศผล</div></div>'
+    + '<div class="ap-actions left"><button type="button" class="ap-btn sm" data-act="phase" data-d="-1"' + (s.phase <= 1 ? ' disabled' : '') + '>ย้อนขั้นตอน</button><button type="button" class="ap-btn sm primary" data-act="phase" data-d="1"' + (s.phase >= 4 ? ' disabled' : '') + '>ไปขั้นตอนถัดไป</button></div></section>' + critCard() + '</section>'
+    + '<section class="card ap-card"><div class="ap-cardhead"><h3>' + ico('list') + ' รายการประเมิน</h3>' + listTools() + '</div><div id="ap-tbl">' + evalTable(PAGE) + '</div>'
+    + (scope.length > PAGE ? '<div class="ap-pager"><span></span><button type="button" class="ap-btn sm" data-act="go" data-to="evaluate">ดูทั้งหมด (' + scope.length + ') ' + ico('arrow', 'sm') + '</button></div>' : '') + '</section>' + excludedCard());
+}
+function excludedCard() {
+  const list = excludedPeople();
+  if (!list.length) return '';
+  const sorted = list.slice().sort((a, b) => (a.p.hireDate || '9999').localeCompare(b.p.hireDate || '9999')).reverse();
+  return '<section class="card ap-card"><details><summary><b>' + ico('lock', 'sm') + ' พนักงานที่ไม่อยู่ในเกณฑ์ประเมินรอบนี้ (' + list.length + ' คน)</b> <span class="ap-muted">— อายุงานไม่ครบ 1 ปี ณ ' + fmtD(cycleEnd()) + ' หรือยังไม่มีผู้ประเมิน</span></summary>'
+    + '<div class="ap-tablewrap" style="margin-top:10px"><table><thead><tr><th>พนักงาน</th><th>ตำแหน่ง</th><th>เริ่มงาน</th><th>เหตุผลที่ไม่อยู่ในเกณฑ์</th></tr></thead><tbody>'
+    + sorted.slice(0, 200).map((x) => '<tr><td><b>' + E(x.p.name) + '</b><div class="ap-muted sm">' + E(x.p.id) + ' · ' + E(x.p.dept || '-') + '</div></td><td>' + E(x.p.position || '-') + '</td><td>' + fmtD(x.p.hireDate) + '</td><td>' + x.reasons.map((r) => '<span class="ap-pill amber" style="margin:2px 4px 2px 0;white-space:normal">' + E(r) + '</span>').join('') + '</td></tr>').join('')
+    + '</tbody></table></div></details></section>';
+}
+function viewEvaluate() {
+  return shell('ประเมินผลปฏิบัติงาน', 'รายการแบบประเมินทั้งหมดของรอบนี้', '<section class="card ap-card"><div class="ap-cardhead"><h3>' + ico('list') + ' รายการประเมิน (' + evaluatees().length + ' คน)</h3>' + listTools() + '</div><div id="ap-tbl">' + evalTable() + '</div></section>');
+}
+
+/* ---------- หน้า: แบบประเมิน (ซ้าย: ข้อมูล + 3 ส่วน · ขวา: สรุปคะแนนสด) ---------- */
+function startForm(p) {
+  const ex = bucket('evals')[p.id];
+  if (ex) { form = JSON.parse(JSON.stringify(ex)); }
+  else { const pl = planFor(p); form = { empId: p.id, evaluatorId: p.evaluatorId, status: 'draft', comps: pl.comps, kpi: pl.kpis, strengths: '', develop: '', comment: '' }; }
+  formEmp = p.id;
+}
+function formResult(p) {
+  return computeResult({
+    emp: { level: p.level, hireDate: p.hireDate, status: p.status, specialRaise: p.specialRaise, productionLineLead: p.productionLineLead },
+    ev: form, att: attOf(p.id), discCode: bucket('disc')[p.id] || 'none', discTable: settings().disciplineTable, cycleEnd: cycleEnd(),
+  });
+}
+function summaryHTML(p) {
+  const r = formResult(p), w = r.weights;
+  const chk = (ok, text) => '<li><span class="' + (ok ? 'ok' : 'wait') + '">' + ico(ok ? 'circleCheck' : 'clock', 'sm') + '</span><span>' + text + '</span></li>';
+  return '<h3>' + ico('calc') + ' สรุปคะแนน (คำนวณสด)</h3>'
+    + '<div class="ap-sumrow"><span>สมรรถนะ (Competency)</span><b>' + fmtN(r.comp.score) + ' / ' + fmtN(r.comp.max) + '</b></div>'
+    + '<div class="ap-sumrow"><span>ผลการปฏิบัติงาน (KPI)</span><b>' + fmtN(r.kpi.score) + ' / ' + fmtN(r.kpi.max) + '</b></div>'
+    + '<div class="ap-sumrow"><span>รวมด้านผลงาน → ' + w.behavior + '%</span><b>' + fmtN(r.behaviorRaw) + '/' + r.behaviorMax + ' = ' + fmtN(r.behaviorPct) + '%</b></div>'
+    + '<div class="ap-sumrow"><span>สถิติการมาทำงาน → ' + w.attendance + '% <small class="ap-muted">(HR)</small></span><b>' + r.attendance.total + '/50 = ' + fmtN(r.attendancePct) + '%</b></div>'
+    + '<div class="ap-sumrow"><span>การปฏิบัติตามระเบียบ → ' + w.regulation + '% <small class="ap-muted">(HR)</small></span><b>' + r.discipline.score + '/40 = ' + fmtN(r.regulationPct) + '%</b></div>'
+    + '<div class="ap-total"><div class="ap-muted">คะแนนรวม</div><div class="pct num">' + fmtPct(r.total) + '</div><div style="margin-top:8px">' + (r.ready ? gradeBadge(r.grade) : '<span class="ap-grade" style="background:#94a3b8">—</span>') + '</div>'
+    + '<div class="ap-muted" style="margin-top:4px">' + (r.ready ? 'เกรด ' + r.grade.grade + ' · ' + E(r.grade.level) : 'ยังให้คะแนนไม่ครบ') + '</div></div>'
+    + '<ul class="ap-checks">' + chk(r.comp.complete, 'ให้ระดับสมรรถนะ ' + r.comp.answered + '/' + r.comp.total + ' ข้อ')
+    + chk(r.kpi.answered === r.kpi.total && r.kpi.total > 0, 'ให้คะแนน KPI ' + r.kpi.answered + '/' + r.kpi.total + ' ตัว')
+    + chk(Math.abs(r.kpi.weightSum - 100) < 0.001, 'น้ำหนัก KPI รวม ' + fmtN(r.kpi.weightSum) + '% (ต้องเท่ากับ 100%)') + '</ul>'
+    + (r.ready ? '<div class="ap-note" style="margin-top:10px;font-size:13px">' + ico('info', 'sm') + '<div>โบนัส: ' + (r.bonusEligible ? '<b>มีสิทธิ์</b> (เกรด C ขึ้นไป)' : '<b>ไม่มีสิทธิ์</b> — ' + E(r.bonusReasons.join(', '))) + '<br>ปรับเงินเดือน: ' + (r.raiseEligible ? '<b>มีสิทธิ์</b>' : '<b>ไม่มีสิทธิ์</b> — ' + E(r.raiseReasons.join(', '))) + '</div></div>' : '');
+}
+function compRowsHTML(dis) {
+  return form.comps.map((c, i) => {
+    const info = compInfo(c.id), tp = COMP_TYPE_PILL[c.type] || ['gray', c.type || ''];
+    return '<div class="ap-comp"><div class="ap-comphead"><div><span class="ap-pill ' + tp[0] + '">' + E(tp[1]) + '</span> <span class="t">' + E(c.name || info.th) + '</span> <small class="ap-muted">' + E(info.en) + '</small></div>'
+      + '<div class="ap-chips"><span class="ap-pill gray">น้ำหนัก ' + fmtN(c.weight) + '%</span><span class="ap-pill blue" title="ระดับความสามารถที่ตำแหน่งนี้คาดหวัง">คาดหวังระดับ ' + (c.expected || '-') + '</span></div></div>'
+      + '<div class="h">' + E(info.def) + '</div>'
+      + '<div class="ap-rating" role="radiogroup" aria-label="' + A(c.name) + '">' + [1, 2, 3, 4, 5].map((v) => '<label><input type="radio" name="rc-' + i + '" data-in="rating" data-k="comps" data-i="' + i + '" value="' + v + '"' + (+c.rating === v ? ' checked' : '') + (dis ? ' disabled' : '') + '><span class="' + (c.expected === v ? 'exp' : '') + '"><b>' + v + '</b>' + RATING_LABELS[v] + '</span></label>').join('') + '</div>'
+      + (info.lv.some(Boolean) ? '<details><summary>ดูพฤติกรรมที่คาดหวังแต่ละระดับ</summary><ol class="ap-lv">' + info.lv.map((t, j) => t ? '<li class="' + (c.expected === j + 1 ? 'exp' : '') + '"><b>ระดับ ' + (j + 1) + ':</b> ' + E(t) + '</li>' : '').join('') + '</ol></details>' : '') + '</div>';
+  }).join('');
+}
+function kpiRowsHTML(dis, p) {
+  return form.kpi.map((k, i) => {
+    if (!k.code) {
+      return '<div class="ap-kpirow"><input data-in="kpi-manual" data-i="' + i + '" data-f="name" value="' + A(k.name) + '" placeholder="ตัวชี้วัด เช่น ผลผลิตตามแผน"' + (dis ? ' disabled' : '') + '>'
+        + '<input class="num" type="number" min="0" max="100" data-in="kpi-manual" data-i="' + i + '" data-f="weight" value="' + A(k.weight) + '" placeholder="น้ำหนัก %"' + (dis ? ' disabled' : '') + '>'
+        + '<select data-in="rating" data-k="kpi" data-i="' + i + '"' + (dis ? ' disabled' : '') + '><option value="">ให้คะแนน</option>' + [5, 4, 3, 2, 1].map((v) => '<option value="' + v + '"' + (+k.rating === v ? ' selected' : '') + '>' + v + ' · ' + RATING_LABELS[v] + '</option>').join('') + '</select>'
+        + '<button type="button" class="ap-btn sm ghost danger" data-act="del-kpi" data-i="' + i + '" aria-label="ลบแถว"' + (dis || form.kpi.length <= 1 ? ' disabled' : '') + '>' + ico('trash', 'sm') + '</button></div>';
+    }
+    const info = kpiInfo(p.jobId, k.code);
+    return '<div class="ap-comp"><div class="ap-comphead"><div><span class="t">' + E(k.name) + '</span></div><div class="ap-chips"><span class="ap-pill gray">น้ำหนัก ' + fmtN(k.weight) + '%</span>' + (info.freq ? '<span class="ap-pill gray">' + E(info.freq) + '</span>' : '') + '</div></div>'
+      + '<div class="h">' + E(info.def) + '</div>'
+      + '<div class="ap-kpimeta"><span><b>เป้าหมายแนะนำ:</b> ' + E(info.target) + '</span><span><b>สูตร:</b> ' + E(info.formula) + '</span>' + (info.source ? '<span><b>แหล่งข้อมูล:</b> ' + E(info.source) + '</span>' : '') + '</div>'
+      + '<div class="ap-rating kpi" role="radiogroup" aria-label="' + A(k.name) + '">' + [5, 4, 3, 2, 1].map((v) => '<label><input type="radio" name="rk-' + i + '" data-in="rating" data-k="kpi" data-i="' + i + '" value="' + v + '"' + (+k.rating === v ? ' checked' : '') + (dis ? ' disabled' : '') + '><span><b>' + v + '</b>' + RATING_LABELS[v] + (info.r[5 - v] ? '<small>' + E(info.r[5 - v]) + '</small>' : '') + '</span></label>').join('') + '</div></div>';
+  }).join('');
+}
+function viewForm(id) {
+  const p = person(id);
+  if (!p || !p.evaluatorId) return shell('ไม่พบแบบประเมิน', '', '<div class="card ap-card ap-empty">ไม่พบพนักงานหรือยังไม่มีผู้ประเมิน <button type="button" class="ap-btn" data-act="go" data-to="evaluate">กลับ</button></div>');
+  if (formEmp !== id || !form) startForm(p);
+  const ed = editable(), dis = !ed, manual = form.kpi.some((k) => !k.code);
+  const evalOptions = allPeople().filter((x) => canEvaluateLevel(x.level) && x.id !== p.id).sort((a, b) => a.name.localeCompare(b.name, 'th'));
+  const tenure = tenureYears(p.hireDate, cycleEnd());
+  return shell('แบบประเมินผลการปฏิบัติงานประจำปี ' + settings().year, p.name + ' · ' + (p.position || '-'), ''
+    + '<div class="ap-formgrid"><div>'
+    + '<section class="card ap-card ap-sect"><div class="ap-empcard"><div class="ap-avatar">' + E((p.name || '?').replace(/^(คุณ|นางสาว|นาง|นาย)\s*/, '').charAt(0)) + '</div><div style="flex:1;min-width:220px"><h3 style="margin:0">' + E(p.name) + '</h3>'
+    + '<div class="ap-kv"><span><small>ตำแหน่ง</small>' + E(p.position || '-') + '</span><span><small>ระดับ</small>' + E(p.level) + ' · ' + E(levelOf(p.level).name) + '</span><span><small>หน่วยงาน</small>' + E(p.dept || '-') + ' (' + E(p.company) + ')</span><span><small>เริ่มงาน</small>' + fmtD(p.hireDate) + ' (' + tenure + ' ปี)</span><span><small>รหัสตำแหน่ง</small>' + E(p.jobId || '—') + '</span></div></div>' + statusPill(statusOf(p.id)) + '</div>'
+    + '<div class="ap-empopts"><label>ผู้ประเมิน (M1 ขึ้นไป)<select data-in="evaluator"' + (dis ? ' disabled' : '') + '>' + evalOptions.map((x) => '<option value="' + A(x.id) + '"' + (x.id === p.evaluatorId ? ' selected' : '') + '>' + E(x.name) + ' — ' + E(x.position || x.level) + '</option>').join('') + (evalOptions.some((x) => x.id === p.evaluatorId) ? '' : '<option value="' + A(p.evaluatorId) + '" selected>' + E((person(p.evaluatorId) || {}).name || p.evaluatorId) + '</option>') + '</select></label>'
+    + '<label class="chk"><input type="checkbox" data-in="flag" data-k="lineLead"' + (p.productionLineLead ? ' checked' : '') + (dis ? ' disabled' : '') + '> หัวหน้าไลน์ที่เกี่ยวข้องกับการผลิต (ใช้สัดส่วนกลุ่มปฏิบัติการ)</label>'
+    + '<label class="chk"><input type="checkbox" data-in="flag" data-k="specialRaise"' + (p.specialRaise ? ' checked' : '') + (dis ? ' disabled' : '') + '> ได้รับการปรับเงินเดือนพิเศษระหว่างปีแล้ว</label></div>'
+    + (ed ? '' : '<div class="ap-note warn" style="margin-top:12px">' + ico('lock') + '<div>รอบการประเมินอยู่ในขั้นตอนประกาศผลแล้ว จึงแก้ไขแบบประเมินไม่ได้ (HR ย้อนขั้นตอนได้ที่หน้า ภาพรวม)</div></div>') + '</section>'
+    + '<section class="card ap-card ap-sect"><h3>1) สมรรถนะและพฤติกรรม (Competency) <small>เต็ม ' + fmtN(competencyMax(p.level)) + ' คะแนน · 30% ของด้านผลงาน</small></h3><div id="ap-comprows">' + compRowsHTML(dis) + '</div></section>'
+    + '<section class="card ap-card ap-sect"><h3>2) ผลการปฏิบัติงานรายตำแหน่ง (KPI) <small>เต็ม ' + fmtN(kpiMax(p.level)) + ' คะแนน · 70% ของด้านผลงาน</small></h3>'
+    + (manual ? '<div class="ap-note warn" style="margin-bottom:10px">' + ico('info') + '<div>ตำแหน่งนี้ไม่มีรหัสตำแหน่งหรือยังไม่มี KPI ในระบบ ผู้ประเมินกรอกตัวชี้วัดและน้ำหนักเอง (รวมต้อง 100%) — หรือกำหนดรหัสตำแหน่งที่ ฐานข้อมูลพนักงาน เพื่อดึง KPI อัตโนมัติ</div></div>' : '')
+    + '<div id="ap-kpirows">' + kpiRowsHTML(dis, p) + '</div>'
+    + '<div class="ap-actions between">' + (manual ? '<button type="button" class="ap-btn sm" data-act="add-kpi"' + (dis ? ' disabled' : '') + '>' + ico('plus', 'sm') + 'เพิ่มตัวชี้วัด</button>' : '<span></span>') + '<span class="ap-muted" id="ap-kpisum"></span></div></section>'
+    + '<section class="card ap-card ap-sect"><h3>3) ความเห็นของผู้ประเมิน</h3>'
+    + '<div class="field"><label>จุดเด่น</label><textarea data-in="text" data-f="strengths"' + (dis ? ' disabled' : '') + '>' + E(form.strengths) + '</textarea></div>'
+    + '<div class="field"><label>ข้อควรพัฒนา</label><textarea data-in="text" data-f="develop"' + (dis ? ' disabled' : '') + '>' + E(form.develop) + '</textarea></div>'
+    + '<div class="field"><label>ความเห็นเพิ่มเติม</label><textarea data-in="text" data-f="comment"' + (dis ? ' disabled' : '') + '>' + E(form.comment) + '</textarea></div>'
+    + '<div class="ap-actions"><button type="button" class="ap-btn" data-act="go" data-to="evaluate">กลับ</button>' + (ed ? '<button type="button" class="ap-btn" data-act="save-draft">บันทึกร่าง</button><button type="button" class="ap-btn green" data-act="submit">' + ico('check') + 'ส่งผลการประเมิน</button>' : '') + '</div></section>'
+    + '</div><aside class="card ap-card ap-sticky" id="ap-summary">' + summaryHTML(p) + '</aside></div>');
+}
+function refreshSummary() {
+  const p = person(formEmp), box = root && root.querySelector('#ap-summary');
+  if (box && p) box.innerHTML = summaryHTML(p);
+  const k = root && root.querySelector('#ap-kpisum');
+  if (k && form) { const sum = form.kpi.reduce((a, r) => a + (+r.weight || 0), 0); k.textContent = 'น้ำหนักรวม ' + fmtN(sum) + '%'; k.style.color = Math.abs(sum - 100) < 0.001 ? '#16a34a' : '#d97706'; }
+}
+function persistForm(status) {
+  form.status = status; form.updatedAt = new Date().toISOString();
+  if (status === 'submitted') form.submittedAt = form.updatedAt;
+  const p = person(formEmp); form.evaluatorId = p ? p.evaluatorId : form.evaluatorId;
+  bucket('evals')[formEmp] = JSON.parse(JSON.stringify(form));
+  persist();
+}
+
+/* ---------- หน้า: ผลรายบุคคล / รายงานผล ---------- */
+function breakdownTable(r) {
+  const w = r.weights, row = (name, wt, raw, max, pct) => '<tr><td>' + name + '</td><td class="c">' + wt + '%</td><td class="c num">' + fmtN(raw) + '</td><td class="c num">' + max + '</td><td class="r num"><b>' + fmtN(pct) + '%</b></td></tr>';
+  return '<div class="ap-tablewrap"><table><thead><tr><th>รายละเอียดประเภทการประเมิน</th><th class="c">สัดส่วน</th><th class="c">คะแนนดิบ</th><th class="c">คะแนนเต็ม</th><th class="r">คะแนนที่ได้</th></tr></thead><tbody>'
+    + row('1. ประสิทธิภาพ (Competency) และประสิทธิผล (KPI)', w.behavior, r.behaviorRaw, r.behaviorMax, r.behaviorPct)
+    + row('2. สถิติการปฏิบัติงาน (Attendance)', w.attendance, r.attendance.total, 50, r.attendancePct)
+    + row('3. การปฏิบัติตามระเบียบข้อบังคับ (Regulation)', w.regulation, r.discipline.score, 40, r.regulationPct)
+    + '<tr><td><b>ผลรวม</b></td><td class="c"><b>100%</b></td><td></td><td></td><td class="r num"><b>' + fmtPct(r.total) + '</b></td></tr></tbody></table></div>';
+}
+function viewResult(id) {
+  const p = person(id), ev = p && bucket('evals')[id];
+  if (!p || !ev || ev.status !== 'submitted') return shell('ผลการประเมิน', p ? p.name : '', '<div class="card ap-card ap-empty">ยังไม่มีผลการประเมินที่ส่งแล้ว <button type="button" class="ap-btn" data-act="go" data-to="evaluate">กลับรายการประเมิน</button></div>');
+  const r = resultFor(p), a = attOf(id), s = settings();
+  const attRows = Object.keys(ATTENDANCE_RULES).map((k) => '<tr><td>' + ATTENDANCE_RULES[k].label + '</td><td class="c num">' + (a[k] || 0) + ' ' + ATTENDANCE_RULES[k].unit + '</td><td class="r num">' + r.attendance.parts[k] + ' / ' + ATTENDANCE_RULES[k].max + '</td></tr>').join('');
+  return shell('ผลการประเมินประจำปี ' + s.year, p.name + ' · ' + (p.position || '-'), ''
+    + '<div class="ap-cards three">'
+    + '<div class="card ap-stat"><div style="flex:none">' + gradeBadge(r.grade) + '</div><div><small>เกรดผลการประเมิน</small><div class="big">' + E(r.grade.level) + '</div></div></div>'
+    + '<div class="card ap-stat"><div class="ap-badge blue">' + ico('chart') + '</div><div><small>คะแนนรวม</small><div class="big num">' + fmtPct(r.total) + '</div></div></div>'
+    + '<div class="card ap-stat"><div class="ap-badge ' + (r.bonusEligible ? 'green' : 'amber') + '">' + ico('trophy') + '</div><div><small>สิทธิ์โบนัส / ปรับเงินเดือน</small><div style="margin-top:4px"><span class="ap-pill ' + (r.bonusEligible ? 'green' : 'gray') + '">โบนัส: ' + (r.bonusEligible ? 'มีสิทธิ์' : 'ไม่มี') + '</span> <span class="ap-pill ' + (r.raiseEligible ? 'green' : 'gray') + '">ปรับเงินเดือน: ' + (r.raiseEligible ? 'มีสิทธิ์' : 'ไม่มี') + '</span></div></div></div></div>'
+    + '<div class="ap-grid2 wide"><section class="card ap-card"><h3>' + ico('calc') + ' รายละเอียดการคำนวณ</h3>' + breakdownTable(r) + '<p class="ap-muted" style="margin:12px 0 0">' + E(r.grade.desc) + '</p>'
+    + '<div class="ap-note ' + (r.bonusEligible && r.raiseEligible ? '' : 'warn') + '" style="margin-top:12px">' + ico('info') + '<div><b>โบนัส:</b> ' + (r.bonusEligible ? 'มีสิทธิ์ · จ่ายวันที่ ' + fmtD(s.payDate) : 'ไม่มีสิทธิ์ — ' + E(r.bonusReasons.join(', '))) + '<br><b>ปรับเงินเดือนประจำปี:</b> ' + (r.raiseEligible ? 'มีสิทธิ์' : 'ไม่มีสิทธิ์ — ' + E(r.raiseReasons.join(', '))) + '</div></div></section>'
+    + '<section class="card ap-card"><h3>' + ico('clock') + ' สถิติการมาทำงานและวินัย</h3><table><thead><tr><th>รายการ</th><th class="c">จำนวน</th><th class="r">คะแนน</th></tr></thead><tbody>' + attRows
+    + '<tr><td><b>รวมสถิติ</b></td><td></td><td class="r num"><b>' + r.attendance.total + ' / 50</b></td></tr><tr><td colspan="2">' + E(r.discipline.label) + '</td><td class="r num"><b>' + r.discipline.score + ' / 40</b></td></tr></tbody></table></section></div>'
+    + '<div class="ap-grid2 even"><section class="card ap-card"><h3>' + ico('star') + ' สมรรถนะ (' + fmtN(r.comp.score) + '/' + fmtN(r.comp.max) + ')</h3>'
+    + (ev.comps || []).map((c) => '<div class="ap-sumrow"><span>' + E(c.name) + ' <small class="ap-muted">(' + fmtN(c.weight) + '% · คาดหวัง ' + (c.expected || '-') + ')</small></span><b>' + (c.rating || '-') + ' / 5</b></div>').join('') + '</section>'
+    + '<section class="card ap-card"><h3>' + ico('chart') + ' KPI (' + fmtN(r.kpi.score) + '/' + fmtN(r.kpi.max) + ')</h3>'
+    + (ev.kpi || []).filter((k) => k.name).map((k) => '<div class="ap-sumrow"><span>' + E(k.name) + ' <small class="ap-muted">(น้ำหนัก ' + fmtN(k.weight) + '%)</small></span><b>' + (k.rating || '-') + ' / 5</b></div>').join('')
+    + '<div style="margin-top:12px;font-size:14px"><b>จุดเด่น:</b> ' + (E(ev.strengths) || '—') + '<br><b>ข้อควรพัฒนา:</b> ' + (E(ev.develop) || '—') + '<br><b>ความเห็นเพิ่มเติม:</b> ' + (E(ev.comment) || '—') + '<br><span class="ap-muted">ผู้ประเมิน: ' + E((person(ev.evaluatorId) || {}).name || '—') + '</span></div></section></div>'
+    + '<div class="ap-actions left"><button type="button" class="ap-btn" data-act="print" data-arg="' + A(id) + '">' + ico('print') + 'พิมพ์ / บันทึก PDF</button><button type="button" class="ap-btn" data-act="go" data-to="results">กลับรายงาน</button>' + (editable() ? '<button type="button" class="ap-btn" data-act="go" data-to="form" data-arg="' + A(id) + '">แก้ไขแบบประเมิน</button>' : '') + '</div>');
+}
+function resultRows() { return evaluatees().map((p) => ({ p, done: statusOf(p.id) === 'done', r: resultFor(p) })); }
+function filteredResults() {
+  const f = ui.list, q = f.q.trim().toLowerCase();
+  return resultRows().filter((x) => (!q || (x.p.name + x.p.position + x.p.id).toLowerCase().includes(q)) && (!f.dept || x.p.dept === f.dept) && (!f.company || x.p.company === f.company) && (!f.grade || (x.done && x.r.grade.grade === f.grade)));
+}
+function resultsTable() {
+  const rows = filteredResults();
+  if (!rows.length) return '<div class="ap-empty">ไม่พบรายการ</div>';
+  return '<div class="ap-tablewrap"><table><thead><tr><th>ชื่อ-สกุล</th><th>หน่วยงาน</th><th>ระดับ</th><th class="r">ผลงาน</th><th class="r">สถิติ</th><th class="r">ระเบียบ</th><th class="r">รวม</th><th class="c">เกรด</th><th>โบนัส</th><th>ปรับเงินเดือน</th><th></th></tr></thead><tbody>'
+    + rows.map((x) => '<tr><td><b>' + E(x.p.name) + '</b></td><td>' + E(x.p.dept || '-') + '</td><td><span class="ap-pill gray">' + x.p.level + '</span></td>'
+      + (x.done ? '<td class="r num">' + fmtN(x.r.behaviorPct) + '</td><td class="r num">' + fmtN(x.r.attendancePct) + '</td><td class="r num">' + fmtN(x.r.regulationPct) + '</td><td class="r num"><b>' + fmtN(x.r.total) + '%</b></td><td class="c">' + gradeBadge(x.r.grade, true) + '</td>'
+        + '<td><span class="ap-pill ' + (x.r.bonusEligible ? 'green' : 'gray') + '">' + (x.r.bonusEligible ? 'มีสิทธิ์' : 'ไม่มี') + '</span></td><td><span class="ap-pill ' + (x.r.raiseEligible ? 'green' : 'gray') + '">' + (x.r.raiseEligible ? 'มีสิทธิ์' : 'ไม่มี') + '</span></td>'
+        + '<td><button type="button" class="ap-btn sm" data-act="go" data-to="result" data-arg="' + A(x.p.id) + '">รายละเอียด</button></td>'
+        : '<td colspan="7" class="ap-muted">' + (statusOf(x.p.id) === 'draft' ? 'อยู่ระหว่างประเมิน' : 'รอการประเมิน') + '</td>') + '</tr>').join('') + '</tbody></table></div>';
+}
+function viewResults() {
+  const all = resultRows(), done = all.filter((x) => x.done);
+  const avg = done.length ? done.reduce((s, x) => s + x.r.total, 0) / done.length : 0;
+  const bonus = done.filter((x) => x.r.bonusEligible).length, raise = done.filter((x) => x.r.raiseEligible).length;
+  const maxC = Math.max(1, ...GRADES.map((g) => done.filter((x) => x.r.grade.grade === g.grade).length));
+  return shell('รายงานผลการประเมิน', 'สรุปเกรดและสิทธิ์โบนัส/ปรับเงินเดือนตามเกณฑ์ปี ' + settings().year, ''
+    + '<section class="ap-cards">'
+    + '<div class="card ap-stat"><div class="ap-badge blue">' + ico('users') + '</div><div><small>ประเมินเสร็จแล้ว</small><div class="big">' + done.length + '<span>/ ' + all.length + ' คน</span></div></div></div>'
+    + '<div class="card ap-stat"><div class="ap-badge green">' + ico('chart') + '</div><div><small>คะแนนเฉลี่ย</small><div class="big num">' + (done.length ? fmtN(avg) + '%' : '—') + '</div></div></div>'
+    + '<div class="card ap-stat"><div class="ap-badge green">' + ico('trophy') + '</div><div><small>มีสิทธิ์รับโบนัส (เกรด C–A)</small><div class="big">' + bonus + '<span>คน</span></div></div></div>'
+    + '<div class="card ap-stat"><div class="ap-badge blue">' + ico('calendar') + '</div><div><small>มีสิทธิ์ปรับเงินเดือน</small><div class="big">' + raise + '<span>คน</span></div></div></div></section>'
+    + '<section class="ap-grid2 dist"><section class="card ap-card"><h3>' + ico('chart') + ' การกระจายเกรด</h3><div class="ap-gdist">'
+    + GRADES.map((g) => { const c = done.filter((x) => x.r.grade.grade === g.grade).length; return '<div class="gd"><span>' + gradeBadge(g, true) + '</span><div class="b"><i style="width:' + (c / maxC * 100) + '%;background:' + g.color + '"></i></div><b class="num">' + c + '</b></div>'; }).join('') + '</div></section>'
+    + '<section class="card ap-card"><h3>' + ico('info') + ' หมายเหตุการแสดงผล</h3><ul class="ap-checks"><li><span class="ok">' + ico('check', 'sm') + '</span>แสดงเฉพาะแบบประเมินที่ส่งผลแล้ว (สถานะ "ประเมินแล้ว")</li><li><span class="ok">' + ico('check', 'sm') + '</span>สถิติการมาทำงานดึงจากเมนู "การขาด ลา มาสาย" ในช่วงรอบประเมิน (HR แก้ไขได้ที่หน้าสถิติ/วินัย)</li>'
+    + '<li><span class="ok">' + ico('check', 'sm') + '</span>ผลนี้ใช้ประกอบการพิจารณาเท่านั้น จำนวนเงินโบนัสและอัตราปรับเงินเดือนให้เป็นไปตามประกาศของบริษัท</li></ul></section></section>'
+    + '<section class="card ap-card"><div class="ap-cardhead"><h3>' + ico('list') + ' ผลรายบุคคล</h3>' + listTools(true) + '<button type="button" class="ap-btn" data-act="csv">' + ico('download') + 'ส่งออก CSV</button></div><div id="ap-tbl">' + resultsTable() + '</div></section>');
+}
+function exportCSV() {
+  const rows = [['รหัส', 'ชื่อ-สกุล', 'ตำแหน่ง', 'หน่วยงาน', 'ระดับ', 'ผู้ประเมิน', 'สถานะ', 'ผลงาน(%)', 'สถิติ(%)', 'ระเบียบ(%)', 'รวม(%)', 'เกรด', 'โบนัส', 'ปรับเงินเดือน', 'เหตุผลที่ไม่ได้ปรับ']];
+  filteredResults().forEach((x) => rows.push([x.p.id, x.p.name, x.p.position, x.p.dept, x.p.level, (person(x.p.evaluatorId) || {}).name || '', STATUS_LABEL[statusOf(x.p.id)]]
+    .concat(x.done ? [x.r.behaviorPct, x.r.attendancePct, x.r.regulationPct, x.r.total, x.r.grade.grade, x.r.bonusEligible ? 'มี' : 'ไม่มี', x.r.raiseEligible ? 'มี' : 'ไม่มี', x.r.raiseReasons.join('; ')] : ['', '', '', '', '', '', '', ''])));
+  const cell = (v) => { const t = String(v == null ? '' : v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+  const url = URL.createObjectURL(new Blob(['﻿' + rows.map((r) => r.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a'); a.href = url; a.download = 'ผลประเมินประจำปี-' + settings().year + '.csv'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function printResult(id) {
+  const p = person(id), ev = p && bucket('evals')[id]; if (!p || !ev) return;
+  const r = resultFor(p), a = attOf(id), s = settings();
+  const rows = (list, f) => list.map(f).join('');
+  const html = '<!doctype html><html lang="th"><head><meta charset="utf-8"><title>ผลการประเมินประจำปี ' + s.year + ' - ' + E(p.name) + '</title><style>'
+    + 'body{font-family:"Sarabun","Noto Sans Thai",Tahoma,sans-serif;margin:22px;color:#111;font-size:13px}h1{font-size:19px;margin:0}h2{font-size:14px;margin:14px 0 6px}table{width:100%;border-collapse:collapse;margin-bottom:8px}th,td{border:1px solid #999;padding:5px 7px;text-align:left}th{background:#eee}.c{text-align:center}.r{text-align:right}'
+    + '.badge{display:inline-block;padding:4px 12px;border-radius:8px;color:#fff;font-weight:700;font-size:18px}.box{border:1px solid #bbb;padding:7px 9px;margin:6px 0;white-space:pre-wrap}.sign{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:34px;text-align:center}.sign div{border-top:1px solid #333;padding-top:6px}@media print{.bar{display:none}}</style></head><body>'
+    + '<div class="bar"><button onclick="window.print()">🖨 พิมพ์ / บันทึกเป็น PDF</button></div><h1>ผลการประเมินผลการปฏิบัติงานประจำปี ' + s.year + '</h1>'
+    + '<p>' + E(p.name) + ' (' + E(p.id) + ') · ' + E(p.position || '-') + ' · ' + E(p.dept || '-') + ' · ระดับ ' + E(p.level) + ' · เริ่มงาน ' + fmtD(p.hireDate) + '<br>ผู้ประเมิน: ' + E((person(ev.evaluatorId) || {}).name || '—') + '</p>'
+    + '<p><span class="badge" style="background:' + r.grade.color + '">' + E(r.grade.grade) + '</span> ' + E(r.grade.level) + ' · คะแนนรวม <b>' + fmtPct(r.total) + '</b> · โบนัส: <b>' + (r.bonusEligible ? 'มีสิทธิ์' : 'ไม่มีสิทธิ์') + '</b> · ปรับเงินเดือน: <b>' + (r.raiseEligible ? 'มีสิทธิ์' : 'ไม่มีสิทธิ์') + '</b></p>'
+    + '<h2>รายละเอียดการคำนวณ</h2><table><thead><tr><th>ประเภท</th><th class="c">สัดส่วน</th><th class="c">คะแนนดิบ</th><th class="c">เต็ม</th><th class="r">ได้</th></tr></thead><tbody>'
+    + '<tr><td>1. ประสิทธิภาพ (Competency) และประสิทธิผล (KPI)</td><td class="c">' + r.weights.behavior + '%</td><td class="c">' + fmtN(r.behaviorRaw) + '</td><td class="c">' + r.behaviorMax + '</td><td class="r">' + fmtN(r.behaviorPct) + '%</td></tr>'
+    + '<tr><td>2. สถิติการปฏิบัติงาน</td><td class="c">' + r.weights.attendance + '%</td><td class="c">' + r.attendance.total + '</td><td class="c">50</td><td class="r">' + fmtN(r.attendancePct) + '%</td></tr>'
+    + '<tr><td>3. การปฏิบัติตามระเบียบข้อบังคับ (' + E(r.discipline.label) + ')</td><td class="c">' + r.weights.regulation + '%</td><td class="c">' + r.discipline.score + '</td><td class="c">40</td><td class="r">' + fmtN(r.regulationPct) + '%</td></tr></tbody></table>'
+    + '<h2>สถิติการมาทำงาน</h2><table><tbody><tr>' + rows(Object.keys(ATTENDANCE_RULES), (k) => '<td>' + ATTENDANCE_RULES[k].label + ' ' + (a[k] || 0) + ' ' + ATTENDANCE_RULES[k].unit + ' = ' + r.attendance.parts[k] + '/' + ATTENDANCE_RULES[k].max + '</td>') + '</tr></tbody></table>'
+    + '<h2>สมรรถนะ (' + fmtN(r.comp.score) + '/' + fmtN(r.comp.max) + ')</h2><table><tbody>' + rows(ev.comps || [], (c) => '<tr><td>' + E(c.name) + ' (' + fmtN(c.weight) + '% · คาดหวัง ' + (c.expected || '-') + ')</td><td class="c">' + (c.rating || '-') + ' / 5</td></tr>') + '</tbody></table>'
+    + '<h2>KPI (' + fmtN(r.kpi.score) + '/' + fmtN(r.kpi.max) + ')</h2><table><tbody>' + rows((ev.kpi || []).filter((k) => k.name), (k) => '<tr><td>' + E(k.name) + ' (น้ำหนัก ' + fmtN(k.weight) + '%)</td><td class="c">' + (k.rating || '-') + ' / 5</td></tr>') + '</tbody></table>'
+    + '<h2>ความเห็นของผู้ประเมิน</h2><div class="box"><b>จุดเด่น:</b> ' + E(ev.strengths) + '</div><div class="box"><b>ข้อควรพัฒนา:</b> ' + E(ev.develop) + '</div><div class="box"><b>ความเห็นเพิ่มเติม:</b> ' + E(ev.comment) + '</div>'
+    + '<div class="sign"><div>ผู้ประเมิน<br>วันที่ ____________</div><div>พนักงานรับทราบ<br>วันที่ ____________</div><div>ฝ่ายทรัพยากรบุคคล<br>วันที่ ____________</div></div></body></html>';
+  const w = window.open('', '_blank');
+  if (!w) { toast('เบราว์เซอร์บล็อกหน้าต่างใหม่ — กรุณาอนุญาตป๊อปอัปสำหรับเว็บนี้แล้วลองอีกครั้ง'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+
+/* ---------- หน้า: สถิติ/วินัย (HR) · ตั้งค่า · หลักเกณฑ์ ---------- */
+function hrRow(p) {
+  const a = attOf(p.id), ov = bucket('att')[p.id] || {}, r = attendanceScore(a), d = disciplineScore(bucket('disc')[p.id] || 'none', settings().disciplineTable), auto = autoAtt(p.id);
+  const inp = (k) => '<td class="c"><input class="inline num' + (ov[k] != null && ov[k] !== '' && Number(ov[k]) !== auto[k] ? ' ov' : '') + '" type="number" min="0" data-in="att" data-id="' + A(p.id) + '" data-k="' + k + '" value="' + a[k] + '" aria-label="' + ATTENDANCE_RULES[k].label + ' ' + A(p.name) + '" title="ดึงจากข้อมูลขาด ลา มาสาย = ' + auto[k] + '"></td>';
+  return '<tr data-row="' + A(p.id) + '"><td><b>' + E(p.name) + '</b><br><small class="ap-muted">' + E(p.dept || '-') + ' · ' + p.level + '</small></td>' + ['late', 'sick', 'personal', 'absent'].map(inp).join('')
+    + '<td class="c num"><b data-att-total>' + r.total + '</b>/50</td><td><select data-in="disc" data-id="' + A(p.id) + '" aria-label="วินัย ' + A(p.name) + '">' + settings().disciplineTable.map((t) => '<option value="' + t.code + '"' + ((bucket('disc')[p.id] || 'none') === t.code ? ' selected' : '') + '>' + E(t.label) + '</option>').join('') + '</select></td>'
+    + '<td class="c num"><b data-disc-score>' + d.score + '</b>/40</td><td><button type="button" class="ap-btn sm ghost" data-act="att-reset" data-id="' + A(p.id) + '" title="กลับไปใช้ค่าจากข้อมูลขาด ลา มาสาย">↺</button></td></tr>';
+}
+function viewHR() {
+  const q = (ui.list.q || '').toLowerCase();
+  const rows = evaluatees().filter((p) => !q || (p.name + p.id + p.dept).toLowerCase().includes(q));
+  return shell('สถิติการมาทำงานและวินัย', 'HR ตรวจ/แก้ไขข้อมูลตามข้อ 4.2 · คะแนนคำนวณอัตโนมัติจากตารางหลักเกณฑ์', '<section class="card ap-card"><div class="ap-cardhead"><h3>' + ico('clock') + ' ข้อมูลรายบุคคล</h3><div class="ap-tools"><div class="ap-search">' + ico('search') + '<input data-in="hr-q" placeholder="ค้นหาพนักงาน..." value="' + A(ui.list.q) + '" aria-label="ค้นหา"></div></div></div>'
+    + '<div class="ap-note" style="margin-bottom:12px">' + ico('info') + '<div>ค่าเริ่มต้นดึงจากเมนู <b>การขาด ลา มาสาย</b> ในช่วง ' + fmtD(settings().cycleStart) + ' – ' + fmtD(settings().cycleEnd) + ' (สาย = จำนวนครั้ง, ลาป่วย/ลากิจ/ขาดงาน = จำนวนวัน) ช่องที่แก้ไขเองจะมีขอบสีส้ม กดปุ่ม ↺ เพื่อกลับไปใช้ค่าอัตโนมัติ</div></div>'
+    + '<div class="ap-tablewrap"><table><thead><tr><th>พนักงาน</th><th class="c">สาย (ครั้ง)</th><th class="c">ลาป่วย (วัน)</th><th class="c">ลากิจ (วัน)</th><th class="c">ขาดงาน (ครั้ง)</th><th class="c">คะแนนสถิติ</th><th>การตักเตือน (วินัย)</th><th class="c">คะแนนวินัย</th><th></th></tr></thead><tbody id="ap-hrbody">' + (rows.map(hrRow).join('') || '<tr><td colspan="9" class="ap-empty">ไม่พบพนักงาน</td></tr>') + '</tbody></table></div></section>');
+}
+function viewSettings() {
+  const s = settings();
+  const f = (k, label, type) => '<div class="field"><label>' + label + '</label><input type="' + (type || 'date') + '" data-in="setting" data-k="' + k + '" value="' + A(s[k] || '') + '"></div>';
+  return shell('ตั้งค่ารอบการประเมิน', 'กำหนดปี วันที่ ขั้นตอน และคะแนนวินัย', '<section class="ap-grid2 even"><section class="card ap-card"><h3>' + ico('calendar') + ' รอบและกำหนดการ</h3>'
+    + '<div class="ap-row2">' + f('year', 'ปีที่ประเมิน (ค.ศ.)', 'number') + '<div class="field"><label>ขั้นตอนปัจจุบัน</label><select data-in="setting" data-k="phase">' + PHASES.map((p) => '<option value="' + p.id + '"' + (s.phase === p.id ? ' selected' : '') + '>' + p.id + '. ' + p.title + '</option>').join('') + '</select></div></div>'
+    + '<div class="ap-row2">' + f('cycleStart', 'เริ่มรอบประเมิน') + f('cycleEnd', 'สิ้นสุดรอบประเมิน') + '</div><div class="ap-row2">' + f('deadline', 'กำหนดส่งแบบประเมิน') + f('payDate', 'วันที่จ่ายโบนัส') + '</div>'
+    + '<div class="ap-note warn" style="margin-top:6px">' + ico('info') + '<div>เปลี่ยนปีที่ประเมินแล้ววันที่ทั้ง 4 ช่องจะถูกตั้งใหม่ตามปีนั้น (ผลประเมินของแต่ละปีแยกเก็บ ไม่ถูกลบ)</div></div></section>'
+    + '<section class="card ap-card"><h3>' + ico('shield') + ' คะแนนการปฏิบัติตามระเบียบ (เต็ม 40)</h3><div class="ap-note warn" style="margin-bottom:10px">' + ico('info') + '<div>เอกสารระบุว่า “จะหักคะแนน” ตามประเภทการตักเตือน ระบบตีความเป็นคะแนนที่เหลือ (ไม่เคย = 40, วาจา = 30, ลายลักษณ์อักษรครั้งที่ 1 = 20, ครั้งที่ 2/พักงาน = 0) HR ปรับตัวเลขได้ที่นี่</div></div>'
+    + s.disciplineTable.map((t, i) => '<div class="field"><label>' + E(t.label) + '</label><input class="num" type="number" min="0" max="40" data-in="disc-table" data-i="' + i + '" value="' + t.score + '" style="width:100px"> <span class="ap-muted">คะแนน</span></div>').join('') + '</section></section>'
+    + '<section class="card ap-card"><h3>' + ico('users') + ' ผู้ประเมินและการจัดกลุ่ม</h3><p class="ap-muted" style="margin:0">ผู้ประเมินตั้งต้น = หัวหน้างานตามผังองค์กร (ถ้าระดับ M1 ขึ้นไป) หรือผู้ที่ระดับ M1 ขึ้นไปในแผนกเดียวกัน แก้เป็นรายคนได้ที่หน้าแบบประเมิน · เข้าเกณฑ์ประเมินเฉพาะผู้ที่ <b>อายุงานครบ 1 ปีขึ้นไป ณ วันสิ้นสุดรอบประเมิน</b> เท่านั้น ผู้ที่ยังไม่ครบปี และพนักงานที่ไม่มีผู้ประเมิน (เช่น ผู้บริหารสูงสุด) จะไม่อยู่ในรายชื่อ · ระดับที่ว่างหรือ "O1,O2" ถือเป็น O1</p></section>');
+}
+function bandTable(key) {
+  const rule = ATTENDANCE_RULES[key];
+  return '<div><table><thead><tr><th>' + rule.label + ' (เต็ม ' + rule.max + ')</th><th class="r">คะแนน</th></tr></thead><tbody>' + ATTENDANCE_BANDS[key].map((b, i) => '<tr><td>' + b + '</td><td class="r num">' + (i < rule.steps.length ? rule.steps[i][1] : 0) + '</td></tr>').join('') + '</tbody></table></div>';
+}
+function calcResult() {
+  const c = ui.calc, group = c.line ? 'ops' : levelOf(c.level).group, a = attendanceScore({ late: c.late, sick: c.sick, personal: c.personal, absent: c.absent }), d = disciplineScore(c.disc, settings().disciplineTable);
+  const max = behaviorMax(c.level), beh = Math.min(max, Math.max(0, +c.behavior || 0));
+  return Object.assign({}, combine({ group, level: c.level, behaviorRaw: beh, attTotal: a.total, discScore: d.score }), { a, d, beh, max });
+}
+function calcHTML() {
+  const r = calcResult(), c = ui.calc;
+  const n = (k, label) => '<div class="field"><label>' + label + '</label><input class="num" type="number" min="0" data-in="calc" data-k="' + k + '" value="' + c[k] + '"></div>';
+  return '<div class="ap-row2"><div><div class="field"><label>ระดับตำแหน่ง</label><select data-in="calc" data-k="level">' + LEVELS.filter((l) => !isDirectorLevel(l.code)).map((l) => '<option value="' + l.code + '"' + (c.level === l.code ? ' selected' : '') + '>' + l.code + ' · ' + l.name + '</option>').join('') + '</select></div>'
+    + '<label class="chk"><input type="checkbox" data-in="calc" data-k="line"' + (c.line ? ' checked' : '') + '> หัวหน้าไลน์ที่เกี่ยวข้องกับการผลิต</label>'
+    + '<div class="field"><label>คะแนนด้านผลงาน (Competency + KPI) เต็ม ' + r.max + '</label><input class="num" type="number" min="0" max="' + r.max + '" data-in="calc" data-k="behavior" value="' + c.behavior + '"></div>'
+    + '<div class="ap-row2">' + n('late', 'สาย (ครั้ง)') + n('sick', 'ลาป่วย (วัน)') + n('personal', 'ลากิจ (วัน)') + n('absent', 'ขาดงาน (ครั้ง)') + '</div>'
+    + '<div class="field"><label>การตักเตือน</label><select data-in="calc" data-k="disc">' + settings().disciplineTable.map((t) => '<option value="' + t.code + '"' + (c.disc === t.code ? ' selected' : '') + '>' + E(t.label) + '</option>').join('') + '</select></div></div>'
+    + '<div id="ap-calc-out">' + calcOutHTML(r) + '</div></div>';
+}
+function calcOutHTML(r) {
+  return '<div><table><tbody><tr><td>ผลงาน ' + r.beh + '/' + r.max + ' × ' + r.weights.behavior + '%</td><td class="r num"><b>' + fmtN(r.behaviorPct) + '%</b></td></tr><tr><td>สถิติ ' + r.a.total + '/50 × ' + r.weights.attendance + '%</td><td class="r num"><b>' + fmtN(r.attendancePct) + '%</b></td></tr>'
+    + '<tr><td>ระเบียบ ' + r.d.score + '/40 × ' + r.weights.regulation + '%</td><td class="r num"><b>' + fmtN(r.regulationPct) + '%</b></td></tr><tr><td><b>รวม</b></td><td class="r num"><b>' + fmtPct(r.total) + '</b></td></tr></tbody></table>'
+    + '<div class="ap-total">' + gradeBadge(r.grade) + '<div class="ap-muted" style="margin-top:6px">เกรด ' + r.grade.grade + ' · ' + E(r.grade.level) + '</div><div style="margin-top:6px"><span class="ap-pill ' + (r.total >= 60 ? 'green' : 'red') + '">' + (r.total >= 60 ? 'เข้าเกณฑ์โบนัส (ถ้าอายุงานครบ 1 ปี)' : 'ต่ำกว่าเกณฑ์โบนัส') + '</span></div></div></div>';
+}
+function viewCriteria() {
+  const s = settings();
+  return shell('หลักเกณฑ์การประเมินประจำปี ' + s.year, 'หลักเกณฑ์การพิจารณาการจ่ายเงินรางวัลการทำงาน (โบนัส) และการปรับเงินเดือนประจำปี', ''
+    + '<section class="ap-grid2 even"><section class="card ap-card"><h3>' + ico('users') + ' สิทธิ์และผู้ประเมิน</h3><ul class="ap-checks">'
+    + '<li><span class="ok">' + ico('check', 'sm') + '</span>ใช้ประเมินผลเพื่อพิจารณาโบนัสและปรับเงินเดือนประจำปี ' + s.year + '</li><li><span class="ok">' + ico('check', 'sm') + '</span>พนักงาน S1–O3: ประเมินโดยผู้จัดการ (M1) หรือสูงกว่า (D1–D2)</li><li><span class="ok">' + ico('check', 'sm') + '</span>พนักงานระดับ M1: ประเมินโดยกรรมการบริหาร</li>'
+    + '<li><span class="ok">' + ico('check', 'sm') + '</span>ส่งแบบประเมินภายใน ' + fmtD(s.deadline) + '</li></ul></section>'
+    + '<section class="card ap-card"><h3>' + ico('trophy') + ' โบนัสและปรับเงินเดือน</h3><ul class="ap-checks"><li><span class="ok">' + ico('check', 'sm') + '</span><b>โบนัส:</b> อายุงานครบ 1 ปีในรอบประเมิน และเกรด C–A · จ่ายวันที่ ' + fmtD(s.payDate) + '</li>'
+    + '<li><span class="ok">' + ico('check', 'sm') + '</span><b>ปรับเงินเดือน:</b> บรรจุเป็นพนักงานประจำและอายุงานครบ 1 ปี</li><li><span class="no">' + ico('x', 'sm') + '</span>เกรด D–E (ต่ำกว่า 55%) ไม่ได้รับการพิจารณาปรับเงินเดือน</li><li><span class="no">' + ico('x', 'sm') + '</span>ผู้ที่ได้รับการปรับเงินเดือนพิเศษระหว่างปี ไม่ได้รับการปรับประจำปี</li></ul></section></section>'
+    + '<section class="card ap-card"><h3>' + ico('chart') + ' สัดส่วนคะแนน</h3><div class="ap-tablewrap"><table><thead><tr><th>กลุ่มพนักงาน</th><th class="c">ผลงาน (Competency + KPI)</th><th class="c">สถิติการมาทำงาน</th><th class="c">ระเบียบ</th><th class="c">คะแนนเต็มด้านผลงาน</th></tr></thead><tbody>'
+    + '<tr><td>ปฏิบัติการ (S0–S1 / หัวหน้าไลน์ผลิต)</td><td class="c">60%</td><td class="c">30%</td><td class="c">10%</td><td class="c">50 (S1–O2)</td></tr><tr><td>เจ้าหน้าที่ขึ้นไป (O1–D2)</td><td class="c">70%</td><td class="c">20%</td><td class="c">10%</td><td class="c">50 (O1–O3) · 75 (M1 ขึ้นไป)</td></tr></tbody></table></div>'
+    + '<p class="ap-muted" style="margin:10px 0 0;font-size:13px">สมรรถนะ 30% + KPI 70% ของคะแนนด้านผลงาน · สถิติเต็ม 50 · ระเบียบเต็ม 40 · ผลรวมทุกส่วนเต็ม 100%</p></section>'
+    + '<section class="card ap-card"><h3>' + ico('clock') + ' ตารางคะแนนสถิติการมาทำงาน (เต็ม 50)</h3><div class="ap-attgrid">' + ['late', 'sick', 'personal', 'absent'].map(bandTable).join('') + '</div>'
+    + '<h3 style="margin:18px 0 10px">' + ico('shield') + ' การปฏิบัติตามระเบียบข้อบังคับ (เต็ม 40)</h3><table style="max-width:520px"><tbody>' + s.disciplineTable.map((t) => '<tr><td>' + E(t.label) + '</td><td class="r num"><b>' + t.score + '</b></td></tr>').join('') + '</tbody></table></section>'
+    + '<section class="card ap-card"><h3>' + ico('star') + ' เกณฑ์การกำหนดเกรด</h3><div class="ap-tablewrap"><table><thead><tr><th>เกรด</th><th>ระดับ</th><th>เกณฑ์คะแนน</th><th>คำอธิบาย</th></tr></thead><tbody>'
+    + GRADES.map((g) => '<tr><td>' + gradeBadge(g, true) + '</td><td><b>' + E(g.level) + '</b></td><td class="num" style="white-space:nowrap">' + (g.grade === 'E' ? 'ต่ำกว่า 50%' : g.grade === 'A' ? '80% - 100%' : g.min + '% - ' + g.max + '%') + '</td><td>' + E(g.desc) + '</td></tr>').join('') + '</tbody></table></div></section>'
+    + '<section class="card ap-card"><h3>' + ico('calc') + ' เครื่องคิดคะแนน (ทดลอง)</h3><div id="ap-calc">' + calcHTML() + '</div><p class="ap-muted" style="margin:10px 0 0;font-size:13px">ตัวอย่างตามเอกสาร: ผลงาน 35/50, สถิติ 42/50, ระเบียบ 40/40 สำหรับกลุ่มปฏิบัติการ = 77.20% (เกรด B+)</p></section>');
+}
+
+/* ---------- วาดหน้า + เหตุการณ์ ---------- */
+function render() {
+  if (!root) return;
+  resetCache();
+  const keep = root.querySelector('.ap-yearbox') ? window.scrollY : null;
+  const views = { home: viewHome, evaluate: viewEvaluate, form: () => viewForm(ui.arg), result: () => viewResult(ui.arg), results: viewResults, hr: viewHR, settings: viewSettings, criteria: viewCriteria };
+  root.innerHTML = (views[ui.page] || viewHome)();
+  if (ui.page === 'form') refreshSummary();
+  if (keep != null) window.scrollTo(0, keep);
+}
+function go(page, arg) {
+  ui.page = page; ui.arg = arg || '';
+  if (page !== 'form') { form = null; formEmp = ''; }
+  render();
+  if (root) { const top = root.getBoundingClientRect().top + window.scrollY - 70; window.scrollTo(0, Math.max(0, top)); }
+}
+function refreshTable() {
+  resetCache();
+  const t = root && root.querySelector('#ap-tbl'); if (!t) return;
+  t.innerHTML = ui.page === 'results' ? resultsTable() : evalTable(ui.page === 'home' ? PAGE : 0);
+}
+function setKeepFocus(fn) { fn(); }
+function onClick(e) {
+  const t = e.target.closest('[data-act]'); if (!t || !root.contains(t)) return;
+  const act = t.dataset.act;
+  if (act === 'go') { go(t.dataset.to, t.dataset.arg); return; }
+  if (act === 'crit-tab') { ui.critGroup = t.dataset.g; render(); return; }
+  if (act === 'page') { ui.list.page += Number(t.dataset.d); refreshTable(); return; }
+  if (act === 'phase') { const s = settings(); s.phase = Math.min(4, Math.max(1, s.phase + Number(t.dataset.d))); persist(); render(); return; }
+  if (act === 'csv') { exportCSV(); return; }
+  if (act === 'print') { printResult(t.dataset.arg); return; }
+  if (act === 'add-kpi') { form.kpi.push({ code: '', name: '', weight: '', rating: '' }); const b = root.querySelector('#ap-kpirows'); b.innerHTML = kpiRowsHTML(false, person(formEmp)); refreshSummary(); return; }
+  if (act === 'del-kpi') { form.kpi.splice(Number(t.dataset.i), 1); root.querySelector('#ap-kpirows').innerHTML = kpiRowsHTML(false, person(formEmp)); refreshSummary(); return; }
+  if (act === 'save-draft') { persistForm('draft'); flash('บันทึกฉบับร่างแล้ว'); refreshSummary(); return; }
+  if (act === 'submit') {
+    const r = formResult(person(formEmp));
+    if (!r.ready) { flash('ยังให้คะแนนไม่ครบ (สมรรถนะทุกข้อ + KPI ทุกตัว และน้ำหนัก KPI รวม 100%) — บันทึกเป็นฉบับร่างได้'); return; }
+    if (!confirm('ยืนยันส่งผลการประเมิน? หลังส่งแล้วยังแก้ไขได้จนกว่า HR จะประกาศผล')) return;
+    persistForm('submitted'); go('result', formEmp); flash('ส่งผลการประเมินแล้ว'); return;
+  }
+  if (act === 'att-reset') { delete bucket('att')[t.dataset.id]; persist(); const row = root.querySelector('tr[data-row="' + CSS.escape(t.dataset.id) + '"]'); if (row) { const p = person(t.dataset.id); row.outerHTML = hrRow(p); } }
+}
+function onInput(e) {
+  const t = e.target.closest('[data-in]'); if (!t || !root.contains(t)) return;
+  const k = t.dataset.in;
+  if (k === 'list-q') { ui.list.q = t.value; ui.list.page = 1; refreshTable(); return; }
+  if (k === 'hr-q') { ui.list.q = t.value; const rows = evaluatees().filter((p) => !t.value || (p.name + p.id + p.dept).toLowerCase().includes(t.value.toLowerCase())); root.querySelector('#ap-hrbody').innerHTML = rows.map(hrRow).join('') || '<tr><td colspan="9" class="ap-empty">ไม่พบพนักงาน</td></tr>'; return; }
+  if (k === 'text') { form[t.dataset.f] = t.value; return; }
+  if (k === 'kpi-manual') { form.kpi[Number(t.dataset.i)][t.dataset.f] = t.value; refreshSummary(); return; }
+  if (k === 'att') {
+    const id = t.dataset.id, v = t.value === '' ? '' : Math.max(0, Number(t.value));
+    const b = bucket('att'); b[id] = b[id] || {}; b[id][t.dataset.k] = v; persist();
+    const row = t.closest('tr'), a = attOf(id), auto = autoAtt(id);
+    row.querySelector('[data-att-total]').textContent = attendanceScore(a).total;
+    t.classList.toggle('ov', v !== '' && v !== auto[t.dataset.k]);
+    return;
+  }
+  if (k === 'calc') {
+    if (t.tagName !== 'INPUT' || t.type === 'checkbox') return;            // select / checkbox are handled on "change"
+    ui.calc[t.dataset.k] = Number(t.value);
+    const o = root.querySelector('#ap-calc-out'); if (o) o.innerHTML = calcOutHTML(calcResult());
+    return;
+  }
+}
+function change(e) {
+  const t = e.target.closest('[data-in]'); if (!t || !root.contains(t)) return;
+  const k = t.dataset.in;
+  if (k === 'list-company') { ui.list.company = t.value; ui.list.page = 1; refreshTable(); return; }
+  if (k === 'list-dept') { ui.list.dept = t.value; ui.list.page = 1; refreshTable(); return; }
+  if (k === 'list-status') { ui.list.status = t.value; ui.list.page = 1; refreshTable(); return; }
+  if (k === 'list-grade') { ui.list.grade = t.value; refreshTable(); return; }
+  if (k === 'rating') { form[t.dataset.k][Number(t.dataset.i)].rating = t.value; refreshSummary(); return; }
+  if (k === 'evaluator') { bucket('evaluators')[formEmp] = t.value; persist(); resetCache(); form.evaluatorId = t.value; return; }
+  if (k === 'flag') {
+    const f = bucket('flags'); f[formEmp] = f[formEmp] || {}; f[formEmp][t.dataset.k] = t.checked; persist(); resetCache(); refreshSummary(); return;
+  }
+  if (k === 'disc') { bucket('disc')[t.dataset.id] = t.value; persist(); const row = t.closest('tr'); row.querySelector('[data-disc-score]').textContent = disciplineScore(t.value, settings().disciplineTable).score; return; }
+  if (k === 'disc-table') { settings().disciplineTable[Number(t.dataset.i)].score = Math.min(40, Math.max(0, Number(t.value) || 0)); persist(); return; }
+  if (k === 'setting') {
+    const s = settings(), key = t.dataset.k;
+    if (key === 'year') {
+      const y = Number(t.value); if (!(y >= 2000 && y <= 2200)) return;
+      const keepTable = s.disciplineTable, d = defaultSettings(y); Object.assign(s, d, { disciplineTable: keepTable, phase: 1 });
+    } else if (key === 'phase') s.phase = Number(t.value);
+    else s[key] = t.value;
+    persist(); render(); return;
+  }
+  if (k === 'calc') {
+    if (t.tagName === 'INPUT' && t.type !== 'checkbox') return;            // numbers are handled live on "input"
+    ui.calc[t.dataset.k] = t.type === 'checkbox' ? t.checked : t.value;
+    const c = root.querySelector('#ap-calc'); if (c) c.innerHTML = calcHTML();
+  }
+}
+function bind(panel) {
+  if (panel.dataset.apBound) return;
+  panel.dataset.apBound = '1';
+  panel.addEventListener('click', onClick);
+  panel.addEventListener('input', onInput);
+  panel.addEventListener('change', change);
+}
+function renderPanel(panel) {
+  root = panel; bind(panel);
+  store();
+  render();
+}
+
+const api = { scoring: S, renderPanel, planFor, resultFor, store, allPeople, evaluatees, attOf, autoAtt, normLevel };
+const g = typeof window !== 'undefined' ? window : globalThis;
+g.AP_SCORING = S;
+g.AP = api;
+g.apRenderPanel = renderPanel;
+
 })();
 </script>
 </body>
