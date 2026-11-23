@@ -1467,6 +1467,30 @@
         const v = q.get(k), el = byId(k);
         if (v && el && !el.value) el.value = v;
       });
+      // KPI ของตำแหน่ง (ระบบ HR แนบมาใน ?kpi= เป็น base64url ของ [[เป้าหมาย, เกณฑ์วัดผล, ระยะเวลา, น้ำหนัก], ...])
+      const kpiParam = q.get('kpi');
+      if (kpiParam) {
+        try {
+          const b64 = kpiParam.replace(/-/g, '+').replace(/_/g, '/');
+          const bin = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4));
+          const rows = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
+          let filled = 0;
+          rows.slice(0, KPI_ROWS).forEach((r, idx) => {
+            const i = idx + 1;
+            [['kpi' + i, r[0]], ['kpi' + i + 'Criteria', r[1]], ['kpi' + i + 'Period', r[2]], ['kpi' + i + 'Weight', r[3]]].forEach(([id, v]) => {
+              const el = byId(id);
+              if (el && v != null && v !== '' && !el.value) el.value = v;
+            });
+            filled++;
+          });
+          const sec = byId('kpiRows') && byId('kpiRows').closest('.section-card');
+          const head = sec && sec.querySelector('.section-head');
+          if (head && filled) {
+            const jc = q.get('job_code');
+            head.insertAdjacentHTML('afterend', '<div style="margin:-6px 0 14px;padding:9px 12px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-size:13px">📌 เติม KPI ' + filled + ' หัวข้อให้อัตโนมัติจากรหัสตำแหน่ง' + (jc ? ' <b>' + jc.replace(/[<>&"]/g, '') + '</b>' : '') + ' — ปรับแก้ได้ตามความเหมาะสม</div>');
+          }
+        } catch (err) { console.warn('kpi prefill failed', err); }
+      }
       const ed = byId('eval_date');
       if (ed && !ed.value) {
         const d = new Date();

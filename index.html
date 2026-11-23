@@ -6470,12 +6470,45 @@ function probationSupervisorV50(emp){
   var sup = emp.parentId ? getEmployeeByCode(emp.parentId) : null;
   return { name: sup ? (sup.fullName||'') : '', position: sup ? (sup.position||'') : '', email: emp.supervisorEmail || (sup ? (sup.email||'') : '') };
 }
+function probationKpiRowsV50(emp){
+  var code = String(emp.jobCode||'').trim(), via = 'รหัสตำแหน่ง';
+  if(!code){
+    var jd = (DB.jd||[]).find(function(j){ return j.jobCode && j.position && j.position===emp.position && (!j.company || j.company===emp.company); });
+    if(jd){ code = String(jd.jobCode).trim(); via = 'ชื่อตำแหน่ง'; }
+  }
+  var defs = code ? (DB.kpiDefinitions||[]).filter(function(k){ return String(k.jobCode||'').trim()===code; }) : [];
+  defs.sort(function(a,b){ return String(a.code||'').localeCompare(String(b.code||'')); });
+  var cut = function(t,n){ t = String(t==null?'':t).replace(/\s+/g,' ').trim(); return t.length>n ? t.slice(0,n-1)+'…' : t; };
+  var rows = defs.slice(0,5).map(function(k){
+    var criteria = [k.target ? 'เป้าหมาย '+k.target : '', k.formula ? 'สูตร '+k.formula : ''].filter(Boolean).join(' · ');
+    return [cut(k.name,100), cut(criteria,150), cut(k.frequency,40), String(k.weight==null?'':k.weight).replace(/[^\d.]/g,'')];
+  });
+  return { jobCode:code, via:via, total:defs.length, rows:rows };
+}
+function probationB64V50(obj){
+  var bytes = new TextEncoder().encode(JSON.stringify(obj)), bin = '';
+  bytes.forEach(function(b){ bin += String.fromCharCode(b); });
+  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function probationKpiPreviewV50(emp){
+  var kp = probationKpiRowsV50(emp), E = escapeHtml;
+  var head = '<h4 style="margin:14px 0 6px">KPI ที่เติมในแบบประเมินให้อัตโนมัติ</h4>';
+  if(!kp.jobCode) return head+'<div class="small" style="padding:8px 10px;border-radius:8px;background:rgba(245,158,11,.12)">ไม่พบรหัสตำแหน่งของพนักงานคนนี้ (และหาจากชื่อตำแหน่งไม่เจอ) — แบบประเมินจะไม่มี KPI เติมให้ ระบุรหัสตำแหน่งที่หน้า "ฐานข้อมูลพนักงาน" แล้วเปิดหน้านี้ใหม่</div>';
+  if(!kp.rows.length) return head+'<div class="small" style="padding:8px 10px;border-radius:8px;background:rgba(245,158,11,.12)">รหัสตำแหน่ง <b>'+E(kp.jobCode)+'</b> ยังไม่มี KPI ในระบบ (ตรวจที่เมนู "จัดการตำแหน่งงาน") — แบบประเมินจะไม่มี KPI เติมให้</div>';
+  return head+'<div class="small" style="margin-bottom:6px">อ้างอิงจาก'+E(kp.via)+' <b>'+E(kp.jobCode)+'</b> · '+kp.rows.length+' หัวข้อ'+(kp.total>kp.rows.length?' (แบบฟอร์มรับได้ 5 หัวข้อ จากทั้งหมด '+kp.total+')':'')+' · หัวหน้าแก้ไขในฟอร์มได้</div>'
+    +'<div class="table-wrap"><table><thead><tr><th>เป้าหมาย / KPI</th><th>เกณฑ์วัดผล</th><th>ระยะเวลา</th><th>น้ำหนัก</th></tr></thead><tbody>'
+    + kp.rows.map(function(r){ return '<tr><td>'+E(r[0])+'</td><td>'+E(r[1])+'</td><td>'+E(r[2])+'</td><td>'+E(r[3])+'</td></tr>'; }).join('')
+    + '</tbody></table></div>';
+}
 function probationFormLinkV50(emp){
   var due = probationDueDate(emp), start = parseDate(emp.startDate), sup = probationSupervisorV50(emp);
   var data = { emp_id:emp.empCode, emp_name:emp.fullName, position:emp.position, department:emp.department,
     start_date: start ? dateToInput(start) : '', end_date: due ? dateToInput(due) : '', evaluator:sup.name, eval_position:sup.position };
   var p = new URLSearchParams();
   Object.keys(data).forEach(function(k){ if(data[k]) p.set(k, data[k]); });
+  var kp = probationKpiRowsV50(emp);
+  if(kp.jobCode) p.set('job_code', kp.jobCode);
+  if(kp.rows.length) p.set('kpi', probationB64V50(kp.rows));
   return probationLinkBaseV50()+'/form/?'+p.toString();
 }
 function probationResultsLinkV50(emp){ return probationLinkBaseV50()+'/results/?q='+encodeURIComponent(emp.empCode||emp.fullName||''); }
@@ -6493,6 +6526,7 @@ window.probationEvalOpen = function(code){
     +'<a style="text-decoration:none" class="btn-ghost btn-sm" href="'+A(form)+'" target="_blank" rel="noopener">📝 เปิดแบบประเมิน</a>'
     +'<a style="text-decoration:none" class="btn-ghost btn-sm" href="'+A(probationMailV50(emp, form, sup))+'" target="_blank" rel="noopener">✉️ ส่งลิงก์ทางอีเมล (Gmail)</a></div>'
     +'<div id="probLinkStatus" class="small" style="min-height:18px;margin-top:6px"></div>'
+    +probationKpiPreviewV50(emp)
     +'<details style="margin-top:8px" ontoggle="if(this.open&&!this.dataset.l){this.dataset.l=1;this.querySelector(\'iframe\').src=this.dataset.src;}" data-src="'+A(form)+'">'
     +'<summary style="cursor:pointer"><b>👁 ดูตัวอย่างหน้าแบบประเมิน</b></summary>'
     +'<iframe title="ตัวอย่างแบบประเมินทดลองงาน" style="width:100%;height:520px;border:1px solid rgba(120,130,150,.35);border-radius:12px;margin-top:8px;background:#fff"></iframe></details>'
