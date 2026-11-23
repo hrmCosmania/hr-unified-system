@@ -863,6 +863,7 @@ function defaultDB(){
     performanceReviews: [],
     attendanceRecords: [],
     offboardingRecords: [],
+    evaluationForms: [],
     onboardingChecklists: [],
     positionMeta: [],
     trainingBudgets: [],
@@ -914,7 +915,7 @@ function migrateDB(raw){
 
   // Arrays: ต้องมีอยู่และเป็น array เสมอ ห้าม undefined ไม่งั้นทุก DB.xxx.push() จะพัง
   ['employees','performanceReviews','goals','jd','kpiDefinitions','competencies','competencyDictionary','kpiDictionary',
-   'orgChartSnapshots','positionRevisions','probationActions','trainingCourses','trainingEnrollments','attendanceRecords','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','trainingFollowupLinks','auditLog','contractDocs','leaveEntitlementDefaults','leaveEntitlementOverrides','importedRequestIds','employeeJdOverrides'
+   'orgChartSnapshots','positionRevisions','probationActions','trainingCourses','trainingEnrollments','attendanceRecords','offboardingRecords','evaluationForms','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','trainingFollowupLinks','auditLog','contractDocs','leaveEntitlementDefaults','leaveEntitlementOverrides','importedRequestIds','employeeJdOverrides'
   ].forEach(k => {
     if(!Array.isArray(merged[k])) merged[k] = base[k];
   });
@@ -3453,7 +3454,7 @@ var v4OriginalMigrateDB = migrateDB;
 
 migrateDB = function(raw){
   var merged = v4OriginalMigrateDB(raw);
-  ['probationActions','trainingCourses','trainingEnrollments','positionRevisions','orgChartSnapshots','attendanceRecords','performanceReviews','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','trainingFollowupLinks','auditLog','contractDocs','leaveEntitlementOverrides','importedRequestIds'].forEach(function(k){ if(!Array.isArray(merged[k])) merged[k]=[]; });
+  ['probationActions','evaluationForms','trainingCourses','trainingEnrollments','positionRevisions','orgChartSnapshots','attendanceRecords','performanceReviews','offboardingRecords','onboardingChecklists','positionMeta','trainingBudgets','ojtPlans','dsdSubmissions','trainingFollowups','trainingNeeds','trainingFollowupLinks','auditLog','contractDocs','leaveEntitlementOverrides','importedRequestIds'].forEach(function(k){ if(!Array.isArray(merged[k])) merged[k]=[]; });
   if(!Array.isArray(merged.leaveEntitlementDefaults)||!merged.leaveEntitlementDefaults.length) merged.leaveEntitlementDefaults=defaultDB().leaveEntitlementDefaults;
   if(!merged.orgCharts || typeof merged.orgCharts!=='object') merged.orgCharts={};
   return merged;
@@ -5077,11 +5078,11 @@ function performanceTrackingViewHtml(){
     + '<div class="detail-tabs"><button class="detail-tab active" data-perf-tab="attendance" onclick="setPerfSubTab(\'attendance\')">การขาด ลา มาสาย</button>'
     + '<button class="detail-tab" data-perf-tab="leavequota" onclick="setPerfSubTab(\'leavequota\')">โควตาวันลา</button>'
     + '<button class="detail-tab" data-perf-tab="goals" onclick="setPerfSubTab(\'goals\')">เป้าหมาย / OKR</button>'
-    + '<button class="detail-tab" data-perf-tab="kpi" onclick="setPerfSubTab(\'kpi\')">ประเมินผลปฏิบัติงานรายเดือน</button></div></section>'
+    + '<button class="detail-tab" data-perf-tab="kpi" onclick="setPerfSubTab(\'kpi\')">ประเมินผลปฏิบัติงานรายเดือน</button>' + evalTabsHtml() + '</div></section>'
     + '<div id="perfAttendancePanel">' + attendancePanelHtml() + '</div>'
     + '<div id="perfLeaveQuotaPanel" class="hidden">' + leaveQuotaPanelHtml() + '</div>'
     + '<div id="perfGoalsPanel" class="hidden">' + goalsPanelHtml() + '</div>'
-    + '<div id="perfKpiPanel" class="hidden">' + kpiPanelHtml() + '</div>';
+    + '<div id="perfKpiPanel" class="hidden">' + kpiPanelHtml() + '</div>' + evalPanelsHtml();
 }
 function leaveQuotaPanelHtml(){
   var currentYear=new Date().getFullYear();
@@ -5650,6 +5651,7 @@ function renderPerformanceTrackingModule(){
   renderLeaveQuotaPanel();
   renderGoalsPanel();
   renderKpiPanel();
+  evalSyncTabs(view);
 }
 function setPerfSubTab(tab){ perfSubTab=tab; renderPerformanceTrackingModule(); }
 window.setPerfSubTab=setPerfSubTab;
@@ -5680,6 +5682,327 @@ window.approveGoal=approveGoal;
 window.unapproveGoal=unapproveGoal;
 window.updateGoalManagerComment=updateGoalManagerComment;
 window.installDocumentAutomationModule=installDocumentAutomationModule;
+
+/* =====================================================================
+   ประเมินอายุงานครบ 1 ปี / ประเมินประจำปี
+   แท็บย่อยใน "ติดตามผลการปฏิบัติงาน" · เก็บใน DB.evaluationForms · ให้คะแนน 1–5 ต่อหัวข้อ
+   ===================================================================== */
+var EVAL_SCALE = [[5,'ดีมาก'],[4,'ดี'],[3,'ปานกลาง'],[2,'น้อย'],[1,'ต้องปรับปรุง']];
+var EVAL_BANDS = [[4.5,'ดีเยี่ยม'],[3.5,'ดี'],[2.5,'ปานกลาง'],[1.5,'ต้องปรับปรุง'],[0,'ต้องปรับปรุงมาก']];
+var EVAL_ONEYEAR_ITEMS = [
+  ['ผลสำเร็จของงานตามเป้าหมาย','ผลงานตลอด 1 ปีบรรลุเป้าหมายและตัวชี้วัดที่ได้รับมอบหมาย'],
+  ['คุณภาพและความถูกต้องของงาน','งานมีคุณภาพ ถูกต้อง ครบถ้วน และต้องแก้ไขซ้ำน้อย'],
+  ['ความรู้ความสามารถเฉพาะตำแหน่ง','มีความรู้และทักษะเพียงพอที่จะปฏิบัติงานในตำแหน่งได้อย่างอิสระ'],
+  ['ความรับผิดชอบและความน่าเชื่อถือ','รับผิดชอบต่องาน ส่งงานตรงเวลา และเชื่อถือได้อย่างสม่ำเสมอ'],
+  ['การทำงานเป็นทีมและการสื่อสาร','ประสานงานกับผู้อื่นได้ดี สื่อสารชัดเจน และให้ความร่วมมือ'],
+  ['การเรียนรู้และพัฒนาตนเอง','พัฒนาทักษะต่อเนื่องและนำสิ่งที่เรียนรู้มาปรับใช้กับงาน'],
+  ['ความคิดริเริ่มและการปรับปรุงงาน','เสนอแนวทางใหม่ๆ และปรับปรุงวิธีทำงานให้ดีขึ้น'],
+  ['ทัศนคติและความผูกพันต่อองค์กร','มีทัศนคติเชิงบวก สอดคล้องกับค่านิยมและวัฒนธรรมองค์กร'],
+  ['วินัยและการปฏิบัติตามระเบียบ','ปฏิบัติตามนโยบาย ระเบียบ และข้อกำหนดขององค์กร'],
+  ['ศักยภาพในการรับงานที่ซับซ้อนขึ้น','พร้อมรับความรับผิดชอบหรือโครงการที่ใหญ่ขึ้นในอนาคต']
+];
+var EVAL_ANNUAL_COMP_ITEMS = [
+  ['ความรู้ความสามารถในงาน (Functional Competency)','ใช้ความรู้และทักษะเฉพาะด้านปฏิบัติงานได้อย่างเชี่ยวชาญ'],
+  ['คุณภาพและความต่อเนื่องของผลงาน','ผลงานมีคุณภาพสม่ำเสมอตลอดทั้งปี'],
+  ['การทำงานเป็นทีมและการประสานงาน','ทำงานร่วมกับผู้อื่นและข้ามแผนกได้ดี'],
+  ['การสื่อสาร','สื่อสารชัดเจน ตรงประเด็น และสร้างความเข้าใจที่ตรงกัน'],
+  ['ความรับผิดชอบและการยึดมั่นในหน้าที่','รับผิดชอบต่องานและผลลัพธ์ แก้ไขปัญหาเมื่อเกิดขึ้น'],
+  ['การเรียนรู้ ปรับตัว และความคิดริเริ่ม','เรียนรู้สิ่งใหม่ ปรับตัวต่อการเปลี่ยนแปลง และเสนอการปรับปรุง'],
+  ['ทัศนคติและค่านิยมองค์กร','ปฏิบัติตามค่านิยม วัฒนธรรม และจรรยาบรรณขององค์กร'],
+  ['วินัยและการปฏิบัติตามระเบียบ (รวมการขาด ลา มาสาย)','ปฏิบัติตามระเบียบ ตรงต่อเวลา และมีสถิติการมาทำงานที่ดี']
+];
+var EVAL_TYPES = {
+  oneyear: { key:'oneyear', icon:'🎂', label:'ประเมินอายุงานครบ 1 ปี', en:'1-Year Service Evaluation', doc:'',
+    intro:'ประเมินพนักงานที่ทำงานครบ 1 ปี เพื่อพิจารณาปรับเงินเดือน ตำแหน่ง และแผนพัฒนา',
+    sections:[{key:'main', title:'หัวข้อการประเมินอายุงานครบ 1 ปี', weight:100, items:EVAL_ONEYEAR_ITEMS}],
+    resultLabel:'ข้อเสนอแนะจากการประเมิน', results:['คงเดิม','พิจารณาปรับเงินเดือน','พิจารณาเลื่อนตำแหน่ง/ปรับระดับ','ส่งพัฒนาเพิ่มเติม','ติดตามผลต่อ'] },
+  annual: { key:'annual', icon:'📅', label:'ประเมินประจำปี', en:'Annual Performance Evaluation', doc:'',
+    intro:'ประเมินผลปฏิบัติงานรอบปี = ผลสัมฤทธิ์ KPI (น้ำหนัก 70%) + สมรรถนะและพฤติกรรม (น้ำหนัก 30%)',
+    sections:[
+      {key:'kpi', title:'ส่วนที่ 1 ผลสัมฤทธิ์ตาม KPI', weight:70, auto:'kpi', items:[['ผลงานตาม KPI ประจำปี','คะแนนเฉลี่ยจากการประเมินผลปฏิบัติงานรายเดือนของปีนี้ (ระบบเติมให้ถ้ามีข้อมูล แก้ไขได้ 1–5)']]},
+      {key:'comp', title:'ส่วนที่ 2 สมรรถนะและพฤติกรรม', weight:30, items:EVAL_ANNUAL_COMP_ITEMS}],
+    resultLabel:'ข้อเสนอแนะจากการประเมิน', results:['คงเดิม','พิจารณาปรับเงินเดือน/โบนัส','พิจารณาเลื่อนตำแหน่ง/ปรับระดับ','ส่งพัฒนาเพิ่มเติม','ปรับปรุงผลงาน (แผนปรับปรุง)'] }
+};
+var EVAL_TYPE_KEYS = ['oneyear','annual'];
+var evalUI = { annualYear:new Date().getFullYear(), annualSearch:'' };
+
+function evalEsc(s){ return escapeHtml(String(s==null?'':s)); }
+function evalAttr(s){ return v4EscapeAttr(s); }
+function evalNum(v){ var n = parseFloat(v); return isNaN(n) ? null : n; }
+function evalFmt(n){ return n==null ? '-' : Number(n).toFixed(2); }
+function evalBand(score){ if(score==null) return '-'; for(var i=0;i<EVAL_BANDS.length;i++){ if(score>=EVAL_BANDS[i][0]) return EVAL_BANDS[i][1]; } return '-'; }
+function evalAddYears(d, n){ return new Date(d.getFullYear()+n, d.getMonth(), d.getDate()); }
+function evalDaysBetween(a, b){ return Math.round((b - a) / 86400000); }
+function evalEmployees(){ return perfCompanyEmployees(true); }
+function evalInScope(r){ var e = getEmployeeByCode(r.employeeCode); return companyFilter==='ALL' || (e && e.company===companyFilter); }
+function evalRecords(type){ return (DB.evaluationForms||[]).filter(function(r){ return r.type===type && evalInScope(r); }); }
+function evalFind(type, code, period){ return (DB.evaluationForms||[]).find(function(r){ return r.type===type && r.employeeCode===code && String(r.period)===String(period); }); }
+function evalPeriodLabel(type, period){
+  if(type==='oneyear') return 'ครบ 1 ปี ('+formatThaiDate(period)+')';
+  return 'ปี '+period;
+}
+function evalOneYearDate(emp){ var s = parseDate(emp.startDate); return s ? evalAddYears(s, 1) : null; }
+
+/* ---- คำนวณคะแนน ---- */
+function evalCalc(cfg, scores){
+  var secs = cfg.sections.map(function(sec){
+    var vals = [];
+    sec.items.forEach(function(_, i){ var v = evalNum((scores||{})[sec.key+'_'+i]); if(v!=null && v>=1 && v<=5) vals.push(v); });
+    return { key:sec.key, title:sec.title, weight:sec.weight, answered:vals.length, total:sec.items.length, avg: vals.length ? vals.reduce(function(a,b){ return a+b; },0)/vals.length : null };
+  });
+  var w = 0, sum = 0;
+  secs.forEach(function(s){ if(s.avg!=null){ w += s.weight; sum += s.avg*s.weight; } });
+  var overall = w>0 ? sum/w : null;
+  var complete = secs.every(function(s){ return s.answered===s.total; });
+  return { secs:secs, overall:overall, percent: overall==null ? null : overall/5*100, band:evalBand(overall), complete:complete };
+}
+function evalKpiAuto(code, year){
+  var rev = (DB.performanceReviews||[]).find(function(r){ return r.employeeCode===code && Number(r.evaluationYear)===Number(year) && r.yearAverageScore!=null; });
+  return rev ? Number(rev.yearAverageScore) : null;
+}
+
+/* ---- แท็บย่อย / โครงหน้า ---- */
+function evalTabsHtml(){
+  return EVAL_TYPE_KEYS.map(function(k){ return '<button class="detail-tab" data-perf-tab="eval_'+k+'" onclick="setPerfSubTab(\'eval_'+k+'\')">'+EVAL_TYPES[k].icon+' '+EVAL_TYPES[k].label+'</button>'; }).join('');
+}
+function evalPanelsHtml(){
+  return EVAL_TYPE_KEYS.map(function(k){ return '<div id="perfEval_'+k+'Panel" class="hidden"></div>'; }).join('');
+}
+function evalSyncTabs(view){
+  EVAL_TYPE_KEYS.forEach(function(k){
+    var tab = view.querySelector('[data-perf-tab="eval_'+k+'"]'), panel = el('perfEval_'+k+'Panel'), on = (perfSubTab==='eval_'+k);
+    if(tab) tab.classList.toggle('active', on);
+    if(panel){ panel.classList.toggle('hidden', !on); if(on) evalRenderPanel(k); }
+  });
+}
+function evalEnsureStyle(){
+  if(document.getElementById('ev-style')) return;
+  var st = document.createElement('style'); st.id = 'ev-style';
+  st.textContent = '.ev-row td{vertical-align:top}.ev-scale{display:flex;gap:6px;flex-wrap:wrap}.ev-scale label{display:inline-flex;align-items:center;gap:4px;padding:6px 13px;border:1px solid rgba(120,130,150,.35);border-radius:999px;cursor:pointer;font-size:14px}.ev-legend{font-size:12.5px;opacity:.8;margin:2px 0 8px}'
+    +'.ev-scale input{margin:0}.ev-calc{display:flex;gap:14px;flex-wrap:wrap;align-items:center;padding:10px 12px;border-radius:12px;background:rgba(99,102,241,.08);margin:10px 0}.ev-calc b{font-size:18px}'
+    +'.ev-chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;border:1px solid rgba(120,130,150,.35);margin-right:4px}.ev-chip.done{background:rgba(22,163,74,.14);color:#15803d;border-color:rgba(22,163,74,.4)}.ev-chip.draft{background:rgba(245,158,11,.14);color:#b45309;border-color:rgba(245,158,11,.4)}'
+    +'.ev-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-bottom:10px}.ev-info div{padding:8px 10px;border-radius:10px;background:rgba(120,130,150,.1)}.ev-info small{display:block;opacity:.7}'
+    +'@media(max-width:760px){[data-ev-code] thead{display:none}[data-ev-code] .ev-row{display:block;padding:10px 0;border-bottom:1px solid rgba(120,130,150,.25)}[data-ev-code] .ev-row td{display:block;border:0!important;padding:2px 0!important}[data-ev-code] .ev-row td:first-child{font-weight:700;opacity:.65}.ev-scale{flex-wrap:nowrap}}';
+  document.head.appendChild(st);
+}
+function evalRenderPanel(type){
+  evalEnsureStyle();
+  var cfg = EVAL_TYPES[type], panel = el('perfEval_'+type+'Panel'); if(!panel) return;
+  if(!panel.dataset.built){
+    var annualCtl = type==='annual'
+      ? '<div class="form-grid"><div class="field"><label>ปีที่ประเมิน</label><input type="number" id="ev_year_annual" value="'+evalUI.annualYear+'" onchange="evalSetYear(this.value)"></div>'
+        +'<div class="field"><label>ค้นหาพนักงาน</label><input id="ev_search_annual" placeholder="ชื่อ/รหัส/แผนก" oninput="evalSetSearch(this.value)"></div></div>'
+      : '';
+    panel.innerHTML = '<section class="card"><h3 class="section-title">'+cfg.icon+' '+cfg.label+' <span class="small">'+cfg.en+(cfg.doc?' · '+cfg.doc:'')+'</span></h3>'
+      +'<div class="sub small">'+evalEsc(cfg.intro)+'</div><div id="ev_sum_'+type+'" class="summary-grid" style="margin-top:12px"></div></section>'
+      +'<section class="card"><h3 class="section-title">'+(type==='annual'?'รายชื่อพนักงานที่ต้องประเมินประจำปี':'ถึงกำหนดประเมิน')+'</h3>'+annualCtl+'<div class="table-wrap" id="ev_due_'+type+'"></div></section>'
+      +'<section class="card"><h3 class="section-title">เริ่มประเมินพนักงานคนอื่น</h3><div class="form-grid"><div class="field"><label>พนักงาน</label><select id="ev_emp_'+type+'"></select></div>'
+      +'<div class="field"><label>&nbsp;</label><button class="btn-primary" onclick="evalOpenFromSelect(\''+type+'\')">เริ่มประเมิน</button></div></div><div id="ev_form_'+type+'"></div></section>'
+      +'<section class="card"><h3 class="section-title">ประวัติการประเมิน</h3><div class="table-wrap" id="ev_hist_'+type+'"></div></section>';
+    panel.dataset.built = '1';
+  }
+  var sel = el('ev_emp_'+type), keep = sel ? sel.value : '';
+  if(sel){ sel.innerHTML = '<option value="">— เลือกพนักงาน —</option>'+perfEmployeeOptionsHtml(true,false); sel.value = keep; }
+  evalRenderLists(type);
+}
+window.evalSetYear = function(v){ var y = parseInt(v,10); if(y>1900 && y<2200){ evalUI.annualYear = y; evalRenderLists('annual'); } };
+window.evalSetSearch = function(v){ evalUI.annualSearch = String(v||'').trim().toLowerCase(); evalRenderLists('annual'); };
+
+/* ---- รายการถึงกำหนด + ประวัติ ---- */
+function evalDueRows(type){
+  var today = todayStart(), rows = [];
+  evalEmployees().forEach(function(e){
+    var start = parseDate(e.startDate); if(!start) return;
+    if(type==='oneyear'){
+      var ann = evalOneYearDate(e); if(!ann) return;
+      var diff = evalDaysBetween(today, ann);
+      if(diff < -60 || diff > 60) return;
+      var period = dateToInput(ann), rec = evalFind('oneyear', e.empCode, period);
+      if(rec && rec.status==='completed') return;
+      rows.push({ emp:e, key:diff, dueDate:ann, rem:diff, rec:rec, period:period });
+    }
+  });
+  rows.sort(function(a,b){ return a.key-b.key; });
+  return rows;
+}
+function evalRemChip(rem){
+  if(rem<0) return '<span class="ev-chip" style="background:rgba(220,38,38,.12);color:#b91c1c;border-color:rgba(220,38,38,.4)">เลยกำหนด '+(-rem)+' วัน</span>';
+  if(rem<=14) return '<span class="ev-chip" style="background:rgba(245,158,11,.14);color:#b45309;border-color:rgba(245,158,11,.4)">อีก '+rem+' วัน</span>';
+  return '<span class="ev-chip">อีก '+rem+' วัน</span>';
+}
+function evalRenderLists(type){
+  var cfg = EVAL_TYPES[type], all = evalRecords(type);
+  var completed = all.filter(function(r){ return r.status==='completed'; }).length, drafts = all.length - completed;
+  var sum = el('ev_sum_'+type), due = el('ev_due_'+type), hist = el('ev_hist_'+type);
+  if(!sum || !due || !hist) return;
+  var card = function(n, label){ return '<div class="summary-card"><div class="num">'+n+'</div><div class="label">'+label+'</div></div>'; };
+  if(type==='annual'){
+    var year = evalUI.annualYear, yEnd = new Date(year,11,31), q = evalUI.annualSearch;
+    var emps = evalEmployees().filter(function(e){ var s = parseDate(e.startDate); return !s || s<=yEnd; });
+    var shown = emps.filter(function(e){ return !q || (e.fullName||'').toLowerCase().indexOf(q)>=0 || (e.empCode||'').toLowerCase().indexOf(q)>=0 || (e.department||'').toLowerCase().indexOf(q)>=0 || (e.position||'').toLowerCase().indexOf(q)>=0; });
+    var doneN = 0, draftN = 0;
+    emps.forEach(function(e){ var r = evalFind('annual', e.empCode, String(year)); if(r){ if(r.status==='completed') doneN++; else draftN++; } });
+    sum.innerHTML = card(doneN+' / '+emps.length,'ประเมินปี '+year+' สรุปผลแล้ว')+card(draftN,'ฉบับร่าง')+card(Math.max(0, emps.length-doneN-draftN),'ยังไม่ได้ประเมิน');
+    due.innerHTML = '<table><thead><tr><th>พนักงาน</th><th>ตำแหน่ง / แผนก</th><th>อายุงาน</th><th>สถานะ</th><th>คะแนน</th><th></th></tr></thead><tbody>'
+      + (shown.map(function(e){
+        var r = evalFind('annual', e.empCode, String(year)), s = parseDate(e.startDate), yrs = s ? ((todayStart()-s)/86400000/365.25) : null;
+        var status = r ? (r.status==='completed' ? '<span class="ev-chip done">สรุปผลแล้ว</span>' : '<span class="ev-chip draft">ฉบับร่าง</span>') : '<span class="ev-chip">ยังไม่ประเมิน</span>';
+        return '<tr><td><b>'+evalEsc(e.fullName)+'</b><div class="small">'+evalEsc(e.empCode)+'</div></td><td>'+evalEsc(e.position||'-')+'<div class="small">'+evalEsc(e.department||'-')+'</div></td><td>'+(yrs==null?'-':yrs.toFixed(1)+' ปี')+'</td><td>'+status+'</td><td>'+(r?evalFmt(r.overall)+' / 5':'-')+'</td>'
+          +'<td><button class="btn-ghost" onclick="evalOpen(\'annual\',\''+evalAttr(e.empCode)+'\',\''+year+'\')">'+(r?'เปิด/แก้ไข':'ประเมิน')+'</button></td></tr>';
+      }).join('') || '<tr><td colspan="6" class="empty">ไม่พบพนักงาน</td></tr>') + '</tbody></table>';
+  } else {
+    var rows = evalDueRows(type);
+    sum.innerHTML = card(rows.length,'ถึงกำหนด/รอประเมิน')+card(drafts,'ฉบับร่าง')+card(completed,'สรุปผลแล้ว');
+    {
+      due.innerHTML = '<table><thead><tr><th>พนักงาน</th><th>เริ่มงาน</th><th>ครบ 1 ปี</th><th>เหลือ</th><th>สถานะ</th><th></th></tr></thead><tbody>'
+        + (rows.map(function(r){
+          return '<tr><td><b>'+evalEsc(r.emp.fullName)+'</b><div class="small">'+evalEsc(r.emp.position||'-')+' · '+evalEsc(r.emp.department||'-')+'</div></td><td>'+evalEsc(formatThaiDate(r.emp.startDate))+'</td><td>'+evalEsc(formatThaiDate(r.dueDate))+'</td><td>'+evalRemChip(r.rem)+'</td><td>'+(r.rec?'<span class="ev-chip draft">ฉบับร่าง</span>':'<span class="ev-chip">ยังไม่ประเมิน</span>')+'</td>'
+            +'<td><button class="btn-primary" onclick="evalOpen(\'oneyear\',\''+evalAttr(r.emp.empCode)+'\',\''+r.period+'\')">ประเมิน</button></td></tr>';
+        }).join('') || '<tr><td colspan="6" class="empty">ไม่มีพนักงานที่ครบ 1 ปีในช่วง ±60 วัน</td></tr>') + '</tbody></table>';
+    }
+  }
+  var hrows = all.slice().sort(function(a,b){ return String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')); }).slice(0,200);
+  hist.innerHTML = '<table><thead><tr><th>พนักงาน</th><th>รอบ/ปี</th><th>วันที่ประเมิน</th><th>ผู้ประเมิน</th><th>คะแนน</th><th>ระดับ</th><th>ผล/ข้อเสนอแนะ</th><th>สถานะ</th><th></th></tr></thead><tbody>'
+    + (hrows.map(function(r){
+      var e = getEmployeeByCode(r.employeeCode);
+      return '<tr><td><b>'+evalEsc(e?e.fullName:r.employeeCode)+'</b><div class="small">'+evalEsc(r.employeeCode)+'</div></td><td>'+evalEsc(evalPeriodLabel(type, r.period))+'</td><td>'+evalEsc(formatThaiDate(r.evaluationDate))+'</td><td>'+evalEsc(r.evaluator||'-')+'</td><td>'+evalFmt(r.overall)+' / 5</td><td>'+evalEsc(r.band||'-')+'</td><td>'+evalEsc(r.result||'-')+'</td>'
+        +'<td>'+(r.status==='completed'?'<span class="ev-chip done">สรุปผลแล้ว</span>':'<span class="ev-chip draft">ฉบับร่าง</span>')+'</td>'
+        +'<td style="white-space:nowrap"><button class="btn-ghost" onclick="evalOpen(\''+type+'\',\''+evalAttr(r.employeeCode)+'\',\''+evalAttr(r.period)+'\')">เปิด/แก้ไข</button> <button class="btn-ghost" onclick="evalPrint(\''+evalAttr(r.id)+'\')">พิมพ์</button> <button class="btn-danger" onclick="evalDelete(\''+evalAttr(r.id)+'\')">ลบ</button></td></tr>';
+    }).join('') || '<tr><td colspan="9" class="empty">ยังไม่มีประวัติการประเมิน</td></tr>') + '</tbody></table>';
+}
+
+/* ---- ฟอร์มประเมิน ---- */
+window.evalOpenFromSelect = function(type){
+  var code = (el('ev_emp_'+type)||{}).value || '';
+  if(!code){ toast('กรุณาเลือกพนักงานก่อน'); return; }
+  var emp = getEmployeeByCode(code), period;
+  if(type==='oneyear'){ var ann = evalOneYearDate(emp); period = ann ? dateToInput(ann) : dateToInput(todayStart()); }
+  else period = String(evalUI.annualYear);
+  evalOpen(type, code, period);
+};
+window.evalOpen = function(type, code, period){
+  evalEnsureStyle();
+  var cfg = EVAL_TYPES[type], emp = getEmployeeByCode(code), box = el('ev_form_'+type);
+  if(!emp || !box){ toast('ไม่พบข้อมูลพนักงาน'); return; }
+  var rec = evalFind(type, code, period) || {};
+  var scores = rec.scores || {};
+  var evalDate = rec.evaluationDate || dateToInput(todayStart());
+  var evaluator = rec.evaluator!=null ? rec.evaluator : (emp.parentId ? getEmployeeName(emp.parentId) : '');
+  if(evaluator==='-') evaluator = '';
+  var ann = evalOneYearDate(emp);
+  var info = '<div class="ev-info"><div><small>พนักงาน</small><b>'+evalEsc(emp.fullName)+'</b> ('+evalEsc(emp.empCode)+')</div><div><small>ตำแหน่ง / แผนก</small>'+evalEsc(emp.position||'-')+' · '+evalEsc(emp.department||'-')+'</div><div><small>วันที่เริ่มงาน</small>'+evalEsc(formatThaiDate(emp.startDate))+'</div>'
+    + (type==='oneyear' ? '<div><small>ครบ 1 ปี</small>'+evalEsc(formatThaiDate(ann))+'</div>' : '') + '</div>';
+  var periodCtl = (type==='annual' ? '<div class="field"><label>ปีที่ประเมิน</label><input type="number" id="ev_period_annual" value="'+evalAttr(period)+'" onchange="evalOpen(\'annual\',\''+evalAttr(code)+'\',this.value)"></div>'
+    : '<div class="field"><label>รอบการประเมิน</label><input id="ev_period_oneyear" value="'+evalAttr(evalPeriodLabel('oneyear',period))+'" disabled></div>');
+  var kpiAuto = type==='annual' ? evalKpiAuto(code, period) : null;
+  var secHtml = cfg.sections.map(function(sec){
+    var rows = sec.items.map(function(it, i){
+      var id = sec.key+'_'+i, v = scores[id];
+      var ctl;
+      if(sec.auto==='kpi'){
+        if(v==null && kpiAuto!=null) v = Number(kpiAuto.toFixed(2));
+        ctl = '<input type="number" min="1" max="5" step="0.01" id="ev_sc_'+type+'_'+id+'" value="'+evalAttr(v==null?'':v)+'" style="width:100px" oninput="evalRecalc(\''+type+'\')"> <span class="small">'+(kpiAuto!=null?'ดึงจากการประเมินรายเดือน: '+kpiAuto.toFixed(2)+' / 5':'ยังไม่มีคะแนน KPI รายเดือนของปีนี้ — กรอกเอง')+'</span>';
+      } else {
+        ctl = '<div class="ev-scale">'+EVAL_SCALE.map(function(s){ return '<label title="'+evalAttr(s[1])+'"><input type="radio" name="ev_sc_'+type+'_'+id+'" value="'+s[0]+'"'+(Number(v)===s[0]?' checked':'')+' onchange="evalRecalc(\''+type+'\')">'+s[0]+'</label>'; }).join('')+'</div>';
+      }
+      return '<tr class="ev-row"><td>'+(i+1)+'</td><td><b>'+evalEsc(it[0])+'</b><div class="small">'+evalEsc(it[1])+'</div></td><td>'+ctl+'</td></tr>';
+    }).join('');
+    return '<h4 style="margin:14px 0 6px">'+evalEsc(sec.title)+(cfg.sections.length>1?' <span class="small">(น้ำหนัก '+sec.weight+'%)</span>':'')+'</h4>'+(sec.auto==='kpi'?'':'<div class="ev-legend">เกณฑ์: '+EVAL_SCALE.map(function(x){ return '<b>'+x[0]+'</b> '+x[1]; }).join(' · ')+'</div>')+'<div class="table-wrap"><table><thead><tr><th style="width:44px">ข้อ</th><th>หัวข้อ</th><th>คะแนน</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }).join('');
+  var c = rec.comments || {};
+  box.innerHTML = '<div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(120,130,150,.3)" data-ev-code="'+evalAttr(code)+'">'
+    +'<h3 class="section-title">'+cfg.icon+' '+cfg.label+(rec.status==='completed'?' <span class="ev-chip done">สรุปผลแล้ว</span>':'')+'</h3>'+info
+    +'<div class="form-grid">'+periodCtl+'<div class="field"><label>วันที่ประเมิน</label><input type="date" id="ev_date_'+type+'" value="'+evalAttr(evalDate)+'" onchange="evalRecalc(\''+type+'\')"></div>'
+    +'<div class="field"><label>ผู้ประเมิน (หัวหน้างาน) *</label><input id="ev_by_'+type+'" value="'+evalAttr(evaluator)+'" placeholder="ชื่อผู้ประเมิน"></div></div>'
+    + secHtml + '<div id="ev_calc_'+type+'" class="ev-calc"></div>'
+    +'<div class="form-grid"><div class="field" style="grid-column:1/-1"><label>จุดเด่น / ผลงานที่ดี</label><textarea id="ev_strengths_'+type+'" rows="3">'+evalEsc(c.strengths||'')+'</textarea></div>'
+    +'<div class="field" style="grid-column:1/-1"><label>จุดที่ควรพัฒนา</label><textarea id="ev_improve_'+type+'" rows="3">'+evalEsc(c.improve||'')+'</textarea></div>'
+    +'<div class="field" style="grid-column:1/-1"><label>แผนพัฒนา / ข้อเสนอแนะ</label><textarea id="ev_plan_'+type+'" rows="3">'+evalEsc(c.plan||'')+'</textarea></div>'
+    +'<div class="field"><label>'+cfg.resultLabel+'</label><select id="ev_result_'+type+'"><option value="">— เลือก —</option>'+cfg.results.map(function(r){ return '<option'+(rec.result===r?' selected':'')+'>'+evalEsc(r)+'</option>'; }).join('')+'</select></div>'
+    +'<div class="field"><label>หมายเหตุ / เงื่อนไข</label><input id="ev_resultnote_'+type+'" value="'+evalAttr(rec.resultNote||'')+'"></div></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px">'
+    +'<button class="btn-ghost" onclick="evalClose(\''+type+'\')">ปิดฟอร์ม</button>'
+    +'<button class="btn-ghost" onclick="evalSave(\''+type+'\',\'draft\')">บันทึกฉบับร่าง</button>'
+    +'<button class="btn-green" onclick="evalSave(\''+type+'\',\'completed\')">✓ บันทึกและสรุปผล</button></div></div>';
+  evalRecalc(type);
+  box.scrollIntoView({behavior:'smooth', block:'start'});
+};
+window.evalClose = function(type){ var b = el('ev_form_'+type); if(b) b.innerHTML = ''; };
+function evalReadScores(type){
+  var cfg = EVAL_TYPES[type], scores = {};
+  cfg.sections.forEach(function(sec){
+    sec.items.forEach(function(_, i){
+      var id = sec.key+'_'+i, name = 'ev_sc_'+type+'_'+id;
+      if(sec.auto==='kpi'){ var n = evalNum((el(name)||{}).value); if(n!=null) scores[id] = n; }
+      else { var chk = document.querySelector('input[name="'+name+'"]:checked'); if(chk) scores[id] = Number(chk.value); }
+    });
+  });
+  return scores;
+}
+window.evalRecalc = function(type){
+  var cfg = EVAL_TYPES[type], box = el('ev_calc_'+type); if(!box) return;
+  var calc = evalCalc(cfg, evalReadScores(type));
+  box.innerHTML = '<div>คะแนนรวม <b>'+evalFmt(calc.overall)+'</b> / 5</div><div>คิดเป็น <b>'+(calc.percent==null?'-':calc.percent.toFixed(0)+'%')+'</b></div><div>ระดับ <b>'+evalEsc(calc.band)+'</b></div>'
+    + calc.secs.map(function(s){ return '<div class="small">'+evalEsc(s.title.replace(/^ส่วนที่ \d /,''))+': '+evalFmt(s.avg)+' ('+s.answered+'/'+s.total+' ข้อ)</div>'; }).join('');
+
+};
+window.evalSave = function(type, status){
+  var cfg = EVAL_TYPES[type], box = el('ev_form_'+type), form = box ? box.querySelector('[data-ev-code]') : null; if(!form) return;
+  var code = form.getAttribute('data-ev-code'), emp = getEmployeeByCode(code); if(!emp){ toast('ไม่พบข้อมูลพนักงาน'); return; }
+  var period = type==='oneyear' ? dateToInput(evalOneYearDate(emp) || todayStart()) : String((el('ev_period_'+type)||{}).value||'').trim();
+  if(!period){ toast('กรุณาระบุรอบ/ปีที่ประเมิน'); return; }
+  var scores = evalReadScores(type), calc = evalCalc(cfg, scores), evaluator = ((el('ev_by_'+type)||{}).value||'').trim();
+  var result = (el('ev_result_'+type)||{}).value || '';
+  if(status==='completed'){
+    if(!evaluator){ toast('กรุณาระบุผู้ประเมิน'); return; }
+    if(!calc.complete){ toast('กรุณาให้คะแนนให้ครบทุกหัวข้อก่อนสรุปผล (หรือบันทึกเป็นฉบับร่าง)'); return; }
+    if(!result){ toast('กรุณาเลือก "'+cfg.resultLabel+'" ก่อนสรุปผล'); return; }
+  }
+  var existing = evalFind(type, code, period), now = new Date().toISOString();
+  var rec = existing || { id:uid('eval_'), createdAt:now };
+  var evalDate = (el('ev_date_'+type)||{}).value || dateToInput(todayStart());
+  Object.assign(rec, { type:type, employeeCode:code, company:emp.company||'', department:emp.department||'', position:emp.position||'', period:period,
+    evaluationDate:evalDate, evaluator:evaluator, scores:scores, overall:calc.overall, percent:calc.percent, band:calc.band,
+    comments:{ strengths:(el('ev_strengths_'+type)||{}).value||'', improve:(el('ev_improve_'+type)||{}).value||'', plan:(el('ev_plan_'+type)||{}).value||'' },
+    result:result, resultNote:(el('ev_resultnote_'+type)||{}).value||'', status:status, updatedAt:now });
+  if(!existing){ if(!Array.isArray(DB.evaluationForms)) DB.evaluationForms = []; DB.evaluationForms.push(rec); }
+  saveDB();
+  evalRenderLists(type);
+  toast(status==='completed' ? 'บันทึกและสรุปผลการประเมินแล้ว' : 'บันทึกฉบับร่างแล้ว');
+};
+window.evalDelete = function(id){
+  var r = (DB.evaluationForms||[]).find(function(x){ return x.id===id; }); if(!r) return;
+  var e = getEmployeeByCode(r.employeeCode);
+  if(!confirm('ลบแบบประเมิน "'+EVAL_TYPES[r.type].label+'" ของ '+(e?e.fullName:r.employeeCode)+' ('+evalPeriodLabel(r.type, r.period)+') ถาวร?')) return;
+  DB.evaluationForms = DB.evaluationForms.filter(function(x){ return x.id!==id; });
+  saveDB(); evalRenderLists(r.type);
+};
+window.evalPrint = function(id){
+  var r = (DB.evaluationForms||[]).find(function(x){ return x.id===id; }); if(!r) return;
+  var cfg = EVAL_TYPES[r.type], emp = getEmployeeByCode(r.employeeCode) || {}, calc = evalCalc(cfg, r.scores);
+  var company = emp.company==='CIL' ? 'บริษัท คอสซูติค อินโนเวชั่น แลบอราทอรี่ส์ จำกัด' : (emp.company==='CMN' ? 'บริษัท คอสเมเนีย แลบอราทอรี่ส์ จำกัด' : '');
+  var tables = cfg.sections.map(function(sec){
+    return '<h3>'+evalEsc(sec.title)+(cfg.sections.length>1?' (น้ำหนัก '+sec.weight+'%)':'')+'</h3><table><thead><tr><th style="width:36px">ข้อ</th><th>หัวข้อ</th><th style="width:70px">คะแนน</th></tr></thead><tbody>'
+      + sec.items.map(function(it, i){ var v = (r.scores||{})[sec.key+'_'+i]; return '<tr><td>'+(i+1)+'</td><td><b>'+evalEsc(it[0])+'</b><br><span class="s">'+evalEsc(it[1])+'</span></td><td class="c">'+(v==null?'':evalEsc(v))+'</td></tr>'; }).join('')+'</tbody></table>';
+  }).join('');
+  var c = r.comments || {};
+  var html = '<!doctype html><html lang="th"><head><meta charset="utf-8"><title>'+evalEsc(cfg.label)+' - '+evalEsc(emp.fullName||r.employeeCode)+'</title><style>'
+    +'body{font-family:"Sarabun","Noto Sans Thai",Tahoma,sans-serif;margin:24px;color:#111;font-size:13px}h1{font-size:20px;margin:0}h2{font-size:14px;margin:2px 0 12px;font-weight:400;color:#444}h3{font-size:14px;margin:14px 0 6px}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:8px}th,td{border:1px solid #999;padding:5px 7px;text-align:left;vertical-align:top}th{background:#eee}.c{text-align:center}.s{color:#555;font-size:12px}.info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:10px 0}.info div{border:1px solid #bbb;padding:5px 8px}.info small{display:block;color:#666}'
+    +'.sum{border:1px solid #999;padding:8px 10px;margin:10px 0}.sign{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:36px;text-align:center}.sign div{border-top:1px solid #333;padding-top:6px}.box{border:1px solid #bbb;padding:6px 8px;margin:6px 0;white-space:pre-wrap;min-height:34px}'
+    +'.bar{margin-bottom:12px}@media print{.bar{display:none}body{margin:12mm}}</style></head><body><div class="bar"><button onclick="window.print()">🖨 พิมพ์ / บันทึกเป็น PDF</button></div>'
+    +'<h1>'+evalEsc(cfg.label)+'</h1><h2>'+evalEsc(cfg.en)+(cfg.doc?' · รหัสเอกสาร '+evalEsc(cfg.doc):'')+(company?' · '+evalEsc(company):'')+'</h2>'
+    +'<div class="info"><div><small>ชื่อ-สกุล</small>'+evalEsc(emp.fullName||'-')+'</div><div><small>รหัสพนักงาน</small>'+evalEsc(r.employeeCode)+'</div><div><small>ตำแหน่ง</small>'+evalEsc(r.position||'-')+'</div>'
+    +'<div><small>แผนก</small>'+evalEsc(r.department||'-')+'</div><div><small>วันที่เริ่มงาน</small>'+evalEsc(formatThaiDate(emp.startDate))+'</div><div><small>รอบการประเมิน</small>'+evalEsc(evalPeriodLabel(r.type, r.period))+'</div>'
+    +'<div><small>วันที่ประเมิน</small>'+evalEsc(formatThaiDate(r.evaluationDate))+'</div><div><small>ผู้ประเมิน</small>'+evalEsc(r.evaluator||'-')+'</div><div><small>สถานะ</small>'+(r.status==='completed'?'สรุปผลแล้ว':'ฉบับร่าง')+'</div></div>'
+    +'<p>เกณฑ์การให้คะแนน: '+EVAL_SCALE.map(function(s){ return '('+s[0]+') '+s[1]; }).join(' / ')+'</p>'+tables
+    +'<div class="sum"><b>คะแนนรวม '+evalFmt(calc.overall)+' / 5 ('+(calc.percent==null?'-':calc.percent.toFixed(0)+'%')+') · ระดับ '+evalEsc(calc.band)+'</b><br>'+evalEsc(cfg.resultLabel)+': <b>'+evalEsc(r.result||'-')+'</b>'+(r.resultNote?' — '+evalEsc(r.resultNote):'')+'</div>'
+    +'<h3>จุดเด่น / ผลงานที่ดี</h3><div class="box">'+evalEsc(c.strengths||'')+'</div><h3>จุดที่ควรพัฒนา</h3><div class="box">'+evalEsc(c.improve||'')+'</div><h3>แผนพัฒนา / ข้อเสนอแนะ</h3><div class="box">'+evalEsc(c.plan||'')+'</div>'
+    +'<div class="sign"><div>ผู้ประเมิน / หัวหน้างาน<br>วันที่ ____________</div><div>พนักงาน<br>วันที่ ____________</div><div>แผนกทรัพยากรบุคคล<br>วันที่ ____________</div></div></body></html>';
+  var w = window.open('', '_blank');
+  if(!w){ toast('เบราว์เซอร์บล็อกหน้าต่างใหม่ — กรุณาอนุญาตป๊อปอัปสำหรับเว็บนี้แล้วลองอีกครั้ง'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+};
 
 function installPerformanceTrackingV42(){
   var tabbar=el('tabbar');if(tabbar&&!tabbar.querySelector('[data-tab="performance-tracking"]')){var button=document.createElement('button');button.className='tab-btn';button.dataset.tab='performance-tracking';button.onclick=function(){showTab('performance-tracking');};tabbar.insertBefore(button,tabbar.querySelector('[data-tab="reports"]'));setTabLabelV42(button,'📈','ติดตามผลการปฏิบัติงาน','Performance Tracking');}
@@ -6130,6 +6453,64 @@ window.completeProbation=function(code){
   document.querySelectorAll('input[name="probOutcome"]').forEach(function(input){input.checked=false;});
   elV43('probAssessedAt').value=dateToInput(new Date());elV43('probCompletedBy').value='';elV43('probCompletedNote').value='';setProbationErrorV43('');elV43('probActionModal').classList.add('show');
 };completeProbation=window.completeProbation;
+/* ---------- ประเมินผลทดลองงาน: สร้างลิงก์แบบประเมิน (เติมข้อมูลพนักงานให้) + ดูผลการประเมิน ---------- */
+function probationLinkBaseV50(){
+  var base = (DB.settings && DB.settings.probation && DB.settings.probation.assessmentWebappUrl) || 'https://hr-unified-system.vercel.app/probation';
+  return String(base).replace(/\/+$/,'');
+}
+function probationSupervisorV50(emp){
+  var sup = emp.parentId ? getEmployeeByCode(emp.parentId) : null;
+  return { name: sup ? (sup.fullName||'') : '', position: sup ? (sup.position||'') : '', email: emp.supervisorEmail || (sup ? (sup.email||'') : '') };
+}
+function probationFormLinkV50(emp){
+  var due = probationDueDate(emp), start = parseDate(emp.startDate), sup = probationSupervisorV50(emp);
+  var data = { emp_id:emp.empCode, emp_name:emp.fullName, position:emp.position, department:emp.department,
+    start_date: start ? dateToInput(start) : '', end_date: due ? dateToInput(due) : '', evaluator:sup.name, eval_position:sup.position };
+  var p = new URLSearchParams();
+  Object.keys(data).forEach(function(k){ if(data[k]) p.set(k, data[k]); });
+  return probationLinkBaseV50()+'/form/?'+p.toString();
+}
+function probationResultsLinkV50(emp){ return probationLinkBaseV50()+'/results/?q='+encodeURIComponent(emp.empCode||emp.fullName||''); }
+window.probationEvalOpen = function(code){
+  var emp = getEmployeeByCode(code); if(!emp) return;
+  var form = probationFormLinkV50(emp), results = probationResultsLinkV50(emp), sup = probationSupervisorV50(emp), due = probationDueDate(emp);
+  var A = v4EscapeAttr, E = escapeHtml;
+  var html = '<div class="clean-note"><b>'+E(emp.fullName)+'</b> ('+E(emp.empCode)+') · '+E(emp.position||'-')+' · '+E(emp.department||'-')+'<br>'
+    +'เริ่มงาน '+E(formatThaiDate(emp.startDate))+' · ครบทดลองงาน '+E(formatThaiDate(due))+' · หัวหน้างาน: '+E(sup.name||'-')+'</div>'
+    +'<h4 style="margin:14px 0 6px">1) ลิงก์แบบประเมินสำหรับหัวหน้างาน</h4>'
+    +'<div class="small" style="margin-bottom:6px">ลิงก์นี้เติมข้อมูลพนักงานในแบบประเมินให้แล้ว ส่งให้หัวหน้างานกรอกและกดบันทึกได้เลย</div>'
+    +'<input id="probLinkInput" readonly value="'+A(form)+'" onclick="this.select()" style="width:100%;font-size:12.5px">'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
+    +'<button class="btn-primary btn-sm" onclick="probationCopyLinkV50()">📋 คัดลอกลิงก์</button>'
+    +'<a style="text-decoration:none" class="btn-ghost btn-sm" href="'+A(form)+'" target="_blank" rel="noopener">📝 เปิดแบบประเมิน</a>'
+    +'<a style="text-decoration:none" class="btn-ghost btn-sm" href="'+A(probationMailV50(emp, form, sup))+'" target="_blank" rel="noopener">✉️ ส่งลิงก์ทางอีเมล (Gmail)</a></div>'
+    +'<div id="probLinkStatus" class="small" style="min-height:18px;margin-top:6px"></div>'
+    +'<details style="margin-top:8px" ontoggle="if(this.open&&!this.dataset.l){this.dataset.l=1;this.querySelector(\'iframe\').src=this.dataset.src;}" data-src="'+A(form)+'">'
+    +'<summary style="cursor:pointer"><b>👁 ดูตัวอย่างหน้าแบบประเมิน</b></summary>'
+    +'<iframe title="ตัวอย่างแบบประเมินทดลองงาน" style="width:100%;height:520px;border:1px solid rgba(120,130,150,.35);border-radius:12px;margin-top:8px;background:#fff"></iframe></details>'
+    +'<h4 style="margin:16px 0 6px">2) ดูผลการประเมิน</h4>'
+    +'<div class="small" style="margin-bottom:6px">เมื่อหัวหน้ากรอกแบบประเมินแล้ว ดูผลและพิมพ์/ส่งออก PDF ได้ที่หน้านี้ (ค้นหาด้วยรหัส '+E(emp.empCode)+' ให้อัตโนมัติ)</div>'
+    +'<a style="text-decoration:none" class="btn-green btn-sm" href="'+A(results)+'" target="_blank" rel="noopener">📊 ดูผลการประเมิน</a>'
+    +'<h4 style="margin:16px 0 6px">3) บันทึกผลในระบบ HR</h4>'
+    +'<div class="small" style="margin-bottom:6px">หลังประเมินเสร็จ บันทึกผล ผ่าน / ไม่ผ่านทดลองงาน เพื่อปิดการติดตามพนักงานคนนี้</div>'
+    +'<button class="btn-ghost btn-sm" onclick="closeSharedModal();completeProbation(\''+A(emp.empCode)+'\')">✓ บันทึกผลผ่าน / ไม่ผ่าน</button>';
+  openSharedModal('ประเมินผลทดลองงาน: '+emp.fullName, html, true);
+};
+function probationMailV50(emp, link, sup){
+  var subject = '['+(emp.company||'HR')+'] ขอความอนุเคราะห์ประเมินทดลองงาน: '+(emp.fullName||'')+' ('+(emp.empCode||'')+')';
+  var body = 'เรียน '+(sup.name||'หัวหน้างาน')+'\n\nขอความอนุเคราะห์ประเมินผลทดลองงานของ '+(emp.fullName||'')+' ('+(emp.empCode||'')+') ตำแหน่ง '+(emp.position||'-')
+    +'\nครบกำหนดทดลองงาน: '+formatThaiDate(probationDueDate(emp))+'\n\nกรุณากรอกแบบประเมินที่ลิงก์นี้ (ข้อมูลพนักงานถูกกรอกให้แล้ว):\n'+link+'\n\nขอบคุณครับ/ค่ะ';
+  var p = new URLSearchParams({view:'cm', fs:'1', su:subject, body:body});
+  if(sup.email) p.set('to', sup.email);
+  return 'https://mail.google.com/mail/?'+p.toString();
+}
+window.probationCopyLinkV50 = function(){
+  var input = document.getElementById('probLinkInput'), status = document.getElementById('probLinkStatus'); if(!input) return;
+  input.select();
+  var done = function(){ if(status) status.textContent = '✓ คัดลอกลิงก์แล้ว'; };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(input.value).then(done, function(){ try{ document.execCommand('copy'); done(); }catch(e){} });
+  else { try{ document.execCommand('copy'); done(); }catch(e){} }
+};
 window.saveProbationActionV43=function(){
   if(!v4ProbationCode)return;var result=selectedProbationResultV43();var assessedAt=elV43('probAssessedAt').value;
   if(!result){setProbationErrorV43('กรุณาเลือกผลว่าผ่านหรือไม่ผ่านทดลองงาน');return;}
@@ -6159,7 +6540,7 @@ function probationResultBadgeV43(action){if(!action)return '';if(action.result==
 window.renderProbationTable=function(){
   var search=((elV43('probSearch')||{}).value||'').trim().toLowerCase();var status=(elV43('probStatusFilter')||{}).value||'';var showCompleted=!!((elV43('probShowCompleted')||{}).checked);
   var rows=probationVisibleEmployees().filter(function(emp){var action=probationAction(emp.empCode);var completed=!!action;if(completed&&!showCompleted)return false;if(search&&![emp.empCode,emp.fullName,emp.department,emp.position].join(' ').toLowerCase().includes(search))return false;if(status==='completed'&&!completed)return false;if(status==='passed'&&(!action||action.result!=='PASS'))return false;if(status==='failed'&&(!action||action.result!=='FAIL'))return false;if(status&&!['completed','passed','failed'].includes(status)&&completed)return false;if(status&&!['completed','passed','failed'].includes(status)&&probationStatusKey(emp)!==status)return false;return true;}).sort(function(a,b){return (probationDaysRemaining(a)??9999)-(probationDaysRemaining(b)??9999);});
-  elV43('probTbody').innerHTML=rows.map(function(emp){var action=probationAction(emp.empCode);var actionMeta=action?'<div class="small">'+formatThaiDate(action.assessedAt||action.completedAt)+' · '+escapeHtml(action.completedBy||'HR')+'</div>':'';return '<tr data-code="'+escAttrV43(emp.empCode)+'"><td>'+escapeHtml(emp.empCode)+'</td><td>'+escapeHtml(emp.fullName)+'</td><td>'+escapeHtml(emp.department||'-')+'</td><td>'+escapeHtml(emp.position||'-')+'</td><td>'+formatThaiDate(emp.startDate)+'</td><td>'+formatThaiDate(probationDueDate(emp))+'</td><td>'+(action?probationResultBadgeV43(action)+actionMeta:probationStatusBadge(emp))+'</td><td>'+formatThaiDate(nextWorkAnniversary(emp))+'</td><td>'+escapeHtml(getEmployeeName(emp.parentId)||'-')+'</td><td><div class="act-group"><div class="act-row">'+probationMilestoneChips(emp)+'<a class="chip cal" href="'+escapeHtml(buildProbationGoogleCalendarUrl(emp))+'" target="_blank" rel="noopener">ครบกำหนด</a><button class="chip" onclick="downloadEmployeeProbationICS(\''+escAttrV43(emp.empCode)+'\')">.ics</button><button class="chip" onclick="printProbationEvaluationForm(\''+escAttrV43(emp.empCode)+'\')">🖨️ แบบประเมิน</button></div><div class="act-row">'+(action?'<button class="btn-ghost btn-sm" onclick="reopenProbation(\''+escAttrV43(emp.empCode)+'\')">นำกลับมาติดตาม</button>':'<button class="btn-primary btn-sm" onclick="completeProbation(\''+escAttrV43(emp.empCode)+'\')">ประเมินผลทดลองงาน</button> <button class="btn-ghost btn-sm" onclick="markProbationDoneQuick(\''+escAttrV43(emp.empCode)+'\')">ดำเนินการแล้ว</button>')+'</div></div></td></tr>';}).join('');
+  elV43('probTbody').innerHTML=rows.map(function(emp){var action=probationAction(emp.empCode);var actionMeta=action?'<div class="small">'+formatThaiDate(action.assessedAt||action.completedAt)+' · '+escapeHtml(action.completedBy||'HR')+'</div>':'';return '<tr data-code="'+escAttrV43(emp.empCode)+'"><td>'+escapeHtml(emp.empCode)+'</td><td>'+escapeHtml(emp.fullName)+'</td><td>'+escapeHtml(emp.department||'-')+'</td><td>'+escapeHtml(emp.position||'-')+'</td><td>'+formatThaiDate(emp.startDate)+'</td><td>'+formatThaiDate(probationDueDate(emp))+'</td><td>'+(action?probationResultBadgeV43(action)+actionMeta:probationStatusBadge(emp))+'</td><td>'+formatThaiDate(nextWorkAnniversary(emp))+'</td><td>'+escapeHtml(getEmployeeName(emp.parentId)||'-')+'</td><td><div class="act-group"><div class="act-row">'+probationMilestoneChips(emp)+'<a class="chip cal" href="'+escapeHtml(buildProbationGoogleCalendarUrl(emp))+'" target="_blank" rel="noopener">ครบกำหนด</a><button class="chip" onclick="downloadEmployeeProbationICS(\''+escAttrV43(emp.empCode)+'\')">.ics</button><button class="chip" onclick="printProbationEvaluationForm(\''+escAttrV43(emp.empCode)+'\')">🖨️ แบบประเมิน</button></div><div class="act-row">'+(action?'<button class="btn-ghost btn-sm" onclick="reopenProbation(\''+escAttrV43(emp.empCode)+'\')">นำกลับมาติดตาม</button>':'<button class="btn-primary btn-sm" onclick="probationEvalOpen(\''+escAttrV43(emp.empCode)+'\')">ประเมินผลทดลองงาน</button> <button class="btn-ghost btn-sm" onclick="markProbationDoneQuick(\''+escAttrV43(emp.empCode)+'\')">ดำเนินการแล้ว</button>')+'</div></div></td></tr>';}).join('');
   elV43('probEmpty').classList.toggle('hidden',rows.length>0);
 };renderProbationTable=window.renderProbationTable;
 var PROBATION_CRITERIA_LIST=[
@@ -9647,7 +10028,7 @@ html:not(.theme-soft) .side-sub button.on{background:rgba(255,255,255,.14);color
     onboarding:[['checklist','Checklist เริ่มงานใหม่',call('showOnboardingSubtab','checklist')],['birthday','วันเกิด',call('showOnboardingSubtab','birthday')],['anniversary','ครบรอบการทำงาน',call('showOnboardingSubtab','anniversary')],['probation','ทดลองงาน',call('showOnboardingSubtab','probation')],['namecard','นามบัตร QR',call('showOnboardingSubtab','namecard')],['calendar','ปฏิทินอัตโนมัติ',call('showOnboardingSubtab','calendar')],['contracts','สัญญาจ้าง & NDA',call('showOnboardingSubtab','contracts')]],
     recruitment:[['dashboard','ภาพรวม',call('rcShowSub','dashboard')],['jobs','ตำแหน่ง/ใบขอ',call('rcShowSub','jobs')],['candidates','ผู้สมัคร',call('rcShowSub','candidates')],['pipeline','Pipeline',call('rcShowSub','pipeline')],['reports','KPI & SLA',call('rcShowSub','reports')],['settings','ตั้งค่าการสรรหา',call('rcOpenSettings')]],
     training:[['overview','ภาพรวม',call('showTrainingSubtab','overview')],['ojt','OJT (On-the-Job Training)',call('showTrainingSubtab','ojt')],['history','ประวัติการฝึกอบรม',call('showTrainingSubtab','history')],['budget','งบประมาณการฝึกอบรม',call('showTrainingSubtab','budget')],['dsd','ยื่นหลักสูตรกรมพัฒนาฝีมือแรงงาน',call('showTrainingSubtab','dsd')],['followup','ติดตามผลหลังอบรม',call('showTrainingSubtab','followup')],['need','Training Need & Roadmap',call('showTrainingSubtab','need')]],
-    'performance-tracking':[['attendance','การขาด ลา มาสาย',call('setPerfSubTab','attendance')],['leavequota','โควตาวันลา',call('setPerfSubTab','leavequota')],['goals','เป้าหมาย / OKR',call('setPerfSubTab','goals')],['kpi','ประเมินผลรายเดือน',call('setPerfSubTab','kpi')]],
+    'performance-tracking':[['attendance','การขาด ลา มาสาย',call('setPerfSubTab','attendance')],['leavequota','โควตาวันลา',call('setPerfSubTab','leavequota')],['goals','เป้าหมาย / OKR',call('setPerfSubTab','goals')],['kpi','ประเมินผลรายเดือน',call('setPerfSubTab','kpi')],['eval_oneyear','ประเมินอายุงานครบ 1 ปี',call('setPerfSubTab','eval_oneyear')],['eval_annual','ประเมินประจำปี',call('setPerfSubTab','eval_annual')]],
     reports:[['headcount','อัตรากำลัง',call('showReportTopic','headcount')],['tenure','อายุงาน / อายุคน',call('showReportTopic','tenure')],['lifecycle','สถานะพนักงาน',call('showReportTopic','lifecycle')],['turnover','การลาออก (Turnover)',call('showReportTopic','turnover')],['onboarding','Onboarding',call('showReportTopic','onboarding')],['positions','ตำแหน่งงาน',call('showReportTopic','positions')],['training','การฝึกอบรม',call('showReportTopic','training')],['orgquality','ผังองค์กรและ Data Quality',call('showReportTopic','orgquality')]]
   };
   var cur = { employees:'search', onboarding:'checklist', recruitment:'dashboard', training:'overview', 'performance-tracking':'attendance', reports:'headcount' };

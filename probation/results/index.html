@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ค้นหาผลการประเมินทดลองงาน</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --surface: #ffffff;
+      --surface-2: #f8fafc;
+      --border: #dbe3ef;
+      --border-soft: #edf2f7;
+      --navy: #172554;
+      --navy-2: #1e3a8a;
+      --blue: #2563eb;
+      --blue-2: #3b82f6;
+      --blue-soft: #eff6ff;
+      --pink: #ec4899;
+      --pink-soft: #fdf2f8;
+      --green: #16a34a;
+      --green-soft: #f0fdf4;
+      --amber: #d97706;
+      --amber-soft: #fffbeb;
+      --red: #dc2626;
+      --red-soft: #fef2f2;
+      --text: #172033;
+      --muted: #64748b;
+      --muted-2: #94a3b8;
+      --shadow-sm: 0 1px 4px rgba(15, 23, 42, 0.06);
+      --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.10);
+      --radius: 18px;
+      --radius-sm: 11px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Sarabun', 'Kanit', sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(59,130,246,.12), transparent 32%),
+        radial-gradient(circle at top right, rgba(236,72,153,.10), transparent 28%),
+        linear-gradient(135deg, #f8fbff 0%, var(--bg) 100%);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.65;
+      padding: 32px 16px 88px;
+    }
+
+    .page-wrapper { max-width: 980px; margin: 0 auto; }
+
+    .hero {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 58%, #455f9b 100%);
+      color: #fff;
+      border-radius: 24px;
+      box-shadow: var(--shadow-md);
+      padding: 38px 40px 34px;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 22px;
+    }
+    .hero::before, .hero::after {
+      content: '';
+      position: absolute;
+      border-radius: 999px;
+      background: rgba(255,255,255,.07);
+    }
+    .hero::before { width: 220px; height: 220px; right: -80px; top: -80px; }
+    .hero::after { width: 120px; height: 120px; right: 96px; bottom: -48px; }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(255,255,255,.12);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 15px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero h1 {
+      font-size: clamp(24px, 3vw, 34px);
+      font-weight: 800;
+      line-height: 1.25;
+      margin-bottom: 8px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero p {
+      font-size: 14px;
+      color: rgba(255,255,255,.72);
+      position: relative;
+      z-index: 1;
+      max-width: 680px;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 10px;
+      z-index: 20;
+      background: rgba(255,255,255,.86);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(219,227,239,.9);
+      box-shadow: var(--shadow-sm);
+      border-radius: 18px;
+      padding: 12px;
+      margin-bottom: 22px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .toolbar input[type="text"] {
+      flex: 1;
+      min-width: 220px;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--surface-2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      outline: none;
+      padding: 12px 16px;
+      transition: border-color .18s, box-shadow .18s, background .18s;
+    }
+    .toolbar input[type="text"]:focus {
+      border-color: var(--blue-2);
+      box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+      background: #fff;
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      cursor: pointer;
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 11px 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform .18s, box-shadow .18s, background .18s, border-color .18s;
+      white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary {
+      color: white;
+      background: linear-gradient(135deg, var(--blue), var(--navy-2));
+      box-shadow: 0 8px 20px rgba(37,99,235,.25);
+    }
+    .btn-secondary {
+      color: var(--navy-2);
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-secondary:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-secondary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .btn-ghost {
+      color: var(--muted);
+      background: transparent;
+      border: 1.5px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+
+    .section-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 28px 30px;
+      margin-bottom: 20px;
+      animation: fadeUp .35s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding-bottom: 18px;
+      margin-bottom: 22px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .section-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--blue-soft), var(--pink-soft));
+      color: var(--blue);
+      font-size: 20px;
+      flex: none;
+    }
+    .section-title { color: var(--navy); font-size: 18px; font-weight: 800; line-height: 1.35; }
+    .section-sub { color: var(--muted-2); font-size: 12.5px; margin-top: 3px; }
+
+    /* ===== Empty / loading / error states ===== */
+    .state-box {
+      text-align: center;
+      padding: 46px 20px;
+      color: var(--muted);
+    }
+    .state-box .icon { font-size: 40px; margin-bottom: 10px; }
+    .state-box .title { font-weight: 800; color: var(--navy); margin-bottom: 4px; font-size: 15px; }
+    .state-box .sub { font-size: 13px; color: var(--muted-2); }
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 4px solid #dbeafe;
+      border-top-color: var(--blue);
+      animation: spin .8s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== Result list cards ===== */
+    .result-list { display: flex; flex-direction: column; gap: 12px; }
+    .result-card {
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      cursor: pointer;
+      transition: all .16s;
+      background: #fff;
+      flex-wrap: wrap;
+    }
+    .result-card:hover { border-color: var(--blue-2); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+    .result-main { display: flex; flex-direction: column; gap: 3px; }
+    .result-name { font-weight: 800; color: var(--navy); font-size: 15px; }
+    .result-meta { color: var(--muted-2); font-size: 12.5px; }
+    .result-side { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      border: 1.5px solid transparent;
+    }
+    .badge-pass { background: var(--green-soft); color: #15803d; border-color: #86efac; }
+    .badge-cond { background: var(--amber-soft); color: var(--amber); border-color: #fde68a; }
+    .badge-fail { background: var(--red-soft); color: var(--red); border-color: #fecaca; }
+    .badge-neutral { background: var(--blue-soft); color: var(--navy-2); border-color: #bfdbfe; }
+    .badge-score {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 64px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--blue), var(--pink));
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    /* ===== Print-style report (pd-*) ===== */
+    #printDoc {
+      font-family: 'Sarabun', 'Kanit', sans-serif;
+      color: #111827;
+      background: #fff;
+      line-height: 1.55;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px 30px;
+    }
+    .pd-header {
+      text-align: center;
+      border-bottom: 3px solid #2563eb;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+    }
+    .pd-header h1 { font-size: 18px; color: #1d4ed8; margin-bottom: 3px; }
+    .pd-header p { color: #64748b; font-size: 11px; }
+    .pd-section { margin-bottom: 13px; break-inside: avoid; }
+    .pd-title {
+      font-size: 11px;
+      color: #1d4ed8;
+      font-weight: 900;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      border-left: 4px solid #ec4899;
+      padding-left: 8px;
+      margin-bottom: 8px;
+    }
+    .pd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; }
+    .pd-row { display: flex; gap: 6px; align-items: baseline; min-height: 18px; }
+    .pd-label { color: #64748b; font-weight: 800; min-width: 115px; flex: none; }
+    .pd-val { border-bottom: 1px dotted #cbd5e1; flex: 1; min-height: 16px; }
+    .pd-table { width: 100%; border-collapse: collapse; font-size: 10.8px; }
+    .pd-table th { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 5px 6px; text-align: left; }
+    .pd-table td { border: 1px solid #e5e7eb; padding: 5px 6px; vertical-align: top; }
+    .pd-table tr:nth-child(even) td { background: #f8fafc; }
+    .pd-score { text-align: center; font-size: 13px; font-weight: 900; color: #2563eb; }
+    .pd-result { display: inline-block; border: 2px solid #2563eb; border-radius: 999px; padding: 4px 14px; font-weight: 900; color: #1d4ed8; }
+    .pd-sig-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .pd-sig { border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px; background: #fafcff; }
+    .pd-sig-space { height: 48px; border-bottom: 1.5px solid #111827; margin: 0 10px 4px; }
+    .pd-sig-caption { text-align: center; color: #94a3b8; font-size: 10px; margin-bottom: 6px; }
+
+    .report-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .sheet-help {
+      background: linear-gradient(135deg, var(--blue-soft), #fff);
+      border: 1px solid #bfdbfe;
+      border-radius: 16px;
+      padding: 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .sheet-help summary { cursor: pointer; color: var(--navy-2); font-weight: 900; }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #0f172a;
+      color: #dbeafe;
+      border-radius: 14px;
+      padding: 14px;
+      overflow: auto;
+      margin-top: 12px;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    #toast {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%) translateY(90px);
+      background: #fff;
+      border-left: 5px solid var(--green);
+      border-radius: 16px;
+      box-shadow: var(--shadow-md);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 120;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 800;
+      min-width: 260px;
+      max-width: calc(100vw - 28px);
+      transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.error { border-left-color: var(--red); }
+
+    @media (max-width: 760px) {
+      body { padding: 18px 12px 72px; }
+      .hero { padding: 30px 24px; }
+      .section-card { padding: 22px 18px; }
+      .toolbar { position: static; }
+      .pd-grid { grid-template-columns: 1fr; }
+      .pd-sig-grid { grid-template-columns: 1fr; }
+      #printDoc { padding: 18px 16px; }
+      .result-card { align-items: flex-start; }
+    }
+
+    /* ===== Print ===== */
+    @media print {
+      body { background: #fff !important; padding: 0 !important; }
+      body > *:not(.print-area) { display: none !important; }
+      .print-area { display: block !important; }
+      .print-area .report-actions { display: none !important; }
+      #printDoc { border: none !important; padding: 0 !important; border-radius: 0 !important; }
+      @page { size: A4 portrait; margin: 12mm 11mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrapper" id="app">
+    <header class="hero">
+      <div class="hero-badge">🔍 HR Search</div>
+      <h1>ค้นหาผลการประเมินทดลองงาน</h1>
+      <p>ค้นหาด้วยชื่อ-นามสกุล หรือรหัสพนักงาน เพื่อดูผลการประเมินทดลองงานและบันทึกผ่านทดลองงานแบบเต็มรูปแบบ พร้อมพิมพ์หรือส่งออกเป็น PDF</p>
+    </header>
+
+    <div class="toolbar">
+      <input type="text" id="searchInput" placeholder="พิมพ์ชื่อ-นามสกุล หรือรหัสพนักงาน เช่น สมชาย ใจดี / EMP-0001" />
+      <button class="btn btn-primary" type="button" onclick="runSearch()">🔍 ค้นหา</button>
+      <button class="btn btn-ghost" type="button" onclick="clearSearch()">ล้างการค้นหา</button>
+    </div>
+
+    <!-- Results list -->
+    <section class="section-card" id="resultsSection" style="display:none;">
+      <div class="section-head">
+        <div class="section-icon">📋</div>
+        <div>
+          <div class="section-title">ผลการค้นหา</div>
+          <div class="section-sub" id="resultsSub">พบ 0 รายการ</div>
+        </div>
+      </div>
+      <div class="result-list" id="resultList"></div>
+    </section>
+
+    <!-- States: loading / empty / error -->
+    <section class="section-card" id="stateSection" style="display:none;">
+      <div class="state-box" id="stateBox"></div>
+    </section>
+
+    <!-- Detail / printable report -->
+    <section class="section-card print-area" id="reportSection" style="display:none;">
+      <div class="report-actions">
+        <button class="btn btn-secondary" type="button" onclick="backToResults()">⬅️ กลับไปยังผลการค้นหา</button>
+        <button class="btn btn-primary" type="button" onclick="printReport()">🖨️ พิมพ์</button>
+        <button class="btn btn-secondary" type="button" onclick="exportPDF()">📄 ส่งออก PDF</button>
+      </div>
+      <div id="printDoc"></div>
+    </section>
+
+    <!-- Setup note -->
+    <details class="sheet-help">
+      <summary>หมายเหตุการเชื่อมต่อ Google Apps Script</summary>
+      <div style="margin-top:10px;">
+        หน้านี้ใช้งานร่วมกับ Apps Script เดิมของคุณได้ทันที โดยไม่ต้องแก้ไขฝั่ง Apps Script เลย:<br><br>
+        • <strong>doPost</strong> ใช้สำหรับบันทึกข้อมูลจากฟอร์มประเมิน (ใช้ชื่อชีต <code>HR_Evaluation</code>)<br>
+        • <strong>doGet</strong> ใช้สำหรับดึงข้อมูลทั้งหมดมาแสดง โดยหน้านี้จะ <strong>กรองด้วยชื่อ/รหัสพนักงานฝั่งเบราว์เซอร์เอง</strong> และเรียงให้รายการล่าสุดอยู่บนสุด<br><br>
+        เพียงนำ Web App URL (ตัวเดียวกับที่ใช้บันทึก) มาใส่ในตัวแปร <strong>SHEET_URL</strong> ของไฟล์นี้ก็พร้อมใช้งาน
+      </div>
+    </details>
+  </div>
+
+  <div id="toast"><span id="toastIcon">✅</span><span id="toastMsg">บันทึกเรียบร้อย</span></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script>
+    // ─────────────────────────────────────────────
+    // CONFIG: ใส่ Google Apps Script Web App URL เดียวกับฟอร์มประเมิน
+    // (ต้อง deploy ใหม่หลังเพิ่มฟังก์ชัน doGet ด้านบน)
+    // ─────────────────────────────────────────────
+    const SHEET_URL = "https://script.google.com/macros/s/AKfycbxO47VRd0RWWWInyUtSHtWQtDQoEwYOjPk3Tdehm3EZMxnoJnTJsBAHR1ht5O3pq0cb/exec";
+
+    const criteria = [
+      { title: 'ความรู้ความเข้าใจในงาน', desc: 'เข้าใจในลักษณะงาน หน้าที่ และขั้นตอนการทำงานที่ได้รับมอบหมาย' },
+      { title: 'คุณภาพของงาน', desc: 'ผลงานมีความถูกต้อง ครบถ้วน ได้มาตรฐาน และเป็นไปตามที่กำหนด' },
+      { title: 'ปริมาณงาน / ความรับผิดชอบ', desc: 'สามารถปฏิบัติงานได้ตามปริมาณงานและรับผิดชอบงานที่ได้รับมอบหมาย' },
+      { title: 'การทำงานเป็นระบบและการวางแผน', desc: 'สามารถจัดลำดับความสำคัญของงาน วางแผนและติดตามงานได้อย่างเหมาะสม' },
+      { title: 'การทำงานเป็นทีม', desc: 'ให้ความร่วมมือ ช่วยเหลือเพื่อนร่วมงาน และสื่อสารได้อย่างมีประสิทธิภาพ' },
+      { title: 'การสื่อสาร', desc: 'สื่อสารได้ชัดเจน เข้าใจง่าย ทั้งการพูด การเขียน และการประสานงาน' },
+      { title: 'ความรับผิดชอบและความน่าเชื่อถือ', desc: 'รับผิดชอบต่องาน ตรงต่อเวลา และสามารถเชื่อถือได้' },
+      { title: 'การเรียนรู้และพัฒนา', desc: 'เปิดใจเรียนรู้สิ่งใหม่ และนำความรู้ไปพัฒนาการทำงานได้ดี' },
+      { title: 'ทัศนคติและพฤติกรรมในการทำงาน', desc: 'มีทัศนคติที่ดี กระตือรือร้น และปฏิบัติตามระเบียบของงาน' },
+      { title: 'การปฏิบัติตามระเบียบและวินัย', desc: 'ปฏิบัติตามนโยบาย ระเบียบ และข้อกำหนดขององค์กรอย่างเคร่งครัด' }
+    ];
+    const KPI_ROWS = 5;
+    const IDP_ROWS = 3;
+
+    let lastResults = [];
+
+    function byId(id) { return document.getElementById(id); }
+
+    function esc(str) {
+      return String(str ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;')
+        .replaceAll('\n', '<br>');
+    }
+
+    function showToast(message, isError = false) {
+      const t = byId('toast');
+      byId('toastIcon').textContent = isError ? '❌' : '✅';
+      byId('toastMsg').textContent = message;
+      t.classList.toggle('error', isError);
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3800);
+    }
+
+    function showState(html) {
+      byId('resultsSection').style.display = 'none';
+      byId('reportSection').style.display = 'none';
+      byId('stateSection').style.display = 'block';
+      byId('stateBox').innerHTML = html;
+    }
+
+    function hideState() {
+      byId('stateSection').style.display = 'none';
+    }
+
+    function clearSearch() {
+      byId('searchInput').value = '';
+      byId('resultsSection').style.display = 'none';
+      byId('reportSection').style.display = 'none';
+      hideState();
+      lastResults = [];
+    }
+
+    function resultBadge(p) {
+      if (p.result === 'ผ่านการทดลองงาน') return '<span class="badge badge-pass">✅ ผ่านการทดลองงาน</span>';
+      if (p.result === 'ผ่านการทดลองงาน โดยมีเงื่อนไข') return '<span class="badge badge-cond">⚠️ ผ่านมีเงื่อนไข</span>';
+      if (p.result === 'ไม่ผ่านการทดลองงาน') return '<span class="badge badge-fail">❌ ไม่ผ่าน</span>';
+      return '<span class="badge badge-neutral">— ยังไม่ระบุผล</span>';
+    }
+
+    function retentionBadge(p) {
+      if (!p.retention_level) return '';
+      const map = {
+        Critical: '<span class="badge badge-fail">🔴 Critical</span>',
+        Important: '<span class="badge badge-cond">🟡 Important</span>',
+        Replaceable: '<span class="badge badge-pass">🟢 Replaceable</span>'
+      };
+      return map[p.retention_level] || '';
+    }
+
+    function renderResultList(results) {
+      const list = byId('resultList');
+      list.innerHTML = '';
+      results.forEach((p, idx) => {
+        const div = document.createElement('div');
+        div.className = 'result-card';
+        div.onclick = () => openReport(idx);
+        div.innerHTML = `
+          <div class="result-main">
+            <div class="result-name">${esc(p.emp_name) || 'ไม่ระบุชื่อ'} ${p.emp_id ? `<span style="color:var(--muted-2);font-weight:700;font-size:12.5px;">(${esc(p.emp_id)})</span>` : ''}</div>
+            <div class="result-meta">${esc(p.position) || '-'} • ${esc(p.department) || '-'} • วันที่ประเมิน: ${esc(p.eval_date) || '-'}</div>
+          </div>
+          <div class="result-side">
+            <span class="badge-score">${p.total_score ?? 0}/50</span>
+            ${resultBadge(p)}
+            ${retentionBadge(p)}
+          </div>
+        `;
+        list.appendChild(div);
+      });
+      byId('resultsSub').textContent = `พบ ${results.length} รายการ — คลิกที่รายการเพื่อดูรายละเอียดแบบเต็ม`;
+      byId('resultsSection').style.display = 'block';
+    }
+
+    async function runSearch() {
+      const q = byId('searchInput').value.trim().toLowerCase();
+      byId('reportSection').style.display = 'none';
+      byId('resultsSection').style.display = 'none';
+
+      if (!SHEET_URL || SHEET_URL.includes('YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL')) {
+        showState(`<div class="icon">⚙️</div><div class="title">ยังไม่ได้ตั้งค่า Google Sheets URL</div><div class="sub">โปรดใส่ Web App URL ของ Apps Script ในตัวแปร SHEET_URL</div>`);
+        return;
+      }
+
+      showState(`<div class="spinner"></div><div class="title">กำลังค้นหา...</div>`);
+
+      try {
+        const res = await fetch(SHEET_URL);
+        const data = await res.json();
+
+        // doGet ของ Apps Script ส่ง error กลับมาเป็น object { status: "error", message: ... }
+        if (data && !Array.isArray(data) && data.status === 'error') {
+          showState(`<div class="icon">⚠️</div><div class="title">เกิดข้อผิดพลาดจาก Apps Script</div><div class="sub">${esc(data.message || '')}</div>`);
+          return;
+        }
+
+        if (!Array.isArray(data)) {
+          showState(`<div class="icon">⚠️</div><div class="title">รูปแบบข้อมูลที่ได้รับไม่ถูกต้อง</div><div class="sub">โปรดตรวจสอบฟังก์ชัน doGet ใน Apps Script</div>`);
+          return;
+        }
+
+        // กรองด้วยชื่อ/รหัสพนักงาน ฝั่ง client และเรียงล่าสุดไว้บนสุด
+        let results = data.slice().reverse();
+        if (q) {
+          results = results.filter(p => {
+            const haystack = `${p.emp_name || ''} ${p.emp_id || ''}`.toLowerCase();
+            return haystack.includes(q);
+          });
+        }
+
+        lastResults = results;
+
+        if (lastResults.length === 0) {
+          showState(`<div class="icon">🔎</div><div class="title">ไม่พบข้อมูลที่ตรงกับการค้นหา</div><div class="sub">ลองตรวจสอบการสะกดชื่อ หรือลองค้นหาด้วยรหัสพนักงานแทน</div>`);
+          return;
+        }
+
+        hideState();
+        renderResultList(lastResults);
+      } catch (err) {
+        console.error(err);
+        showState(`<div class="icon">❌</div><div class="title">เชื่อมต่อ Google Sheets ไม่สำเร็จ</div><div class="sub">โปรดตรวจสอบ SHEET_URL การ Deploy และสิทธิ์การเข้าถึง (Anyone with the link)</div>`);
+      }
+    }
+
+    function backToResults() {
+      byId('reportSection').style.display = 'none';
+      if (lastResults.length) byId('resultsSection').style.display = 'block';
+      else byId('stateSection').style.display = 'block';
+    }
+
+    function openReport(idx) {
+      const p = lastResults[idx];
+      buildPrintDoc(p);
+      byId('resultsSection').style.display = 'none';
+      hideState();
+      byId('reportSection').style.display = 'block';
+      byId('reportSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function buildPrintDoc(p) {
+      const scoreRows = criteria.map((c, i) => {
+        const score = p[`score_${i+1}_${c.title}`] || 0;
+        const comment = p[`score_comment_${i+1}_${c.title}`] || '';
+        return `<tr>
+          <td><strong>${i+1}. ${esc(c.title)}</strong><br><span style="color:#94a3b8;font-size:10px">${esc(c.desc)}</span></td>
+          <td class="pd-score">${score || '–'}</td>
+          <td>${esc(comment) || '&nbsp;'}</td>
+        </tr>`;
+      }).join('');
+
+      const kpiRows = Array.from({ length: KPI_ROWS }, (_, idx) => {
+        const i = idx + 1;
+        if (!p[`kpi_${i}_goal`] && !p[`kpi_${i}_criteria`] && !p[`kpi_${i}_period`] && !p[`kpi_${i}_weight`]) return '';
+        return `<tr><td>${esc(p[`kpi_${i}_goal`])}</td><td>${esc(p[`kpi_${i}_criteria`])}</td><td>${esc(p[`kpi_${i}_period`])}</td><td class="pd-score">${esc(p[`kpi_${i}_weight`])}</td></tr>`;
+      }).join('') || '<tr><td colspan="4" style="color:#94a3b8">ยังไม่ได้ระบุ KPI</td></tr>';
+
+      const idpRows = Array.from({ length: IDP_ROWS }, (_, idx) => {
+        const i = idx + 1;
+        if (!p[`idp_${i}_area`] && !p[`idp_${i}_plan`] && !p[`idp_${i}_resource`] && !p[`idp_${i}_period`] && !p[`idp_${i}_owner`]) return '';
+        return `<tr><td>${esc(p[`idp_${i}_area`])}</td><td>${esc(p[`idp_${i}_plan`])}</td><td>${esc(p[`idp_${i}_resource`])}</td><td>${esc(p[`idp_${i}_period`])}</td><td>${esc(p[`idp_${i}_owner`])}</td></tr>`;
+      }).join('') || '<tr><td colspan="5" style="color:#94a3b8">ยังไม่ได้ระบุ IDP</td></tr>';
+
+      const resultColor = p.result === 'ผ่านการทดลองงาน' ? '#15803d' : p.result === 'ไม่ผ่านการทดลองงาน' ? '#dc2626' : '#d97706';
+
+      byId('printDoc').innerHTML = `
+        <div class="pd-header">
+          <h1>แบบประเมินทดลองงานพนักงานและบันทึกประเมินผ่านทดลองงาน</h1>
+          <p>ค้นหาเมื่อ: ${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })} ${p.timestamp ? `| บันทึกข้อมูลเมื่อ: ${esc(p.timestamp)}` : ''}</p>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">A. ข้อมูลพนักงานและผู้ประเมิน</div>
+          <div class="pd-grid">
+            <div class="pd-row"><span class="pd-label">ชื่อ-นามสกุล</span><span class="pd-val">${esc(p.emp_name)}</span></div>
+            <div class="pd-row"><span class="pd-label">รหัสพนักงาน</span><span class="pd-val">${esc(p.emp_id)}</span></div>
+            <div class="pd-row"><span class="pd-label">ตำแหน่ง</span><span class="pd-val">${esc(p.position)}</span></div>
+            <div class="pd-row"><span class="pd-label">แผนก/ฝ่าย</span><span class="pd-val">${esc(p.department)}</span></div>
+            <div class="pd-row"><span class="pd-label">เริ่มทดลองงาน</span><span class="pd-val">${esc(p.start_date)}</span></div>
+            <div class="pd-row"><span class="pd-label">สิ้นสุดทดลองงาน</span><span class="pd-val">${esc(p.end_date)}</span></div>
+            <div class="pd-row"><span class="pd-label">วันที่ประเมิน</span><span class="pd-val">${esc(p.eval_date)}</span></div>
+            <div class="pd-row"><span class="pd-label">ผู้ประเมิน</span><span class="pd-val">${esc(p.evaluator)}</span></div>
+            <div class="pd-row"><span class="pd-label">ตำแหน่งผู้ประเมิน</span><span class="pd-val">${esc(p.eval_position)}</span></div>
+          </div>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">B. ผลการประเมินคะแนน</div>
+          <table class="pd-table">
+            <thead><tr><th>หัวข้อการประเมิน</th><th style="width:52px;text-align:center">คะแนน</th><th style="width:28%">ความคิดเห็น</th></tr></thead>
+            <tbody>${scoreRows}<tr><td><strong>คะแนนรวม</strong> <span style="color:#64748b">(เต็ม 50)</span></td><td class="pd-score">${p.total_score ?? 0}</td><td><strong>${p.score_percent ?? 0}%</strong></td></tr></tbody>
+          </table>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">C. สรุปผลและข้อเสนอแนะ</div>
+          <div style="margin-bottom:7px"><span class="pd-result" style="border-color:${resultColor};color:${resultColor}">${esc(p.result) || 'ยังไม่ระบุผล'}</span> ${p.cond_note ? `<span style="color:#64748b;margin-left:8px">เงื่อนไข: ${esc(p.cond_note)}</span>` : ''}</div>
+          <table class="pd-table">
+            <thead><tr><th>Keep</th><th>Start</th><th>Stop / Change</th></tr></thead>
+            <tbody><tr><td>${esc(p.feedback_keep) || '&nbsp;'}</td><td>${esc(p.feedback_start) || '&nbsp;'}</td><td>${esc(p.feedback_stop) || '&nbsp;'}</td></tr></tbody>
+          </table>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">D. บันทึกเนื้อหาการสนทนา</div>
+          <table class="pd-table">
+            <tbody>
+              <tr><th style="width:24%">C1 ยืนยันผล</th><td>${esc(p.note_c1) || '&nbsp;'}</td></tr>
+              <tr><th>C2 ทบทวนช่วงทดลองงาน</th><td>${esc(p.note_c2) || '&nbsp;'}</td></tr>
+              <tr><th>C3 KPI รอบถัดไป</th><td>${esc(p.note_c3) || '&nbsp;'}</td></tr>
+              <tr><th>C4 Career Path</th><td>${esc(p.note_c4) || '&nbsp;'}</td></tr>
+              <tr><th>C5 สิทธิ์หลังผ่านโปร</th><td>${esc(p.note_c5) || '&nbsp;'}</td></tr>
+              <tr><th>C6 Support เพิ่ม</th><td>${esc(p.note_c6) || '&nbsp;'}</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">E. Retention Assessment</div>
+          <table class="pd-table">
+            <tbody>
+              <tr><th style="width:28%">Retention Level</th><td><strong>${esc(p.retention_level) || 'ยังไม่ระบุ'}</strong></td></tr>
+              <tr><th>บทบาทสำคัญต่อทีม</th><td>${esc(p.c7_role_impact) || '&nbsp;'}</td></tr>
+              <tr><th>ผลกระทบหากขาดคนนี้</th><td>${esc(p.c7_loss_impact) || '&nbsp;'}</td></tr>
+              <tr><th>ความยากในการทดแทน</th><td>${esc(p.c7_replacement_difficulty) || '&nbsp;'}</td></tr>
+              <tr><th>ปัจจัยรักษาคน</th><td>${esc(p.c7_retention_factor) || '&nbsp;'}</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">F. KPI และเป้าหมาย</div>
+          <table class="pd-table"><thead><tr><th>เป้าหมาย/KPI</th><th>เกณฑ์วัดผล</th><th>ระยะเวลา</th><th style="width:60px;text-align:center">น้ำหนัก</th></tr></thead><tbody>${kpiRows}</tbody></table>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">G. Individual Development Plan</div>
+          <table class="pd-table"><thead><tr><th>ด้านพัฒนา</th><th>แผนดำเนินการ</th><th>ทรัพยากร</th><th>เวลา</th><th>ผู้รับผิดชอบ</th></tr></thead><tbody>${idpRows}</tbody></table>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-title">H. ลายมือชื่อ</div>
+          <div class="pd-sig-grid">
+            <div class="pd-sig"><strong>ผู้ประเมิน</strong><div class="pd-sig-space"></div><div class="pd-sig-caption">(ลายมือชื่อ)</div><div>ชื่อ: ${esc(p.sig_evaluator_name)}</div><div>ตำแหน่ง: ${esc(p.sig_evaluator_pos)}</div><div>วันที่: ${esc(p.sig_evaluator_date)}</div></div>
+            <div class="pd-sig"><strong>พนักงานรับทราบ</strong><div class="pd-sig-space"></div><div class="pd-sig-caption">(ลายมือชื่อ)</div><div>ชื่อ: ${esc(p.sig_receiver_name)}</div><div>ตำแหน่ง: ${esc(p.sig_receiver_pos)}</div><div>วันที่: ${esc(p.sig_receiver_date)}</div></div>
+            <div class="pd-sig"><strong>กรรมการผู้จัดการ</strong><div class="pd-sig-space"></div><div class="pd-sig-caption">(ลายมือชื่อ)</div><div>ชื่อ: ${esc(p.sig_md_name)}</div><div>ตำแหน่ง: ${esc(p.sig_md_pos)}</div><div>วันที่: ${esc(p.sig_md_date)}</div></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function printReport() {
+      setTimeout(() => window.print(), 80);
+    }
+
+    async function exportPDF() {
+      const doc = byId('printDoc');
+      const empName = (lastResults.find(Boolean) || {}).emp_name || 'Employee';
+      const nameMatch = doc.querySelector('.pd-val');
+      const filenameSource = nameMatch ? nameMatch.textContent.trim() : empName;
+      const filename = `Probation_Evaluation_${filenameSource || 'Employee'}.pdf`.replace(/[\\/:*?"<>|]/g, '_');
+
+      const opt = {
+        margin: 0.25,
+        filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+      try {
+        await html2pdf().set(opt).from(doc).save();
+      } catch (err) {
+        console.error(err);
+        showToast('ไม่สามารถส่งออก PDF ได้ โปรดลองใช้ปุ่มพิมพ์แทน', true);
+      }
+    }
+
+    byId('searchInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') runSearch();
+    });
+  
+    // ── เปิดจากระบบ HR: ?q=<รหัสพนักงานหรือชื่อ> จะค้นหาให้ทันที
+    (function () {
+      const q = new URLSearchParams(location.search).get('q');
+      if (q) { byId('searchInput').value = q; runSearch(); }
+    })();
+  </script>
+</body>
+</html>
