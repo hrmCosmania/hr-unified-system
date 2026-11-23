@@ -657,8 +657,9 @@ const HR_SEED_DATA = {"meta":{"source":"CMN/CIL employee reports and JD_Competen
         email:clean(getField(r,'email','อีเมล')),
         birthDate:normalizeDate(getField(r,'วันเกิด','birth date','birthday')),
         startDate:normalizeDate(getField(r,'วันที่เริ่มงาน','วันเริ่มงาน','วันที่บรรจุ','start date')),
-        probationDays:Number(getField(r,'จำนวนวันทดลองงาน','probation days'))||120,
-        status:/inactive|ลาออก|พ้นสภาพ|resign/i.test(status)?'Inactive':'Active',
+        probationDays:Number(getField(r,'จำนวนวันทดลองงาน','probation days'))||0,
+        endDate:normalizeDate(getField(r,'วันที่ลาออก','วันที่สิ้นสุดงาน','resign date')),
+        status:/inactive|\bout\b|ลาออก|พ้นสภาพ|resign|terminat/i.test(status)?'Inactive':'Active',
         parentRef:clean(getField(r,'หัวหน้างาน','หัวหน้า','ขึ้นตรงต่อ','ผู้บังคับบัญชา','supervisor','manager','reportsto')),
         note:clean(getField(r,'หมายเหตุ','note'))
       };
@@ -706,7 +707,7 @@ const HR_SEED_DATA = {"meta":{"source":"CMN/CIL employee reports and JD_Competen
       const existing=map.get(key);
       if(!existing){
         if(nameMap.has(norm(rec.fullName))){ duplicateName++; return; }
-        const n={...rec,parentId:null,note:rec.note||'',updatedAt:new Date().toISOString()}; delete n.parentRef; db.employees.push(n); map.set(key,n); nameMap.set(norm(n.fullName),n); added++; return;
+        const n={...rec,parentId:null,note:rec.note||'',updatedAt:new Date().toISOString()}; delete n.parentRef; if(!n.probationDays)n.probationDays=120; db.employees.push(n); map.set(key,n); nameMap.set(norm(n.fullName),n); added++; return;
       }
       const preserve={parentId:existing.parentId||null,note:existing.note||'',email:existing.email||'',supervisorEmail:existing.supervisorEmail||'',probationDays:existing.probationDays||120};
       Object.keys(rec).forEach(field=>{ if(field==='parentRef'||field==='parentId'||field==='note')return; const value=rec[field]; if(value!==''&&value!=null)existing[field]=value; });
@@ -1396,24 +1397,25 @@ function importEmployeesExcel(event){
       const normName = v => String(v||'').trim().toLowerCase().replace(/[\s_\-./()]+/g,'');
       const existingMap = new Map(DB.employees.map(e => [String(e.empCode||'').trim().toUpperCase(), e]));
       const existingNameMap = new Map(DB.employees.map(e => [normName(e.fullName), e]));
-      const newHires = [], resignations = [];
+      const newHires = [], resignations = [], historicalOut = [];
       let duplicateNameSkipped = 0;
       records.forEach(rec => {
         const key = String(rec.empCode||'').trim().toUpperCase();
         const existing = existingMap.get(key);
         if(!existing){
           if(existingNameMap.has(normName(rec.fullName))){ duplicateNameSkipped++; return; }
+          if(rec.status === 'Inactive'){ historicalOut.push(rec); return; }
           newHires.push(rec); return;
         }
         if(rec.status === 'Inactive' && existing.status !== 'Inactive') resignations.push(rec);
       });
       event.target.value='';
-      if(!newHires.length && !resignations.length){
+      if(!newHires.length && !resignations.length && !historicalOut.length){
         applyEmployeeImport(records, file.name);
         return;
       }
-      pendingEmployeeImport = {records, newHires, resignations, fileName:file.name, duplicateNameSkipped};
-      showEmployeeImportReview(newHires, resignations, duplicateNameSkipped);
+      pendingEmployeeImport = {records, newHires, resignations, historicalOut, fileName:file.name, duplicateNameSkipped};
+      showEmployeeImportReview(newHires, resignations, duplicateNameSkipped, historicalOut);
     }catch(err){ console.error(err); toast('นำเข้าทะเบียนพนักงานไม่สำเร็จ: ' + err.message); }
   };
   reader.readAsArrayBuffer(file);
@@ -1434,11 +1436,14 @@ function employeeImportReviewRowHtml(rec, kind, index){
     + '<span><strong>' + escapeHtml(rec.fullName) + '</strong> (' + escapeHtml(rec.empCode) + ') — ' + escapeHtml(rec.company) + ' · ' + escapeHtml(rec.position||'-') + '</span>'
     + '</label>';
 }
-function showEmployeeImportReview(newHires, resignations, duplicateNameSkipped){
+function showEmployeeImportReview(newHires, resignations, duplicateNameSkipped, historicalOut){
+  historicalOut = historicalOut || [];
   const html = '<div class="clean-note" style="margin-bottom:10px">พบรายการที่ต้องยืนยันก่อนนำเข้า — ยกเลิกติ๊กรายการที่ไม่ต้องการดำเนินการ แล้วกด "ยืนยันนำเข้า" (รายการอื่นที่เป็นแค่อัปเดตข้อมูลปกติจะนำเข้าให้อัตโนมัติ)</div>'
     + (duplicateNameSkipped ? '<div class="clean-note" style="margin-bottom:10px">ข้ามอัตโนมัติ ' + duplicateNameSkipped + ' รายการ เนื่องจากมีชื่อนี้อยู่ในระบบแล้ว (รหัสพนักงานต่างกัน)</div>' : '')
     + (newHires.length ? '<div class="detail-section"><h3>พนักงานเข้าใหม่ (' + newHires.length + ')</h3>' + newHires.map((r,i)=>employeeImportReviewRowHtml(r,'new',i)).join('') + '</div>' : '')
     + (resignations.length ? '<div class="detail-section"><h3>พนักงานลาออก / พ้นสภาพ (' + resignations.length + ')</h3>' + resignations.map((r,i)=>employeeImportReviewRowHtml(r,'resign',i)).join('') + '</div>' : '')
+    + (historicalOut.length ? '<div class="detail-section"><h3>พนักงานที่ลาออกแล้ว และยังไม่มีในระบบ (' + historicalOut.length + ')</h3>'
+        + '<label class="clean-note" style="display:flex;align-items:center;gap:10px;padding:8px 4px"><input type="checkbox" id="empImportHistorical"> <span>นำเข้าเป็นประวัติ (สถานะ Inactive) — ถ้าไม่ติ๊ก จะไม่เพิ่มคนกลุ่มนี้เข้าระบบ</span></label></div>' : '')
     + '<div class="actions" style="justify-content:flex-end;margin-top:14px">'
     + '<button class="btn-ghost" onclick="cancelEmployeeImportReview()">ยกเลิก</button>'
     + '<button class="btn-primary" onclick="confirmEmployeeImportReview()">ยืนยันนำเข้า</button>'
@@ -1448,8 +1453,11 @@ function showEmployeeImportReview(newHires, resignations, duplicateNameSkipped){
 function cancelEmployeeImportReview(){ pendingEmployeeImport = null; closeSharedModal(); toast('ยกเลิกการนำเข้าแล้ว'); }
 function confirmEmployeeImportReview(){
   if(!pendingEmployeeImport) return;
-  const {records, newHires, resignations, fileName} = pendingEmployeeImport;
+  const {records, newHires, resignations, historicalOut, fileName} = pendingEmployeeImport;
   const excludedNewCodes = new Set(), excludedResignCodes = new Set();
+  if(!(document.getElementById('empImportHistorical')||{}).checked){
+    (historicalOut||[]).forEach(rec => excludedNewCodes.add(String(rec.empCode||'').trim().toUpperCase()));
+  }
   document.querySelectorAll('#sharedModalBody input[type=checkbox]').forEach(cb => {
     if(cb.checked) return;
     const idx = Number(cb.dataset.index);
