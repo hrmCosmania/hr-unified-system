@@ -12398,7 +12398,8 @@ html.theme-soft .al-list span{background:#eef0f4}
   }
 
   function stats(){
-    var emps = (typeof DB !== 'undefined' && DB.employees) || [];
+    var cf = 'ALL'; try { cf = companyFilter; } catch(e){}
+    var emps = ((typeof DB !== 'undefined' && DB.employees) || []).filter(function(e){ return cf === 'ALL' || e.company === cf; });
     var active = emps.filter(function(e){ return e.status !== 'Inactive'; }).length;
     var m = new Date().getMonth() + 1, bd = emps.filter(function(e){
       if(e.status === 'Inactive') return false;
@@ -12411,8 +12412,9 @@ html.theme-soft .al-list span{background:#eef0f4}
   function renderLauncher(){
     var box = document.getElementById('appLauncher'); if(!box) return;
     var now = new Date();
+    var cf = 'ALL'; try { cf = companyFilter; } catch(e){}
     var date = now.toLocaleDateString('th-TH', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
-    box.innerHTML = '<div class="al-hero"><div><h2>เลือกหมวดงาน HR</h2><p>'+E(date)+' · ทุกหมวดใช้ฐานข้อมูลพนักงานชุดเดียวกัน</p></div><div class="al-stats">'+stats()+'</div></div>'
+    box.innerHTML = '<div class="al-hero"><div><h2>เลือกหมวดงาน HR</h2><p>'+E(date)+' · '+(cf === 'ALL' ? 'ทุกบริษัท (CMN + CIL)' : 'บริษัท '+E(cf))+' · ทุกหมวดใช้ฐานข้อมูลพนักงานชุดเดียวกัน</p></div><div class="al-stats">'+stats()+'</div></div>'
       + '<div class="al-grid">' + APPS.map(function(a){
           return '<button type="button" class="al-card" style="--c:'+a.c+'" onclick="hrSelectApp(\''+a.key+'\')">'
             + '<span class="al-num">'+String(a.n).padStart(2,'0')+'</span>'
@@ -12459,6 +12461,7 @@ html.theme-soft .al-list span{background:#eef0f4}
     openTab(tab || a.tabs[0]);
     window.scrollTo(0, 0);
   };
+  window.hrRefreshLauncher = function(){ if(document.body.classList.contains('app-home')) renderLauncher(); };
   window.hrOpenLauncher = function(){
     current = ''; store.set(''); document.body.dataset.app = ''; document.body.classList.add('app-home');
     renderLauncher(); installSidebar();
@@ -12497,6 +12500,143 @@ html.theme-soft .al-list span{background:#eef0f4}
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install();
   window.addEventListener('load', function(){ install(); installSidebar(); });
+})();
+</script>
+<style id="company-select-style">
+/* หลังล็อกอินเลือกบริษัท (CMN/CIL) + ปุ่มเปลี่ยนบริษัท (ต้องยืนยัน) แทนปุ่มสลับ ทุกบริษัท/CMN/CIL */
+#companyToggle .cf-btn{display:none!important}
+#companyToggle{gap:8px;align-items:center}
+.cs-chip{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;padding:6px 12px 6px 8px;border-radius:10px;color:var(--v4-text);white-space:nowrap}
+.cs-dot{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;background:var(--cs-c,#d4a017)}
+.cs-change{font-family:inherit;font-size:13px;cursor:pointer;border:1px solid var(--v4-border);background:var(--v4-surface-2);color:var(--v4-text);border-radius:9px;padding:6px 12px;white-space:nowrap}
+.cs-change:hover{border-color:var(--v4-info)}
+.cs-pick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cs-opt{font-family:inherit;cursor:pointer;border:1.5px solid var(--v4-border);background:var(--v4-surface-2);color:var(--v4-text);border-radius:12px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:14px;font-weight:700}
+.cs-opt small{font-weight:500;font-size:11.5px;color:var(--v4-muted)}
+.cs-opt .cs-dot{width:34px;height:34px;font-size:12px}
+.cs-opt.on{border-color:var(--cs-c);box-shadow:0 0 0 3px color-mix(in srgb,var(--cs-c) 25%,transparent)}
+.auth-gate .cs-label{display:block;margin:14px 0 8px;font-size:13px;font-weight:600}
+.cs-modal{position:fixed;inset:0;z-index:4000;background:rgba(5,8,15,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.cs-box{background:var(--v4-surface);color:var(--v4-text);border:1px solid var(--v4-border);border-radius:20px;padding:22px;width:min(440px,100%);box-shadow:0 30px 80px rgba(0,0,0,.35)}
+.cs-box h3{margin:0 0 4px;font-size:19px}
+.cs-box p{margin:0 0 16px;color:var(--v4-muted);font-size:13.5px}
+.cs-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.cs-note{margin-top:12px;font-size:13px;color:var(--v4-muted);min-height:18px}
+html.theme-soft .cs-box{background:#eef0f4;border-color:transparent}
+@media(max-width:600px){.cs-chip{font-size:13px}.cs-change{padding:6px 10px}}
+</style>
+<script id="company-select-script">
+/* บริษัทที่ทำงาน (CMN หรือ CIL เท่านั้น — ไม่มี "ทุกบริษัท")
+   - ล็อกอินก่อน แล้วมีหน้าต่างเด้งให้เลือกบริษัท (ต้องเลือกก่อนใช้งาน ปิดไม่ได้)
+   - เลือกแล้วจำไว้ในแท็บนี้ (sessionStorage) รีเฟรชไม่ต้องเลือกใหม่ · ออกจากระบบ/เปิดแท็บใหม่ → เลือกใหม่ (เลือกล่วงหน้าเป็นบริษัทล่าสุด)
+   - ระหว่างใช้งาน: ปุ่ม "เปลี่ยนบริษัท" ด้านบน → เลือก → ยืนยัน
+   ใช้ setCompanyFilter() เดิม (companyFilter = 'CMN' | 'CIL') ทุกหน้าที่กรองตามบริษัทจึงทำงานเหมือนเดิม */
+(function(){
+  'use strict';
+  var KEY = 'hru_company';
+  var CO = [
+    { c:'CMN', th:'CMN', en:'บริษัท CMN', color:'#2563eb' },
+    { c:'CIL', th:'CIL', en:'บริษัท CIL', color:'#0d9488' },
+  ];
+  var meta = function(c){ return CO.filter(function(x){ return x.c === c; })[0] || null; };
+  var ss = {
+    get: function(){ try { var v = sessionStorage.getItem(KEY); return meta(v) ? v : ''; } catch(e){ return ''; } },
+    set: function(v){ try { if(v) sessionStorage.setItem(KEY, v); else sessionStorage.removeItem(KEY); } catch(e){} }
+  };
+  var last = function(){ try { var v = localStorage.getItem(KEY); return meta(v) ? v : ''; } catch(e){ return ''; } };
+  var cur = function(){ try { return companyFilter; } catch(e){ return ''; } };
+  var optsHtml = function(sel){
+    return '<div class="cs-pick" style="grid-template-columns:repeat(2,1fr)">' + CO.map(function(x){
+      return '<button type="button" class="cs-opt' + (x.c === sel ? ' on' : '') + '" data-c="' + x.c + '" style="--cs-c:' + x.color + '">'
+        + '<span class="cs-dot">' + x.c + '</span>' + x.th + '<small>' + x.en + '</small></button>';
+    }).join('') + '</div>';
+  };
+  function bindPick(root, onPick){
+    root.querySelectorAll('.cs-opt').forEach(function(b){
+      b.addEventListener('click', function(){
+        root.querySelectorAll('.cs-opt').forEach(function(x){ x.classList.toggle('on', x === b); });
+        onPick(b.dataset.c);
+      });
+    });
+  }
+  function apply(c){
+    if(!meta(c)) return;
+    if(typeof setCompanyFilter === 'function') setCompanyFilter(c);
+    ss.set(c); try { localStorage.setItem(KEY, c); } catch(e){}
+    renderChip();
+    if(typeof window.hrRefreshLauncher === 'function') window.hrRefreshLauncher();
+  }
+
+  /* หัวด้านบน: บริษัทปัจจุบัน + ปุ่มเปลี่ยนบริษัท */
+  function renderChip(){
+    var box = document.getElementById('companyToggle'); if(!box) return;
+    var m = meta(ss.get() && cur()), chip = document.getElementById('csChip');
+    if(!chip){
+      chip = document.createElement('span'); chip.id = 'csChip'; chip.className = 'cs-chip'; box.appendChild(chip);
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'cs-change'; b.textContent = '⇄ เปลี่ยนบริษัท';
+      b.onclick = function(){ window.hrChangeCompany(); }; box.appendChild(b);
+    }
+    chip.style.setProperty('--cs-c', m ? m.color : '#768195');
+    chip.innerHTML = m ? '<span class="cs-dot">' + m.c + '</span>บริษัท ' + m.c : '<span class="cs-dot">?</span>ยังไม่ได้เลือกบริษัท';
+    chip.title = 'บริษัทที่กำลังทำงาน';
+  }
+
+  /* หน้าต่างเลือกบริษัท
+     required = หลังล็อกอิน: ต้องเลือก ปิดไม่ได้ · ไม่ required = กดเปลี่ยนบริษัท: เลือกแล้วกดยืนยัน หรือยกเลิกได้ */
+  function openDialog(required){
+    if(document.querySelector('.cs-modal')) return;
+    var now = required ? '' : (ss.get() && cur()), pick = required ? last() : now;
+    var m = document.createElement('div'); m.className = 'cs-modal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true');
+    m.innerHTML = '<div class="cs-box">'
+      + (required ? '<h3>เลือกบริษัทที่จะทำงาน</h3><p>ข้อมูลทุกหน้าจะแสดงเฉพาะบริษัทที่เลือก — เปลี่ยนภายหลังได้ที่ปุ่ม "เปลี่ยนบริษัท" ด้านบน</p>'
+                  : '<h3>เปลี่ยนบริษัท</h3><p>ตอนนี้กำลังทำงานที่ <b>บริษัท ' + now + '</b> — เลือกบริษัทที่ต้องการ แล้วกดยืนยัน</p>')
+      + optsHtml(pick) + '<div class="cs-note"></div>'
+      + '<div class="cs-actions">' + (required ? '' : '<button type="button" class="btn-ghost" data-x="cancel">ยกเลิก</button>')
+      + '<button type="button" class="btn-primary" data-x="ok">' + (required ? 'เข้าใช้งาน' : 'ยืนยันเปลี่ยนบริษัท') + '</button></div></div>';
+    document.body.appendChild(m);
+    var ok = m.querySelector('[data-x="ok"]'), note = m.querySelector('.cs-note');
+    var refresh = function(){
+      ok.disabled = !pick || (!required && pick === now);
+      note.textContent = !pick ? 'กรุณาเลือกบริษัท' : (!required && pick === now ? 'เป็นบริษัทที่ใช้อยู่แล้ว' : 'ข้อมูลทุกหน้าจะแสดงเฉพาะบริษัท ' + pick);
+    };
+    var close = function(){ document.removeEventListener('keydown', onKey); m.remove(); };
+    var onKey = function(e){ if(e.key === 'Escape' && !required) close(); };
+    document.addEventListener('keydown', onKey);
+    bindPick(m, function(c){ pick = c; refresh(); });
+    if(!required){
+      m.querySelector('[data-x="cancel"]').onclick = close;
+      m.addEventListener('click', function(e){ if(e.target === m) close(); });
+    }
+    ok.onclick = function(){ if(ok.disabled) return; close(); apply(pick); };
+    refresh();
+    var first = m.querySelector('.cs-opt.on') || m.querySelector('.cs-opt'); if(first) first.focus();
+  }
+  window.hrChangeCompany = function(){ if(!ss.get()) openDialog(true); else openDialog(false); };
+
+  function onSignedIn(){
+    var c = ss.get();
+    if(c){ if(cur() !== c) apply(c); else renderChip(); return; }
+    openDialog(true);
+  }
+  function install(){
+    if(window.__csInstalled) return; window.__csInstalled = true;
+    // รีเฟรชหน้าในแท็บเดิม → ใช้บริษัทที่เลือกไว้แล้ว
+    var c = ss.get(); if(c && cur() !== c && typeof setCompanyFilter === 'function') setCompanyFilter(c);
+    renderChip();
+    try {
+      supabaseClient.auth.onAuthStateChange(function(ev, sess){
+        if(sess && sess.user && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION')) setTimeout(onSignedIn, 0);
+        if(ev === 'SIGNED_OUT'){ ss.set(''); var m = document.querySelector('.cs-modal'); if(m) m.remove(); renderChip(); }
+      });
+    } catch(e){}
+    // ออกจากระบบ → ครั้งหน้าต้องเลือกบริษัทใหม่
+    var prev = window.authGateLogout;
+    if(typeof prev === 'function'){
+      window.authGateLogout = function(){ ss.set(''); return prev.apply(this, arguments); };
+      try { (0, eval)('authGateLogout = window.authGateLogout'); } catch(e){}
+    }
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install();
 })();
 </script>
 </body>
