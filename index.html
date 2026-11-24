@@ -12290,38 +12290,38 @@ body.app-home .app-shell{display:none!important}
 .al-stat{background:var(--v4-surface);border:1px solid var(--v4-border);border-radius:14px;padding:10px 16px;min-width:110px}
 .al-stat b{display:block;font-size:22px}
 .al-stat span{font-size:12.5px;color:var(--v4-muted)}
-.al-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px}
-.al-card{--c:#2f6fe4;position:relative;display:flex;flex-direction:column;gap:12px;text-align:left;font-family:inherit;color:inherit;cursor:pointer;
-  background:var(--v4-surface);border:1px solid var(--v4-border);border-radius:22px;padding:22px 22px 20px;min-height:250px;overflow:hidden;
-  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
-.al-card::before{content:"";position:absolute;inset:0 0 auto 0;height:5px;background:var(--c)}
-.al-card::after{content:"";position:absolute;right:-60px;top:-60px;width:180px;height:180px;border-radius:50%;background:var(--c);opacity:.09;pointer-events:none}
-.al-card:hover,.al-card:focus-visible{transform:translateY(-4px);border-color:var(--c);box-shadow:0 18px 40px rgba(0,0,0,.18);outline:none}
-.al-card,.al-card *{text-align:left!important;white-space:normal!important}
-.al-card{align-items:flex-start!important;justify-content:flex-start!important}
-.al-num{position:absolute;right:20px;top:18px;font-size:13px;font-weight:800;color:var(--c);opacity:.85}
-.al-icon{width:58px;height:58px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:30px;background:color-mix(in srgb,var(--c) 16%,transparent)}
-.al-title{font-size:19px;font-weight:800;line-height:1.3}
-.al-en{font-size:12.5px;color:var(--v4-muted);margin-top:2px}
-.al-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
-.al-list span{font-size:12.5px;padding:4px 10px;border-radius:999px;background:var(--v4-surface-2);border:1px solid var(--v4-border);color:var(--v4-text)}
-.al-go{font-size:13.5px;font-weight:700;color:var(--c);display:flex;align-items:center;gap:6px}
-.al-tools{margin-top:30px}
-.al-tools h3{font-size:14px;color:var(--v4-muted);font-weight:700;margin:0 0 10px;letter-spacing:.02em}
-.al-tools div{display:flex;flex-wrap:wrap;gap:10px}
-.al-tools button{font-family:inherit;font-size:14px;cursor:pointer;color:var(--v4-text);background:var(--v4-surface);border:1px solid var(--v4-border);border-radius:12px;padding:9px 14px}
-.al-tools button:hover{border-color:var(--v4-info)}
+.al-panel{background:var(--v4-surface);border:1px solid var(--v4-border);border-radius:26px;padding:30px 24px 26px}
+.al-panel + .al-panel{margin-top:18px}
+.al-panel h3{margin:0 0 18px;font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--v4-muted)}
+.al-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:22px 12px}
+.al-app{position:relative;display:flex!important;flex-direction:column;align-items:center!important;text-align:center!important;gap:0;font-family:inherit;color:inherit;cursor:pointer;
+  background:transparent!important;border:0!important;box-shadow:none!important;padding:6px 4px;border-radius:18px;white-space:normal!important;-webkit-tap-highlight-color:transparent}
+.al-app *{text-align:center!important;white-space:normal!important}
+.al-app img{display:block;width:104px;height:104px;border-radius:24px;box-shadow:0 14px 26px -10px var(--c),0 4px 10px rgba(15,23,42,.14);transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s}
+.al-app:hover img,.al-app:focus-visible img{transform:translateY(-5px) scale(1.04);box-shadow:0 22px 34px -12px var(--c),0 6px 14px rgba(15,23,42,.16)}
+.al-app:active img{transform:scale(.96)}
+.al-app:focus-visible{outline:2px solid var(--c);outline-offset:4px}
+.al-app .al-num{margin-top:14px;font-size:14px;font-weight:800;color:var(--v4-text);opacity:.9}
+.al-app .al-title{font-size:15.5px;font-weight:800;line-height:1.35;margin-top:2px;max-width:200px}
+.al-app .al-en{font-size:12px;color:var(--v4-muted);margin-top:3px;line-height:1.35;max-width:200px}
+.al-app .al-link{position:absolute;top:2px;right:calc(50% - 64px);width:22px;height:22px;border-radius:50%;background:var(--v4-surface);border:1px solid var(--v4-border);font-size:12px;line-height:20px;color:var(--v4-muted)}
+.al-tools{grid-template-columns:repeat(5,minmax(0,1fr))}
+.al-tools .al-app img{width:76px;height:76px;border-radius:18px;box-shadow:0 10px 20px -10px var(--c),0 3px 8px rgba(15,23,42,.12)}
+.al-tools .al-app .al-num{margin-top:10px;font-size:13px}
+.al-tools .al-app .al-title{font-size:14.5px}
+@media(max-width:900px){.al-grid,.al-tools{grid-template-columns:repeat(3,minmax(0,1fr))}.al-panel{padding:22px 10px 20px;border-radius:22px}.al-app img{width:80px;height:80px;border-radius:19px}.al-tools .al-app img{width:64px;height:64px;border-radius:15px}.al-app .al-title{font-size:14px}.al-app .al-link{right:calc(50% - 50px)}}
+@media(max-width:600px){.al-grid{gap:18px 6px}.al-app img{width:70px;height:70px;border-radius:17px}.al-tools .al-app img{width:56px;height:56px;border-radius:14px}.al-app .al-title{font-size:13px}.al-app .al-en{font-size:11px}.al-app .al-link{right:calc(50% - 46px)}}
+@media(max-width:330px){.al-grid,.al-tools{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* หัวเมนูด้านซ้าย: หมวดงานที่เลือก + ปุ่มกลับหน้าเลือกหมวด */
 .al-current{order:-1;display:flex;flex-direction:column;gap:8px;padding:4px 4px 12px;margin-bottom:6px;border-bottom:1px solid var(--v4-border)}
 .al-current button{font-family:inherit;font-size:13px;cursor:pointer;align-self:flex-start;border:1px solid var(--v4-border);background:var(--v4-surface-2);color:var(--v4-text);border-radius:999px;padding:5px 12px}
 .al-current button:hover{border-color:var(--v4-info)}
 .al-cur-name{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;line-height:1.3}
+.al-cur-name img{width:38px;height:38px;flex:none;border-radius:10px;box-shadow:0 4px 10px rgba(15,23,42,.18)}
 .al-cur-name i{font-style:normal;width:36px;height:36px;flex:none;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;background:color-mix(in srgb,var(--al-c,#2f6fe4) 18%,transparent)}
 .al-cur-name small{display:block;font-weight:500;font-size:11.5px;color:var(--v4-muted)}
 @media(max-width:900px){.al-current{flex-direction:row;align-items:center;border-bottom:0;padding:0 8px 0 0;margin:0;flex:none}.al-cur-name small{display:none}}
-html.theme-soft .al-card,html.theme-soft .al-stat,html.theme-soft .al-tools button{border-color:transparent;box-shadow:var(--neu-up)}
-html.theme-soft .al-card:hover{box-shadow:var(--neu-up),0 0 0 2px var(--c)}
-html.theme-soft .al-list span{background:#eef0f4}
+html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-shadow:var(--neu-up)}
 </style>
 <style id="app-launcher-filter"></style>
 <script id="app-launcher-script">
@@ -12347,6 +12347,9 @@ html.theme-soft .al-list span{background:#eef0f4}
   ];
   var COMMON = { key:'common', icon:'🧰', c:'#0ea5e9', th:'เครื่องมือส่วนกลาง', en:'Shared tools', tabs:['dashboard','employees','reports','documents','settings'] };
   var ALL = APPS.concat([COMMON]);
+  /* ไอคอนแบบ Apple (ไฟล์ในโฟลเดอร์ /app-icons/ ตัดจากภาพต้นแบบของเจ้าของระบบ) */
+  var ICON = function(k){ return '/app-icons/' + (k === 'common' ? 'dashboard' : k) + '.png'; };
+  var TOOL_INFO = { dashboard:['ภาพรวม','Dashboard','#64748b'], employees:['ฐานข้อมูลพนักงาน','Employee Database','#4f46e5'], reports:['รายงาน','Reports & Analytics','#0f766e'], documents:['เอกสารอัตโนมัติ','Document Automation','#f59e0b'], settings:['ตั้งค่าระบบ','Settings','#6b7280'] };
   var TOOLS = [['dashboard','🏠 ภาพรวม'],['employees','👥 ฐานข้อมูลพนักงาน'],['reports','📊 รายงาน'],['documents','📄 เอกสารอัตโนมัติ'],['settings','⚙️ ตั้งค่าระบบ']];
   var byKey = function(k){ return ALL.filter(function(a){ return a.key === k; })[0]; };
   var E = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); };
@@ -12385,7 +12388,7 @@ html.theme-soft .al-list span{background:#eef0f4}
     var a = byKey(current);
     head.style.setProperty('--al-c', a ? a.c : '#2f6fe4');
     head.innerHTML = '<button type="button" onclick="hrOpenLauncher()">‹ หมวดงานทั้งหมด</button>'
-      + (a ? '<div class="al-cur-name"><i>'+a.icon+'</i><div>'+E(a.th)+'<small>'+E(a.en)+'</small></div></div>' : '');
+      + (a ? '<div class="al-cur-name"><img src="'+ICON(a.key)+'" alt=""><div>'+E(a.th)+'<small>'+E(a.en)+'</small></div></div>' : '');
     // เรียงเมนูตามลำดับของหมวด (เมนูย่อยตามหลังเมนูหลักของตัวเอง)
     [].forEach.call(tabbar.children, function(x){ x.style.order = ''; });
     head.style.order = '-1';
@@ -12415,17 +12418,20 @@ html.theme-soft .al-list span{background:#eef0f4}
     var cf = 'ALL'; try { cf = companyFilter; } catch(e){}
     var date = now.toLocaleDateString('th-TH', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
     box.innerHTML = '<div class="al-hero"><div><h2>เลือกหมวดงาน HR</h2><p>'+E(date)+' · '+(cf === 'ALL' ? 'ทุกบริษัท (CMN + CIL)' : 'บริษัท '+E(cf))+' · ทุกหมวดใช้ฐานข้อมูลพนักงานชุดเดียวกัน</p></div><div class="al-stats">'+stats()+'</div></div>'
-      + '<div class="al-grid">' + APPS.map(function(a){
-          return '<button type="button" class="al-card" style="--c:'+a.c+'" onclick="hrSelectApp(\''+a.key+'\')">'
+      + '<section class="al-panel"><h3>หมวดงาน HR</h3><div class="al-grid">' + APPS.map(function(a){
+          return '<button type="button" class="al-app" style="--c:'+a.c+'" onclick="hrSelectApp(\''+a.key+'\')" title="'+E(a.items.join(' · '))+(a.link ? ' (เปิดแอปแยก)' : '')+'">'
+            + '<img src="'+ICON(a.key)+'" alt="" width="104" height="104">'
+            + (a.link ? '<span class="al-link" aria-hidden="true">↗</span>' : '')
             + '<span class="al-num">'+String(a.n).padStart(2,'0')+'</span>'
-            + '<span class="al-icon">'+a.icon+'</span>'
-            + '<span><span class="al-title">'+E(a.th)+'</span><span class="al-en" style="display:block">'+E(a.en)+'</span></span>'
-            + '<span class="al-list">'+a.items.map(function(x){ return '<span>'+E(x)+'</span>'; }).join('')+'</span>'
-            + '<span class="al-go">'+(a.link ? (a.key === 'cb' ? 'เปิดระบบเงินเดือน ↗' : 'เปิดระบบฝึกอบรม ↗') : 'เข้าใช้งาน →')+'</span></button>';
-        }).join('') + '</div>'
-      + '<div class="al-tools"><h3>เครื่องมือส่วนกลาง</h3><div>' + TOOLS.map(function(t){
-          return '<button type="button" onclick="hrSelectApp(\'common\',\''+t[0]+'\')">'+t[1]+'</button>';
-        }).join('') + '</div></div>';
+            + '<span class="al-title">'+E(a.th)+'</span><span class="al-en">'+E(a.en)+'</span></button>';
+        }).join('') + '</div></section>'
+      + '<section class="al-panel"><h3>เครื่องมือส่วนกลาง</h3><div class="al-grid al-tools">' + TOOLS.map(function(t, i){
+          var info = TOOL_INFO[t[0]] || [t[1], '', '#64748b'];
+          return '<button type="button" class="al-app" style="--c:'+info[2]+'" onclick="hrSelectApp(\'common\',\''+t[0]+'\')">'
+            + '<img src="'+ICON(t[0])+'" alt="" width="76" height="76">'
+            + '<span class="al-num">'+(APPS.length + i + 1)+'</span>'
+            + '<span class="al-title">'+E(info[0])+'</span><span class="al-en">'+E(info[1])+'</span></button>';
+        }).join('') + '</div></section>';
   }
 
   var realShowTab = null;
