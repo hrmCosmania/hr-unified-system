@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans Thai", "Noto Sans Thai", system-ui, sans-serif;
+  --font-display: "Prompt", "IBM Plex Sans Thai", system-ui, sans-serif;
+
+  /* Brand */
+  --color-navy-900: #0d2444;
+  --color-navy-800: #14335e;
+  --color-navy-700: #1b4277;
+  --color-brand-50: #eef4fd;
+  --color-brand-100: #dbe8fb;
+  --color-brand-200: #b9d2f6;
+  --color-brand-500: #2a78d6;
+  --color-brand-600: #1f5fbf;
+  --color-brand-700: #1a4f9f;
+  --color-leaf-50: #eaf8f0;
+  --color-leaf-100: #d0f0de;
+  --color-leaf-500: #1fa463;
+  --color-leaf-600: #178a52;
+  --color-canvas: #f3f7fb;
+  --color-line: #e3eaf3;
+  --color-ink: #13233a;
+  --color-ink-2: #4b5b72;
+  --color-ink-3: #7b8aa0;
+
+  /* Status (fixed — ใช้คู่กับไอคอน + ข้อความเสมอ) */
+  --color-good: #0ca30c;
+  --color-good-bg: #e7f6e7;
+  --color-warn: #b77800;
+  --color-warn-mark: #fab219;
+  --color-warn-bg: #fff4dc;
+  --color-serious: #ec835a;
+  --color-crit: #d03b3b;
+  --color-crit-bg: #fde9e9;
+
+  /* Categorical chart series (validated order) */
+  --color-s1: #2a78d6;
+  --color-s2: #eb6834;
+  --color-s3: #1baf7a;
+  --color-s4: #eda100;
+  --color-s5: #e87ba4;
+  --color-s6: #008300;
+  --color-s7: #6250d6;
+
+  --shadow-card: 0 1px 2px rgba(16, 38, 74, 0.04), 0 4px 16px rgba(16, 38, 74, 0.06);
+}
+
+html, body, #root { height: 100%; }
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, .font-display { font-family: var(--font-display); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #cfd9e6; border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
+
+@layer components {
+.card { background: #fff; border: 1px solid var(--color-line); border-radius: 16px; box-shadow: var(--shadow-card); }
+.input {
+  width: 100%; border: 1px solid #d5dfeb; border-radius: 10px; padding: 9px 12px; background: #fff;
+  font-size: 14px; color: var(--color-ink); outline: none; transition: border-color .15s, box-shadow .15s;
+}
+.input:focus { border-color: var(--color-brand-500); box-shadow: 0 0 0 3px rgba(42, 120, 214, .15); }
+textarea.input { resize: vertical; min-height: 72px; }
+.label { display: block; font-size: 13px; font-weight: 500; color: var(--color-ink-2); margin-bottom: 6px; }
+}
+
+/* Chart tooltip */
+.viz-tip {
+  position: fixed; pointer-events: none; z-index: 60; background: #13233a; color: #fff; font-size: 12px;
+  padding: 6px 9px; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.18); white-space: nowrap;
+}
+
+@keyframes fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.fade-up { animation: fade-up .25s ease-out both; }

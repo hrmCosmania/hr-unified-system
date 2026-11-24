@@ -12256,13 +12256,13 @@ window.payrollAttendanceFromDocs = function(docs, hrCodes){
 <script id="payroll-module-script">
 /* "เงินเดือน" = แอปย่อย Payroll Full Loop ที่ /payroll/ (เต็มหน้าจอ หน้าตา/เมนูของตัวเอง)
    ล็อกอินเดียว: ใช้ Supabase โปรเจกต์และ session เดียวกับระบบนี้ (โดเมนเดียวกัน) — ยังไม่ล็อกอิน แอปเงินเดือนจะส่งมาที่นี่พร้อม ?next=/payroll/...
-   หลังล็อกอินสำเร็จ หน้านี้พากลับไปที่ next (อนุญาตเฉพาะ /payroll/ และ /training/ = แอปฝึกอบรม PeopleGrow HRD) · ข้อมูลเงินเดือนอยู่ในตาราง plfl_* สิทธิ์ตาม plfl_profile */
+   หลังล็อกอินสำเร็จ หน้านี้พากลับไปที่ next (อนุญาตเฉพาะ /payroll/, /training/ = แอปฝึกอบรม PeopleGrow HRD และ /performance/ = GrowTogether) · ข้อมูลเงินเดือนอยู่ในตาราง plfl_* สิทธิ์ตาม plfl_profile */
 (function(){
   'use strict';
   var TAB = 'payroll-app';
   var next = new URLSearchParams(location.search).get('next') || '';
-  if(/^\/(payroll|training)\//.test(next)){
-    var st = document.getElementById('authGateStatus'); if(st) st.textContent = /^\/training\//.test(next) ? 'เข้าสู่ระบบเพื่อไปที่ระบบฝึกอบรมและพัฒนา' : 'เข้าสู่ระบบเพื่อไปที่ระบบเงินเดือน';
+  if(/^\/(payroll|training|performance)\//.test(next)){
+    var st = document.getElementById('authGateStatus'); if(st) st.textContent = /^\/training\//.test(next) ? 'เข้าสู่ระบบเพื่อไปที่ระบบฝึกอบรมและพัฒนา' : /^\/performance\//.test(next) ? 'เข้าสู่ระบบเพื่อไปที่ GrowTogether (บริหารผลการปฏิบัติงาน)' : 'เข้าสู่ระบบเพื่อไปที่ระบบเงินเดือน';
     supabaseClient.auth.onAuthStateChange(function(ev, session){ if(session && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION')) location.replace(next); });
   }
   function install(){
@@ -12339,7 +12339,7 @@ html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-
     { key:'cb', n:2, icon:'💰', c:'#059669', th:'การบริหารค่าตอบแทนและสวัสดิการ', en:'Compensation & Benefits', link:'/payroll/#/employees',
       items:['ฐานข้อมูลพนักงาน','บันทึกเวลา','ขาด ลา มาสาย','เงินเดือน','สลิป / ภาษี / ประกันสังคม'] },
     { key:'pm', n:3, icon:'📈', c:'#7c3aed', th:'การบริหารผลการปฏิบัติงาน', en:'Performance Management',
-      tabs:['performance-tracking'], items:['ขาด ลา มาสาย','โควตาวันลา','เป้าหมาย / OKR','ประเมินผล'] },
+      tabs:['performance-tracking'], items:['ขาด ลา มาสาย','โควตาวันลา','เป้าหมาย / OKR','ประเมินผล','GrowTogether (ตัวอย่าง)'] },
     { key:'ld', n:4, icon:'🎓', c:'#d97706', th:'การฝึกอบรมและพัฒนา', en:'Learning & Development (L&D)', link:'/training/',
       items:['หลักสูตรและอบรม','แผนพัฒนา IDP','สมรรถนะ','เส้นทางอาชีพ','Talent & Succession'] },
     { key:'er', n:5, icon:'💞', c:'#db2777', th:'พนักงานสัมพันธ์และความผูกพัน', en:'Employee Relations & Engagement',
@@ -12366,6 +12366,7 @@ html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-
       return 'body[data-app="'+a.key+'"] .tabbar > .tab-btn'+keep+'{display:none!important}';
     }).join('\n');
     css += '\nbody:not([data-app="er"]) .tabbar > .tab-btn[data-al="er-bday"]{display:none!important}'
+      + '\nbody:not([data-app="pm"]) .tabbar > .tab-btn[data-al="pm-gt"]{display:none!important}'
       + '\nbody[data-app="er"] #sideSub-onboarding,body[data-app="er"] #view-onboarding .subnav{display:none!important}'
       + '\nbody[data-app="rec"] #sideSub-onboarding > [data-k="birthday"],body[data-app="rec"] #onboardSubBtnBirthday{display:none!important}';
     document.getElementById('app-launcher-filter').textContent = css;
@@ -12379,6 +12380,14 @@ html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-
       b.onclick = function(){ openTab('er-bday'); };
       if(typeof setTabLabelV42 === 'function') setTabLabelV42(b, '🎂', 'วันเกิดพนักงาน', 'Birthdays'); else b.textContent = '🎂 วันเกิดพนักงาน';
       tabbar.insertBefore(b, tabbar.firstChild);
+    }
+    // หมวด 3: ปุ่มเปิดแอป GrowTogether (/performance/ — ตัวอย่างหน้าจอ ข้อมูลสาธิต) ใต้เมนูติดตามผลการปฏิบัติงาน
+    if(!tabbar.querySelector('[data-al="pm-gt"]')){
+      var g = document.createElement('button'); g.className = 'tab-btn'; g.dataset.tab = 'performance-gt'; g.dataset.al = 'pm-gt';
+      g.title = 'เปิด GrowTogether — แอปบริหารผลการปฏิบัติงานแบบใหม่ (ตัวอย่างหน้าจอ ใช้ข้อมูลสาธิต)';
+      g.onclick = function(){ location.href = '/performance/'; };
+      if(typeof setTabLabelV42 === 'function') setTabLabelV42(g, '🌱', 'GrowTogether ↗', 'ตัวอย่างหน้าจอ'); else g.textContent = '🌱 GrowTogether ↗';
+      tabbar.appendChild(g);
     }
     var head = document.getElementById('alCurrent');
     if(!head){
@@ -12397,6 +12406,7 @@ html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-
       if(btn) btn.style.order = String(i * 2 + 1);
       var sub = document.getElementById('sideSub-' + t); if(sub) sub.style.order = String(i * 2 + 2);
     });
+    var gt = tabbar.querySelector('[data-al="pm-gt"]'); if(gt) gt.style.order = '50';
     var prof = document.getElementById('sidebarProfile'); if(prof) prof.style.order = '999';
   }
 

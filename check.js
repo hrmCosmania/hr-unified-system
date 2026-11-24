@@ -66,22 +66,19 @@ if (fs.existsSync('api')) {
   });
 }
 
-/* ---------- 1c) training app (/training = build ของ apps/training) ---------- */
-if (fs.existsSync('apps/training/src')) {
-  const idx = fs.existsSync('training/index.html') ? fs.readFileSync('training/index.html', 'utf8') : '';
-  if (!idx) bad('ไม่พบ training/index.html — สั่ง build: npm --prefix apps/training run build');
-  else {
-    const refs = [...idx.matchAll(/(?:src|href)="\/training\/([^"]+)"/g)].map((m) => m[1]);
-    const missing = refs.filter((r) => !fs.existsSync(path.join('training', r)));
-    if (!refs.length || missing.length) bad('training/index.html อ้างไฟล์ที่ไม่มี: ' + (missing.join(', ') || 'ไม่มีไฟล์ assets'));
-    else {
-      const newest = (d) => fs.readdirSync(d, { withFileTypes: true }).reduce((m, x) => Math.max(m, x.isDirectory() ? newest(path.join(d, x.name)) : fs.statSync(path.join(d, x.name)).mtimeMs), 0);
-      const src = Math.max(newest('apps/training/src'), fs.statSync('apps/training/vite.config.js').mtimeMs);
-      if (src > fs.statSync('training/index.html').mtimeMs + 1000) note('โค้ดแอปฝึกอบรมใหม่กว่าไฟล์ build (ถ้าเพิ่งแก้โค้ด ให้สั่ง: npm --prefix apps/training run build)');
-      else ok(`training/: build ล่าสุดตรงกับโค้ด (${refs.length} ไฟล์)`);
-    }
-  }
-}
+/* ---------- 1c) sub-apps built with Vite: /training (apps/training) และ /performance (apps/performance) ---------- */
+[['training', 'แอปฝึกอบรม', 'vite.config.js'], ['performance', 'GrowTogether', 'vite.config.ts']].forEach(([app, label, cfg]) => {
+  if (!fs.existsSync(`apps/${app}/src`)) return;
+  const idx = fs.existsSync(`${app}/index.html`) ? fs.readFileSync(`${app}/index.html`, 'utf8') : '';
+  if (!idx) { bad(`ไม่พบ ${app}/index.html — สั่ง build: npm --prefix apps/${app} run build`); return; }
+  const refs = [...idx.matchAll(new RegExp(`(?:src|href)="/${app}/([^"]+)"`, 'g'))].map((m) => m[1]);
+  const missing = refs.filter((r) => !fs.existsSync(path.join(app, r)));
+  if (!refs.length || missing.length) { bad(`${app}/index.html อ้างไฟล์ที่ไม่มี: ` + (missing.join(', ') || 'ไม่มีไฟล์ assets')); return; }
+  const newest = (d) => fs.readdirSync(d, { withFileTypes: true }).reduce((m, x) => Math.max(m, x.isDirectory() ? newest(path.join(d, x.name)) : fs.statSync(path.join(d, x.name)).mtimeMs), 0);
+  const src = Math.max(newest(`apps/${app}/src`), fs.statSync(`apps/${app}/${cfg}`).mtimeMs);
+  if (src > fs.statSync(`${app}/index.html`).mtimeMs + 1000) note(`โค้ด${label}ใหม่กว่าไฟล์ build (ถ้าเพิ่งแก้โค้ด ให้สั่ง: npm --prefix apps/${app} run build)`);
+  else ok(`${app}/: build ${label}ล่าสุดตรงกับโค้ด (${refs.length} ไฟล์)`);
+});
 
 /* ---------- 1b) payroll module (/payroll): syntax of every JS file + its own unit tests ---------- */
 if (fs.existsSync('payroll/js')) {
