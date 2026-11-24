@@ -12256,13 +12256,13 @@ window.payrollAttendanceFromDocs = function(docs, hrCodes){
 <script id="payroll-module-script">
 /* "เงินเดือน" = แอปย่อย Payroll Full Loop ที่ /payroll/ (เต็มหน้าจอ หน้าตา/เมนูของตัวเอง)
    ล็อกอินเดียว: ใช้ Supabase โปรเจกต์และ session เดียวกับระบบนี้ (โดเมนเดียวกัน) — ยังไม่ล็อกอิน แอปเงินเดือนจะส่งมาที่นี่พร้อม ?next=/payroll/...
-   หลังล็อกอินสำเร็จ หน้านี้พากลับไปที่ next (อนุญาตเฉพาะ /payroll/) · ข้อมูลเงินเดือนอยู่ในตาราง plfl_* สิทธิ์ตาม plfl_profile */
+   หลังล็อกอินสำเร็จ หน้านี้พากลับไปที่ next (อนุญาตเฉพาะ /payroll/ และ /training/ = แอปฝึกอบรม PeopleGrow HRD) · ข้อมูลเงินเดือนอยู่ในตาราง plfl_* สิทธิ์ตาม plfl_profile */
 (function(){
   'use strict';
   var TAB = 'payroll-app';
   var next = new URLSearchParams(location.search).get('next') || '';
-  if(/^\/payroll\//.test(next)){
-    var st = document.getElementById('authGateStatus'); if(st) st.textContent = 'เข้าสู่ระบบเพื่อไปที่ระบบเงินเดือน';
+  if(/^\/(payroll|training)\//.test(next)){
+    var st = document.getElementById('authGateStatus'); if(st) st.textContent = /^\/training\//.test(next) ? 'เข้าสู่ระบบเพื่อไปที่ระบบฝึกอบรมและพัฒนา' : 'เข้าสู่ระบบเพื่อไปที่ระบบเงินเดือน';
     supabaseClient.auth.onAuthStateChange(function(ev, session){ if(session && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION')) location.replace(next); });
   }
   function install(){
@@ -12340,8 +12340,8 @@ html.theme-soft .al-list span{background:#eef0f4}
       items:['ฐานข้อมูลพนักงาน','บันทึกเวลา','ขาด ลา มาสาย','เงินเดือน','สลิป / ภาษี / ประกันสังคม'] },
     { key:'pm', n:3, icon:'📈', c:'#7c3aed', th:'การบริหารผลการปฏิบัติงาน', en:'Performance Management',
       tabs:['performance-tracking'], items:['ขาด ลา มาสาย','โควตาวันลา','เป้าหมาย / OKR','ประเมินผล'] },
-    { key:'ld', n:4, icon:'🎓', c:'#d97706', th:'การฝึกอบรมและพัฒนา', en:'Learning & Development (L&D)',
-      tabs:['training'], items:['การฝึกอบรม HRD','OJT','งบประมาณ','Training Need'] },
+    { key:'ld', n:4, icon:'🎓', c:'#d97706', th:'การฝึกอบรมและพัฒนา', en:'Learning & Development (L&D)', link:'/training/',
+      items:['หลักสูตรและอบรม','แผนพัฒนา IDP','สมรรถนะ','เส้นทางอาชีพ','Talent & Succession'] },
     { key:'er', n:5, icon:'💞', c:'#db2777', th:'พนักงานสัมพันธ์และความผูกพัน', en:'Employee Relations & Engagement',
       tabs:['er-bday'], items:['วันเกิดพนักงาน'] },
   ];
@@ -12421,7 +12421,7 @@ html.theme-soft .al-list span{background:#eef0f4}
             + '<span class="al-icon">'+a.icon+'</span>'
             + '<span><span class="al-title">'+E(a.th)+'</span><span class="al-en" style="display:block">'+E(a.en)+'</span></span>'
             + '<span class="al-list">'+a.items.map(function(x){ return '<span>'+E(x)+'</span>'; }).join('')+'</span>'
-            + '<span class="al-go">'+(a.link ? 'เปิดระบบเงินเดือน ↗' : 'เข้าใช้งาน →')+'</span></button>';
+            + '<span class="al-go">'+(a.link ? (a.key === 'cb' ? 'เปิดระบบเงินเดือน ↗' : 'เปิดระบบฝึกอบรม ↗') : 'เข้าใช้งาน →')+'</span></button>';
         }).join('') + '</div>'
       + '<div class="al-tools"><h3>เครื่องมือส่วนกลาง</h3><div>' + TOOLS.map(function(t){
           return '<button type="button" onclick="hrSelectApp(\'common\',\''+t[0]+'\')">'+t[1]+'</button>';
