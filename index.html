@@ -6952,7 +6952,7 @@ body{background:transparent!important}
   window.authGateLogout = function(){
     if(!confirm('ต้องการออกจากระบบใช่หรือไม่?\n(เพื่อความปลอดภัย ระบบจะล้างข้อมูลพนักงานที่แคชไว้ในเครื่องนี้ด้วย)')) return;
     var finish = function(){
-      try{ Object.keys(localStorage).filter(function(k){ return k.indexOf('cmncil_hr_unified_v1')===0; }).forEach(function(k){ localStorage.removeItem(k); }); }catch(e){}
+      try{ Object.keys(localStorage).filter(function(k){ return k.indexOf('cmncil_hr_unified_v1')===0 || k==='plfl-auth'; }).forEach(function(k){ localStorage.removeItem(k); }); }catch(e){}
       supabaseClient.auth.signOut().then(function(){ location.reload(); }, function(){ location.reload(); });
     };
     // มีการแก้ไขที่ยังรอบันทึกขึ้นคลาวด์ -> บันทึกให้เสร็จก่อนล้างข้อมูลในเครื่อง (ไม่ push ถ้าไม่มีอะไรค้าง เพื่อไม่ทับงานของคนอื่น)
@@ -11587,7 +11587,7 @@ function toPerson(e) {
     id: e.empCode, name: e.fullName || e.empCode, company: e.company || '', dept: e.department || '', position: e.position || '',
     jobId: e.jobCode || '', level: normLevel(e.level), hireDate: hire ? isoOf(hire) : '',
     status: due && isoOf(due) > set.cycleEnd ? 'probation' : 'permanent',
-    productionLineLead: f.lineLead != null ? !!f.lineLead : /หัวหน้าไลน์/.test(e.position || ''), specialRaise: !!f.specialRaise,
+    productionLineLead: f.lineLead != null ? !!f.lineLead : /หัวหน้าไลน์/.test(e.position || ''), specialRaise: !!f.specialRaise, exempt: !!f.exempt,
     parentId: e.parentId || '',
   };
 }
@@ -11607,7 +11607,9 @@ function defaultEvaluator(p, list) {
   const rank = rankOf(p.level);
   const parent = p.parentId ? list.find((x) => x.id === p.parentId) : null;
   if (parent && rankOf(parent.level) >= LEVEL_RANK.M1 && rankOf(parent.level) > rank) return parent.id;
-  const pool = list.filter((x) => x.company === p.company && x.id !== p.id && rankOf(x.level) >= LEVEL_RANK.M1 && rankOf(x.level) > rank);
+  const above = (x) => x.id !== p.id && rankOf(x.level) >= LEVEL_RANK.M1 && rankOf(x.level) > rank;
+  let pool = list.filter((x) => x.company === p.company && above(x));
+  if (!pool.length) pool = list.filter(above);          // ไม่มีในบริษัทเดียวกัน -> ใช้ผู้บริหารจากบริษัทในเครือ
   if (!pool.length) return '';
   const same = pool.filter((x) => x.dept === p.dept);
   const pick = same.length ? same.slice().sort((a, b) => rankOf(a.level) - rankOf(b.level))[0] : pool.slice().sort((a, b) => rankOf(b.level) - rankOf(a.level))[0];
@@ -11615,22 +11617,24 @@ function defaultEvaluator(p, list) {
 }
 const person = (id) => allPeople().find((p) => p.id === id);
 const inScopeCompany = (p) => companyFilter === 'ALL' || p.company === companyFilter;
-/* เกณฑ์เข้ารอบ: อายุงานครบ 1 ปีขึ้นไป ณ วันสิ้นสุดรอบประเมิน (ตามเงื่อนไขโบนัส/ปรับเงินเดือน) และมีผู้ประเมิน */
+/* เกณฑ์เข้ารอบ: อายุงานครบ 1 ปีขึ้นไป ณ วันสิ้นสุดรอบประเมิน (ตามเงื่อนไขโบนัส/ปรับเงินเดือน) และ HR ไม่ได้ยกเว้น
+   ผู้ประเมินกำหนดแยกต่างหาก — คนที่ยังหาผู้ประเมินให้ไม่ได้ยังอยู่ในรายชื่อ แต่ถูกติดป้าย "ยังไม่กำหนดผู้ประเมิน" */
 const tenureOk = (p) => !!p.hireDate && tenureYears(p.hireDate, cycleEnd()) >= 1;
-const evaluatees = () => allPeople().filter((p) => tenureOk(p) && p.evaluatorId && inScopeCompany(p));
+const evaluatees = () => allPeople().filter((p) => tenureOk(p) && !p.exempt && inScopeCompany(p));
+const noEvaluatorCount = () => evaluatees().filter((p) => !p.evaluatorId).length;
 function oneYearDate(p) { const d = parseDate(p.hireDate); return d ? isoOf(new Date(d.getFullYear() + 1, d.getMonth(), d.getDate())) : ''; }
 function excludedPeople() {
-  return allPeople().filter((p) => inScopeCompany(p) && !(tenureOk(p) && p.evaluatorId)).map((p) => {
+  return allPeople().filter((p) => inScopeCompany(p) && !(tenureOk(p) && !p.exempt)).map((p) => {
     const reasons = [];
     if (!p.hireDate) reasons.push('ไม่มีวันเริ่มงานในระบบ');
     else if (!tenureOk(p)) reasons.push('อายุงานยังไม่ครบ 1 ปี (ครบวันที่ ' + fmtD(oneYearDate(p)) + ')');
-    if (!p.evaluatorId) reasons.push('ยังไม่มีผู้ประเมิน');
-    return { p, reasons, shortTenure: !tenureOk(p), noEvaluator: !p.evaluatorId };
+    if (p.exempt) reasons.push('HR ยกเว้นไม่ต้องประเมินรอบนี้');
+    return { p, reasons, shortTenure: !tenureOk(p), exempt: !!p.exempt };
   });
 }
 function excludedSummary() {
   const list = excludedPeople();
-  return { total: list.length, tenure: list.filter((x) => x.shortTenure).length, noEval: list.filter((x) => !x.shortTenure && x.noEvaluator).length };
+  return { total: list.length, tenure: list.filter((x) => x.shortTenure).length, exempt: list.filter((x) => !x.shortTenure && x.exempt).length };
 }
 function statusOf(id) {
   const ev = bucket('evals')[id];
@@ -11707,16 +11711,16 @@ function actionBtn(p) {
 }
 function filteredEvaluatees() {
   const f = ui.list, q = f.q.trim().toLowerCase();
-  return evaluatees().filter((p) => (!q || (p.name + p.position + p.dept + p.level + p.id).toLowerCase().includes(q)) && (!f.status || statusOf(p.id) === f.status) && (!f.dept || p.dept === f.dept) && (!f.company || p.company === f.company));
+  return evaluatees().filter((p) => (!q || (p.name + p.position + p.dept + p.level + p.id).toLowerCase().includes(q)) && (!f.status || (f.status === 'noeval' ? !p.evaluatorId : statusOf(p.id) === f.status)) && (!f.dept || p.dept === f.dept) && (!f.company || p.company === f.company));
 }
 function evalTable(limit) {
   const rows = filteredEvaluatees(), pages = Math.max(1, Math.ceil(rows.length / PAGE));
   if (ui.list.page > pages) ui.list.page = pages;
   const slice = limit ? rows.slice(0, limit) : rows.slice((ui.list.page - 1) * PAGE, ui.list.page * PAGE), off = limit ? 0 : (ui.list.page - 1) * PAGE;
-  if (!rows.length) return '<div class="ap-empty">ไม่พบรายการที่ตรงกับเงื่อนไข' + (evaluatees().length ? '' : '<br><small>ยังไม่มีพนักงานที่อยู่ในเกณฑ์ (อายุงานครบ 1 ปีขึ้นไป และมีผู้ประเมิน) — ตรวจวันเริ่มงาน ระดับ และหัวหน้างานที่ ฐานข้อมูลพนักงาน</small>') + '</div>';
+  if (!rows.length) return '<div class="ap-empty">ไม่พบรายการที่ตรงกับเงื่อนไข' + (evaluatees().length ? '' : '<br><small>ยังไม่มีพนักงานที่อยู่ในเกณฑ์ (อายุงานครบ 1 ปีขึ้นไป ณ วันสิ้นสุดรอบ) — ตรวจวันเริ่มงานที่ ฐานข้อมูลพนักงาน หรือวันสิ้นสุดรอบที่หน้า ตั้งค่า</small>') + '</div>';
   return '<div class="ap-tablewrap"><table><thead><tr><th>ลำดับ</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>หน่วยงาน</th><th>ระดับ</th><th>ผู้ประเมิน</th><th>สถานะ</th><th>ดำเนินการ</th></tr></thead><tbody>'
     + slice.map((p, i) => '<tr><td class="num">' + (off + i + 1) + '</td><td><b>' + E(p.name) + '</b><div class="ap-muted sm">' + E(p.id) + '</div></td><td>' + E(p.position || '-') + '</td><td>' + E(p.dept || '-') + ' <small class="ap-muted">' + E(p.company) + '</small></td>'
-      + '<td><span class="ap-pill gray">' + E(p.level) + '</span></td><td>' + E((person(p.evaluatorId) || {}).name || '—') + '</td><td>' + statusPill(statusOf(p.id)) + '</td><td>' + actionBtn(p) + '</td></tr>').join('')
+      + '<td><span class="ap-pill gray">' + E(p.level) + '</span></td><td>' + (p.evaluatorId ? E((person(p.evaluatorId) || {}).name || '—') : '<span class="ap-pill amber">ยังไม่กำหนดผู้ประเมิน</span>') + '</td><td>' + statusPill(statusOf(p.id)) + '</td><td>' + actionBtn(p) + '</td></tr>').join('')
     + '</tbody></table></div>'
     + (limit ? '' : '<div class="ap-pager"><span>แสดง ' + (off + 1) + '-' + (off + slice.length) + ' จาก ' + rows.length + ' รายการ</span><span><button type="button" class="ap-btn sm" data-act="page" data-d="-1"' + (ui.list.page <= 1 ? ' disabled' : '') + '>ก่อนหน้า</button> <span style="margin:0 8px">' + ui.list.page + '/' + pages + '</span> <button type="button" class="ap-btn sm" data-act="page" data-d="1"' + (ui.list.page >= pages ? ' disabled' : '') + '>ถัดไป</button></span></div>');
 }
@@ -11730,7 +11734,7 @@ function listTools(extraGrade) {
     + '<select data-in="list-company" aria-label="บริษัท"><option value="">ทุกบริษัท</option>' + ['CMN', 'CIL'].map((c) => '<option' + (f.company === c ? ' selected' : '') + '>' + c + '</option>').join('') + '</select>'
     + '<select data-in="list-dept" aria-label="หน่วยงาน">' + deptOptions(f.dept) + '</select>'
     + (extraGrade ? '<select data-in="list-grade" aria-label="เกรด"><option value="">ทุกเกรด</option>' + GRADES.map((g) => '<option' + (f.grade === g.grade ? ' selected' : '') + '>' + g.grade + '</option>').join('') + '</select>'
-      : '<select data-in="list-status" aria-label="สถานะ"><option value="">ทุกสถานะ</option>' + Object.keys(STATUS_LABEL).map((k) => '<option value="' + k + '"' + (f.status === k ? ' selected' : '') + '>' + STATUS_LABEL[k] + '</option>').join('') + '</select>') + '</div>';
+      : '<select data-in="list-status" aria-label="สถานะ"><option value="">ทุกสถานะ</option>' + Object.keys(STATUS_LABEL).map((k) => '<option value="' + k + '"' + (f.status === k ? ' selected' : '') + '>' + STATUS_LABEL[k] + '</option>').join('') + '<option value="noeval"' + (f.status === 'noeval' ? ' selected' : '') + '>ยังไม่กำหนดผู้ประเมิน</option></select>') + '</div>';
 }
 function critCard() {
   const g = ui.critGroup, w = WEIGHTS[g];
@@ -11756,7 +11760,8 @@ function viewHome() {
   return shell('ประเมินผลการปฏิบัติงานประจำปี', 'Performance Appraisal · เพื่อพิจารณาโบนัสและปรับเงินเดือน', ''
     + '<section class="ap-cards">'
     + '<div class="card ap-stat"><div class="ap-badge blue">' + ico('calendar') + '</div><div><b>รอบการประเมิน ปี ' + s.year + '</b><small>' + fmtD(s.cycleStart) + ' – ' + fmtD(s.cycleEnd) + '</small><span class="ap-pill ' + (s.phase >= 4 ? 'green' : 'blue') + '" style="margin-top:6px">' + E(PHASES[s.phase - 1].title) + '</span></div></div>'
-    + '<div class="card ap-stat"><div class="ap-badge blue">' + ico('users') + '</div><div><small>พนักงานที่อยู่ในเกณฑ์ประเมิน (อายุงานครบ 1 ปีขึ้นไป)</small><div class="big">' + scope.length + '<span>คน</span></div>' + (excludedSummary().total ? '<small>ไม่อยู่ในเกณฑ์ ' + excludedSummary().total + ' คน (อายุงานไม่ครบ 1 ปี ' + excludedSummary().tenure + ' · ไม่มีผู้ประเมิน ' + excludedSummary().noEval + ')</small>' : '') + '</div></div>'
+    + '<div class="card ap-stat"><div class="ap-badge blue">' + ico('users') + '</div><div><small>พนักงานที่อยู่ในเกณฑ์ประเมิน (อายุงานครบ 1 ปีขึ้นไป)</small><div class="big">' + scope.length + '<span>คน</span></div>' + (excludedSummary().total ? '<small>ไม่อยู่ในเกณฑ์ ' + excludedSummary().total + ' คน (อายุงานไม่ครบ 1 ปี ' + excludedSummary().tenure + (excludedSummary().exempt ? ' · ยกเว้น ' + excludedSummary().exempt : '') + ')</small>' : '')
+      + (noEvaluatorCount() ? '<small style="margin-top:4px"><b style="color:#d97706">ยังไม่กำหนดผู้ประเมิน ' + noEvaluatorCount() + ' คน</b> <button type="button" class="ap-btn sm" data-act="filter-noeval">ดูรายชื่อ</button></small>' : '') + '</div></div>'
     + '<div class="card ap-stat"><div class="ap-badge green">' + ico('check') + '</div><div><small>ความคืบหน้าการประเมิน</small><div class="big">' + pct + '%</div><div class="ap-bar"><i style="width:' + pct + '%"></i></div><small>ประเมินแล้ว ' + done + ' / ' + scope.length + ' คน</small></div></div>'
     + '<div class="card ap-stat"><div class="ap-badge ' + (left < 0 ? 'amber' : 'blue') + '">' + ico('clock') + '</div><div><small>' + (left < 0 ? 'เกินกำหนดส่งมาแล้ว' : 'สิ้นสุดการประเมินในอีก') + '</small><div class="big">' + Math.abs(left) + '<span>วัน</span></div><small>กำหนดส่ง ' + fmtD(s.deadline) + '</small></div></div></section>'
     + '<section class="ap-grid2"><section class="card ap-card"><h3>' + ico('users') + ' ขั้นตอนการประเมิน</h3><div class="ap-steps">' + steps + '</div>'
@@ -11769,9 +11774,9 @@ function excludedCard() {
   const list = excludedPeople();
   if (!list.length) return '';
   const sorted = list.slice().sort((a, b) => (a.p.hireDate || '9999').localeCompare(b.p.hireDate || '9999')).reverse();
-  return '<section class="card ap-card"><details><summary><b>' + ico('lock', 'sm') + ' พนักงานที่ไม่อยู่ในเกณฑ์ประเมินรอบนี้ (' + list.length + ' คน)</b> <span class="ap-muted">— อายุงานไม่ครบ 1 ปี ณ ' + fmtD(cycleEnd()) + ' หรือยังไม่มีผู้ประเมิน</span></summary>'
+  return '<section class="card ap-card"><details><summary><b>' + ico('lock', 'sm') + ' พนักงานที่ไม่อยู่ในเกณฑ์ประเมินรอบนี้ (' + list.length + ' คน)</b> <span class="ap-muted">— อายุงานไม่ครบ 1 ปี ณ ' + fmtD(cycleEnd()) + ' หรือ HR ยกเว้น</span></summary>'
     + '<div class="ap-tablewrap" style="margin-top:10px"><table><thead><tr><th>พนักงาน</th><th>ตำแหน่ง</th><th>เริ่มงาน</th><th>เหตุผลที่ไม่อยู่ในเกณฑ์</th></tr></thead><tbody>'
-    + sorted.slice(0, 200).map((x) => '<tr><td><b>' + E(x.p.name) + '</b><div class="ap-muted sm">' + E(x.p.id) + ' · ' + E(x.p.dept || '-') + '</div></td><td>' + E(x.p.position || '-') + '</td><td>' + fmtD(x.p.hireDate) + '</td><td>' + x.reasons.map((r) => '<span class="ap-pill amber" style="margin:2px 4px 2px 0;white-space:normal">' + E(r) + '</span>').join('') + '</td></tr>').join('')
+    + sorted.slice(0, 200).map((x) => '<tr><td><b>' + E(x.p.name) + '</b><div class="ap-muted sm">' + E(x.p.id) + ' · ' + E(x.p.dept || '-') + '</div></td><td>' + E(x.p.position || '-') + '</td><td>' + fmtD(x.p.hireDate) + '</td><td>' + x.reasons.map((r) => '<span class="ap-pill amber" style="margin:2px 4px 2px 0;white-space:normal">' + E(r) + '</span>').join('') + (x.exempt ? ' <button type="button" class="ap-btn sm" data-act="unexempt" data-id="' + A(x.p.id) + '">นำกลับเข้ารอบ</button>' : '') + '</td></tr>').join('')
     + '</tbody></table></div></details></section>';
 }
 function viewEvaluate() {
@@ -11834,7 +11839,7 @@ function kpiRowsHTML(dis, p) {
 }
 function viewForm(id) {
   const p = person(id);
-  if (!p || !p.evaluatorId) return shell('ไม่พบแบบประเมิน', '', '<div class="card ap-card ap-empty">ไม่พบพนักงานหรือยังไม่มีผู้ประเมิน <button type="button" class="ap-btn" data-act="go" data-to="evaluate">กลับ</button></div>');
+  if (!p) return shell('ไม่พบแบบประเมิน', '', '<div class="card ap-card ap-empty">ไม่พบพนักงาน <button type="button" class="ap-btn" data-act="go" data-to="evaluate">กลับ</button></div>');
   if (formEmp !== id || !form) startForm(p);
   const ed = editable(), dis = !ed, manual = form.kpi.some((k) => !k.code);
   const evalOptions = allPeople().filter((x) => canEvaluateLevel(x.level) && x.id !== p.id).sort((a, b) => a.name.localeCompare(b.name, 'th'));
@@ -11843,9 +11848,11 @@ function viewForm(id) {
     + '<div class="ap-formgrid"><div>'
     + '<section class="card ap-card ap-sect"><div class="ap-empcard"><div class="ap-avatar">' + E((p.name || '?').replace(/^(คุณ|นางสาว|นาง|นาย)\s*/, '').charAt(0)) + '</div><div style="flex:1;min-width:220px"><h3 style="margin:0">' + E(p.name) + '</h3>'
     + '<div class="ap-kv"><span><small>ตำแหน่ง</small>' + E(p.position || '-') + '</span><span><small>ระดับ</small>' + E(p.level) + ' · ' + E(levelOf(p.level).name) + '</span><span><small>หน่วยงาน</small>' + E(p.dept || '-') + ' (' + E(p.company) + ')</span><span><small>เริ่มงาน</small>' + fmtD(p.hireDate) + ' (' + tenure + ' ปี)</span><span><small>รหัสตำแหน่ง</small>' + E(p.jobId || '—') + '</span></div></div>' + statusPill(statusOf(p.id)) + '</div>'
-    + '<div class="ap-empopts"><label>ผู้ประเมิน (M1 ขึ้นไป)<select data-in="evaluator"' + (dis ? ' disabled' : '') + '>' + evalOptions.map((x) => '<option value="' + A(x.id) + '"' + (x.id === p.evaluatorId ? ' selected' : '') + '>' + E(x.name) + ' — ' + E(x.position || x.level) + '</option>').join('') + (evalOptions.some((x) => x.id === p.evaluatorId) ? '' : '<option value="' + A(p.evaluatorId) + '" selected>' + E((person(p.evaluatorId) || {}).name || p.evaluatorId) + '</option>') + '</select></label>'
+    + '<div class="ap-empopts"><label>ผู้ประเมิน (M1 ขึ้นไป)<select data-in="evaluator"' + (dis ? ' disabled' : '') + '>' + evalOptions.map((x) => '<option value="' + A(x.id) + '"' + (x.id === p.evaluatorId ? ' selected' : '') + '>' + E(x.name) + ' — ' + E(x.position || x.level) + '</option>').join('') + (!p.evaluatorId ? '<option value="" selected>— เลือกผู้ประเมิน —</option>' : (evalOptions.some((x) => x.id === p.evaluatorId) ? '' : '<option value="' + A(p.evaluatorId) + '" selected>' + E((person(p.evaluatorId) || {}).name || p.evaluatorId) + '</option>')) + '</select>'
+      + (!p.evaluatorId ? '<small style="color:#d97706">ระบบหาผู้ประเมินให้ไม่ได้ (ไม่มีผู้ที่ระดับ M1 ขึ้นไปและสูงกว่าพนักงานคนนี้ในข้อมูล) — เลือกเอง หรือติ๊ก "ไม่ต้องประเมิน" ด้านล่าง</small>' : '') + '</label>'
     + '<label class="chk"><input type="checkbox" data-in="flag" data-k="lineLead"' + (p.productionLineLead ? ' checked' : '') + (dis ? ' disabled' : '') + '> หัวหน้าไลน์ที่เกี่ยวข้องกับการผลิต (ใช้สัดส่วนกลุ่มปฏิบัติการ)</label>'
-    + '<label class="chk"><input type="checkbox" data-in="flag" data-k="specialRaise"' + (p.specialRaise ? ' checked' : '') + (dis ? ' disabled' : '') + '> ได้รับการปรับเงินเดือนพิเศษระหว่างปีแล้ว</label></div>'
+    + '<label class="chk"><input type="checkbox" data-in="flag" data-k="specialRaise"' + (p.specialRaise ? ' checked' : '') + (dis ? ' disabled' : '') + '> ได้รับการปรับเงินเดือนพิเศษระหว่างปีแล้ว</label>'
+    + '<label class="chk"><input type="checkbox" data-in="flag" data-k="exempt"' + (p.exempt ? ' checked' : '') + (dis ? ' disabled' : '') + '> ไม่ต้องประเมินรอบนี้ (เช่น ผู้บริหารสูงสุด) — จะย้ายไปอยู่ในรายการ "ไม่อยู่ในเกณฑ์"</label></div>'
     + (ed ? '' : '<div class="ap-note warn" style="margin-top:12px">' + ico('lock') + '<div>รอบการประเมินอยู่ในขั้นตอนประกาศผลแล้ว จึงแก้ไขแบบประเมินไม่ได้ (HR ย้อนขั้นตอนได้ที่หน้า ภาพรวม)</div></div>') + '</section>'
     + '<section class="card ap-card ap-sect"><h3>1) สมรรถนะและพฤติกรรม (Competency) <small>เต็ม ' + fmtN(competencyMax(p.level)) + ' คะแนน · 30% ของด้านผลงาน</small></h3><div id="ap-comprows">' + compRowsHTML(dis) + '</div></section>'
     + '<section class="card ap-card ap-sect"><h3>2) ผลการปฏิบัติงานรายตำแหน่ง (KPI) <small>เต็ม ' + fmtN(kpiMax(p.level)) + ' คะแนน · 70% ของด้านผลงาน</small></h3>'
@@ -11992,7 +11999,7 @@ function viewSettings() {
     + '<div class="ap-note warn" style="margin-top:6px">' + ico('info') + '<div>เปลี่ยนปีที่ประเมินแล้ววันที่ทั้ง 4 ช่องจะถูกตั้งใหม่ตามปีนั้น (ผลประเมินของแต่ละปีแยกเก็บ ไม่ถูกลบ)</div></div></section>'
     + '<section class="card ap-card"><h3>' + ico('shield') + ' คะแนนการปฏิบัติตามระเบียบ (เต็ม 40)</h3><div class="ap-note warn" style="margin-bottom:10px">' + ico('info') + '<div>เอกสารระบุว่า “จะหักคะแนน” ตามประเภทการตักเตือน ระบบตีความเป็นคะแนนที่เหลือ (ไม่เคย = 40, วาจา = 30, ลายลักษณ์อักษรครั้งที่ 1 = 20, ครั้งที่ 2/พักงาน = 0) HR ปรับตัวเลขได้ที่นี่</div></div>'
     + s.disciplineTable.map((t, i) => '<div class="field"><label>' + E(t.label) + '</label><input class="num" type="number" min="0" max="40" data-in="disc-table" data-i="' + i + '" value="' + t.score + '" style="width:100px"> <span class="ap-muted">คะแนน</span></div>').join('') + '</section></section>'
-    + '<section class="card ap-card"><h3>' + ico('users') + ' ผู้ประเมินและการจัดกลุ่ม</h3><p class="ap-muted" style="margin:0">ผู้ประเมินตั้งต้น = หัวหน้างานตามผังองค์กร (ถ้าระดับ M1 ขึ้นไป) หรือผู้ที่ระดับ M1 ขึ้นไปในแผนกเดียวกัน แก้เป็นรายคนได้ที่หน้าแบบประเมิน · เข้าเกณฑ์ประเมินเฉพาะผู้ที่ <b>อายุงานครบ 1 ปีขึ้นไป ณ วันสิ้นสุดรอบประเมิน</b> เท่านั้น ผู้ที่ยังไม่ครบปี และพนักงานที่ไม่มีผู้ประเมิน (เช่น ผู้บริหารสูงสุด) จะไม่อยู่ในรายชื่อ · ระดับที่ว่างหรือ "O1,O2" ถือเป็น O1</p></section>');
+    + '<section class="card ap-card"><h3>' + ico('users') + ' ผู้ประเมินและการจัดกลุ่ม</h3><p class="ap-muted" style="margin:0">ผู้ประเมินตั้งต้น = หัวหน้างานตามผังองค์กร (ถ้าระดับ M1 ขึ้นไป) หรือผู้ที่ระดับ M1 ขึ้นไปในแผนกเดียวกัน แก้เป็นรายคนได้ที่หน้าแบบประเมิน · เข้าเกณฑ์ประเมินเฉพาะผู้ที่ <b>อายุงานครบ 1 ปีขึ้นไป ณ วันสิ้นสุดรอบประเมิน</b> เท่านั้น (ถ้าต้องการให้คนที่ครบ 1 ปีภายหลังเข้ารอบ ให้เลื่อนวันสิ้นสุดรอบ) · คนที่ครบเกณฑ์แต่ระบบหาผู้ประเมินไม่ได้ (เช่น ผู้จัดการที่ไม่มีกรรมการระดับ D1 ขึ้นไปในข้อมูล) ยังอยู่ในรายชื่อ ติดป้าย "ยังไม่กำหนดผู้ประเมิน" ให้เลือกผู้ประเมินในแบบประเมิน หรือกด "ยกเว้น" ถ้าไม่ต้องประเมิน (เช่น ผู้บริหารสูงสุด) · ระดับที่ว่างหรือ "O1,O2" ถือเป็น O1</p></section>');
 }
 function bandTable(key) {
   const rule = ATTENDANCE_RULES[key];
@@ -12072,10 +12079,13 @@ function onClick(e) {
   if (act === 'save-draft') { persistForm('draft'); flash('บันทึกฉบับร่างแล้ว'); refreshSummary(); return; }
   if (act === 'submit') {
     const r = formResult(person(formEmp));
+    if (!person(formEmp).evaluatorId) { flash('กรุณาเลือกผู้ประเมินก่อนส่งผลการประเมิน'); return; }
     if (!r.ready) { flash('ยังให้คะแนนไม่ครบ (สมรรถนะทุกข้อ + KPI ทุกตัว และน้ำหนัก KPI รวม 100%) — บันทึกเป็นฉบับร่างได้'); return; }
     if (!confirm('ยืนยันส่งผลการประเมิน? หลังส่งแล้วยังแก้ไขได้จนกว่า HR จะประกาศผล')) return;
     persistForm('submitted'); go('result', formEmp); flash('ส่งผลการประเมินแล้ว'); return;
   }
+  if (act === 'filter-noeval') { ui.list.status = 'noeval'; ui.list.page = 1; go('evaluate'); return; }
+  if (act === 'unexempt') { const f = bucket('flags'); f[t.dataset.id] = f[t.dataset.id] || {}; f[t.dataset.id].exempt = false; persist(); render(); return; }
   if (act === 'att-reset') { delete bucket('att')[t.dataset.id]; persist(); const row = root.querySelector('tr[data-row="' + CSS.escape(t.dataset.id) + '"]'); if (row) { const p = person(t.dataset.id); row.outerHTML = hrRow(p); } }
 }
 function onInput(e) {
@@ -12110,7 +12120,7 @@ function change(e) {
   if (k === 'rating') { form[t.dataset.k][Number(t.dataset.i)].rating = t.value; refreshSummary(); return; }
   if (k === 'evaluator') { bucket('evaluators')[formEmp] = t.value; persist(); resetCache(); form.evaluatorId = t.value; return; }
   if (k === 'flag') {
-    const f = bucket('flags'); f[formEmp] = f[formEmp] || {}; f[formEmp][t.dataset.k] = t.checked; persist(); resetCache(); refreshSummary(); return;
+    const f = bucket('flags'); f[formEmp] = f[formEmp] || {}; f[formEmp][t.dataset.k] = t.checked; persist(); resetCache(); if (t.dataset.k === 'exempt' && t.checked) { flash('ย้ายไปอยู่ในรายการ "ไม่อยู่ในเกณฑ์" แล้ว (นำกลับได้ที่หน้า ภาพรวม)'); go('evaluate'); return; } refreshSummary(); return;
   }
   if (k === 'disc') { bucket('disc')[t.dataset.id] = t.value; persist(); const row = t.closest('tr'); row.querySelector('[data-disc-score]').textContent = disciplineScore(t.value, settings().disciplineTable).score; return; }
   if (k === 'disc-table') { settings().disciplineTable[Number(t.dataset.i)].score = Math.min(40, Math.max(0, Number(t.value) || 0)); persist(); return; }
@@ -12148,6 +12158,30 @@ g.AP_SCORING = S;
 g.AP = api;
 g.apRenderPanel = renderPanel;
 
+})();
+</script>
+<script id="payroll-module-script">
+/* "เงินเดือน" = แอปย่อย Payroll Full Loop ที่ /payroll/ (เต็มหน้าจอ หน้าตา/เมนูของตัวเอง)
+   ล็อกอินเดียว: ใช้ Supabase โปรเจกต์และ session เดียวกับระบบนี้ (โดเมนเดียวกัน) — ยังไม่ล็อกอิน แอปเงินเดือนจะส่งมาที่นี่พร้อม ?next=/payroll/...
+   หลังล็อกอินสำเร็จ หน้านี้พากลับไปที่ next (อนุญาตเฉพาะ /payroll/) · ข้อมูลเงินเดือนอยู่ในตาราง plfl_* สิทธิ์ตาม plfl_profile */
+(function(){
+  'use strict';
+  var TAB = 'payroll-app';
+  var next = new URLSearchParams(location.search).get('next') || '';
+  if(/^\/payroll\//.test(next)){
+    var st = document.getElementById('authGateStatus'); if(st) st.textContent = 'เข้าสู่ระบบเพื่อไปที่ระบบเงินเดือน';
+    supabaseClient.auth.onAuthStateChange(function(ev, session){ if(session && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION')) location.replace(next); });
+  }
+  function install(){
+    var tabbar = document.getElementById('tabbar');
+    if(!tabbar || tabbar.querySelector('[data-tab="'+TAB+'"]')) return;
+    var b = document.createElement('button'); b.className = 'tab-btn'; b.dataset.tab = TAB; b.title = 'เปิดระบบเงินเดือน (ล็อกอินเดียวกัน)';
+    b.onclick = function(){ location.href = '/payroll/'; };
+    if(typeof setTabLabelV42 === 'function') setTabLabelV42(b, '💰', 'เงินเดือน ↗', 'Payroll'); else b.textContent = '💰 เงินเดือน ↗';
+    tabbar.insertBefore(b, tabbar.querySelector('[data-tab="reports"]'));
+  }
+  install();
+  window.addEventListener('load', install);
 })();
 </script>
 </body>

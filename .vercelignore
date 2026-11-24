@@ -8,3 +8,6 @@ push.cmd
 pull.command
 push.command
 SETUP-NEW-COMPUTER.md
+payroll/*.md
+payroll/tests
+payroll/supabase

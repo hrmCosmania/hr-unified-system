@@ -6,7 +6,7 @@
     node check.js --dups     แสดงรายชื่อฟังก์ชันที่ประกาศซ้ำทั้งหมดด้วย
 
   ตรวจอะไรบ้าง
-    1) โค้ด JavaScript ในทุกไฟล์ HTML/API เขียนถูกไวยากรณ์ (พิมพ์ผิดแล้วหน้าเว็บพังทั้งหน้า)
+    1) โค้ด JavaScript ในทุกไฟล์ HTML/API/payroll เขียนถูกไวยากรณ์ (พิมพ์ผิดแล้วหน้าเว็บพังทั้งหน้า) + เทสต์ของโมดูลเงินเดือน
     2) บรรทัดตั้งค่า TAB_RENDERERS.x = ฟังก์ชัน ต้องชี้ไปยังฟังก์ชันที่มีอยู่แล้ว ณ ตอนที่บรรทัดนั้นทำงาน
        (ถ้าไม่ จะเกิด error "is not defined" และโค้ดส่วนที่เหลือของบล็อกนั้นไม่ทำงาน)
     3) ทดสอบตัวนำเข้า Excel ทะเบียนพนักงาน ด้วยข้อมูลสมมติ (สถานะ Out = ลาออก, ไม่รีเซ็ตวันทดลองงาน ฯลฯ)
@@ -63,6 +63,22 @@ if (fs.existsSync('api')) {
   fs.readdirSync('api').filter((f) => f.endsWith('.js')).forEach((f) => {
     try { new vm.Script(fs.readFileSync(path.join('api', f), 'utf8'), { filename: 'api/' + f }); ok(`api/${f}: ไวยากรณ์ถูกต้อง`); }
     catch (e) { bad(`api/${f}: ${e.message}`); }
+  });
+}
+
+/* ---------- 1b) payroll module (/payroll): syntax of every JS file + its own unit tests ---------- */
+if (fs.existsSync('payroll/js')) {
+  const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((x) => (x.isDirectory() ? walk(path.join(d, x.name)) : x.name.endsWith('.js') ? [path.join(d, x.name)] : []));
+  const files = walk('payroll/js');
+  let synOk = true;
+  files.forEach((f) => { try { new vm.Script(fs.readFileSync(f, 'utf8'), { filename: f }); } catch (e) { synOk = false; bad(`${f}: ${e.message}`); } });
+  if (synOk) ok(`payroll/js: ไวยากรณ์ถูกต้องทั้ง ${files.length} ไฟล์`);
+  const { spawnSync } = require('child_process');
+  (fs.existsSync('payroll/tests') ? fs.readdirSync('payroll/tests').filter((f) => f.endsWith('.test.js')) : []).forEach((t) => {
+    const r = spawnSync(process.execPath, [path.join('payroll/tests', t)], { encoding: 'utf8', timeout: 60000 });
+    const last = ((r.stdout || '') + (r.stderr || '')).trim().split(/\r?\n/).pop() || '';
+    if (r.status === 0) ok(`เงินเดือน tests/${t}: ${last.trim()}`);
+    else bad(`เงินเดือน tests/${t} ไม่ผ่าน — ${last.trim()}`);
   });
 }
 
