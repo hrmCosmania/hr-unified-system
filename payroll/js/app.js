@@ -7,6 +7,7 @@
 
   const NAV = [
     { key: 'dashboard', th: 'หน้าหลัก', en: 'Dashboard', icon: 'home' },
+    { key: 'employees', th: 'ฐานข้อมูลพนักงาน', en: 'Employee Database', icon: 'users', desc: 'รายชื่อพนักงานชุดเดียวกับระบบ HR — ตรวจให้ครบก่อนเริ่มบันทึกเวลา และกำหนดเลขบัตรตอกบัตร กะ รูปแบบวันทำงาน' },
     { key: 'import', step: 1, th: 'ดึงบันทึกเวลา', en: 'Time Data Import', icon: 'import', short: 'ดึงบันทึกเวลา', desc: 'นำเข้าข้อมูลการสแกนนิ้ว/บัตรจากเครื่องบันทึกเวลา' },
     { key: 'schedule', step: 2, th: 'ประกาศกะ', en: 'Shift Schedule', icon: 'calendarGrid', short: 'ประกาศกะ', desc: 'จัดตารางกะของพนักงานแต่ละวัน แล้วประกาศให้มีผล' },
     { key: 'mapping', step: 3, th: 'โอนบันทึกเวลาเทียบกะ', en: 'Time Mapping', icon: 'refresh', short: 'โอนบันทึกเวลา<br>เทียบกะ', desc: 'จับคู่เวลาสแกนกับกะของแต่ละวัน เพื่อหาเวลาเข้า-ออกจริง' },

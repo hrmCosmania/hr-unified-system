@@ -6,6 +6,21 @@
   const esc = U.esc;
   const st = { tab: 'general', q: '', dept: '' };
 
+  // ฐานข้อมูลพนักงาน: เมนูก่อนขั้นตอนบันทึกเวลา (ใช้ตารางพนักงานเดียวกับ ตั้งค่า > พนักงาน)
+  PL.Views.employees = {
+    render(el) {
+      const n = PL.NAV.find((x) => x.key === 'employees');
+      el.innerHTML = `<div class="page-head"><div class="ph-left"><div class="ph-icon">${UI.icon('users', 26)}</div>
+        <div><div class="ph-kicker">${n.en}</div><h1>${n.th}</h1><div class="ph-sub">${n.desc}</div></div></div></div><div data-body></div>`;
+      const body = el.querySelector('[data-body]');
+      if (!Store.can('hr')) { body.innerHTML = UI.banner('warn', 'บทบาทของคุณดูได้เฉพาะข้อมูลของตัวเอง — ติดต่อผู้ดูแลระบบ'); return; }
+      body.insertAdjacentHTML('beforebegin', UI.banner('info', Store.cloud
+        ? 'รหัส ชื่อ แผนก ตำแหน่ง และวันเริ่มงาน ซิงก์จากระบบ HR อัตโนมัติ (แก้ที่ระบบ HR) · หน้านี้ใช้กำหนดเลขบัตรตอกบัตร กะ และรูปแบบวันทำงาน ก่อนเริ่มขั้นตอนที่ 1 ดึงบันทึกเวลา'
+        : 'ตรวจรายชื่อพนักงาน เลขบัตรตอกบัตร กะ และรูปแบบวันทำงาน ให้ครบก่อนเริ่มขั้นตอนที่ 1 ดึงบันทึกเวลา'));
+      PL.Views.settings.employees(body);
+    },
+  };
+
   PL.Views.settings = {
     render(el, params) {
       if (params.tab) st.tab = params.tab;

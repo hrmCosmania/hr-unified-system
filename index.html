@@ -5128,11 +5128,21 @@ function getLeaveEntitlement(empCode,year,leaveType){
   if(override) return Number(override.days||0);
   return leaveDefaultDays(leaveType);
 }
-function getLeaveUsed(empCode,year,leaveType){
-  return (DB.attendanceRecords||[]).filter(function(r){
-    return r.employeeCode===empCode&&r.type==='leave'&&r.leaveType===leaveType&&String(r.date||'').slice(0,4)===String(year);
-  }).length;
+/* ขาด ลา มาสาย รวมสองแหล่ง: ระบบเงินเดือนเป็นข้อมูลหลัก (window.payrollAttendance โหลดโดย payroll-attendance-script)
+   วันไหนที่ระบบเงินเดือนคำนวณเวลาแล้ว จะไม่ใช้บันทึกที่กรอกเองในระบบ HR ของวันนั้น (กันนับซ้ำ) */
+function allAttendanceRecords(){
+  var manual=DB.attendanceRecords||[], b=window.payrollAttendance;
+  if(!b||!b.rows||!b.rows.length) return manual;
+  return manual.filter(function(r){return !b.covered[r.employeeCode+'|'+r.date];}).concat(b.rows);
 }
+function attendanceDays(r){ var d=Number(r&&r.days); return d>0?d:1; }
+window.allAttendanceRecords=allAttendanceRecords; window.attendanceDays=attendanceDays;
+function getLeaveUsed(empCode,year,leaveType){
+  return allAttendanceRecords().filter(function(r){
+    return r.employeeCode===empCode&&r.type==='leave'&&r.leaveType===leaveType&&String(r.date||'').slice(0,4)===String(year);
+  }).reduce(function(s,r){return s+attendanceDays(r);},0);
+}
+window.getLeaveUsed=getLeaveUsed;
 function renderLeaveDefaultsTable(){
   var tbody=el('leaveDefaultsTbody'); if(!tbody) return;
   tbody.innerHTML=LEAVE_SUBTYPES.map(function(t){
@@ -5454,7 +5464,7 @@ function attendanceFilteredRecords(){
   var from=(el('attDateFrom')||{}).value||'';
   var to=(el('attDateTo')||{}).value||'';
   var companyCodes=new Set(perfCompanyEmployees(false).map(function(e){return e.empCode;}));
-  return (DB.attendanceRecords||[]).filter(function(r){
+  return allAttendanceRecords().filter(function(r){
     if(!companyCodes.has(r.employeeCode)) return false;
     if(empFilter && r.employeeCode!==empFilter) return false;
     if(typeFilter && r.type!==typeFilter) return false;
@@ -5468,28 +5478,32 @@ function attendanceTypeBadge(type){
   return '<span class="badge" style="background:color-mix(in srgb,'+meta.color+' 16%,transparent);color:'+meta.color+';border-color:color-mix(in srgb,'+meta.color+' 40%,transparent)">'+escapeHtml(meta.label)+'</span>';
 }
 function attendanceDetailText(r){
-  if(r.type==='leave') return escapeHtml(r.leaveType||'-');
+  var half=Number(r.days)===0.5?' (ครึ่งวัน)':'';
+  if(r.type==='leave') return escapeHtml(r.leaveType||'-')+half;
   if(r.type==='late') return (r.lateMinutes||0)+' นาที';
-  return '-';
+  return half?'ครึ่งวัน':'-';
 }
 function renderAttendanceTable(){
   var tbody=el('attTbody'); if(!tbody) return;
   var rows=attendanceFilteredRecords();
   tbody.innerHTML=rows.map(function(r){
     var emp=getEmployeeByCode(r.employeeCode)||{};
-    return '<tr><td>'+escapeHtml(formatThaiDate(r.date))+'</td><td>'+escapeHtml(emp.fullName||r.employeeCode)+'</td><td>'+attendanceTypeBadge(r.type)+'</td><td>'+attendanceDetailText(r)+'</td><td>'+escapeHtml(r.note||'-')+'</td><td><div class="row-actions"><button class="btn-ghost btn-sm" onclick="editAttendanceRecord(\''+v4EscapeAttr(r.id)+'\')">แก้ไข</button><button class="btn-danger btn-sm" onclick="deleteAttendanceRecord(\''+v4EscapeAttr(r.id)+'\')">ลบ</button></div></td></tr>';
+    return '<tr><td>'+escapeHtml(formatThaiDate(r.date))+'</td><td>'+escapeHtml(emp.fullName||r.employeeCode)+'</td><td>'+attendanceTypeBadge(r.type)+'</td><td>'+attendanceDetailText(r)+'</td><td>'+escapeHtml(r.note||'-')+'</td><td>'+(r.source==='payroll'?'<span class="badge" title="แก้ไขได้ที่ระบบเงินเดือน (ตรวจเวลา / คำขอลา)">จากระบบเงินเดือน</span>':'<div class="row-actions"><button class="btn-ghost btn-sm" onclick="editAttendanceRecord(\''+v4EscapeAttr(r.id)+'\')">แก้ไข</button><button class="btn-danger btn-sm" onclick="deleteAttendanceRecord(\''+v4EscapeAttr(r.id)+'\')">ลบ</button></div>')+'</td></tr>';
   }).join('');
   var empty=el('attEmpty'); if(empty) empty.classList.toggle('hidden',rows.length>0);
+  var grid=el('attSummaryGrid'), note=el('attSourceNote');
+  if(grid && !note){ note=document.createElement('div'); note.id='attSourceNote'; note.className='hint'; note.style.cssText='margin-top:10px;font-size:13px;color:var(--v4-muted)'; grid.parentNode.appendChild(note); }
+  if(note){ var b=window.payrollAttendance; note.textContent = b&&b.rows&&b.rows.length ? 'ข้อมูลขาด ลา มาสาย ดึงจากระบบเงินเดือน '+b.rows.length+' รายการ ('+b.periods.join(', ')+') — วันที่ระบบเงินเดือนคำนวณแล้วใช้ข้อมูลจากระบบเงินเดือนเป็นหลัก แก้ไขที่ระบบเงินเดือน' : (b&&b.error ? 'ยังดึงข้อมูลจากระบบเงินเดือนไม่ได้: '+b.error : (b ? 'ยังไม่มีข้อมูลเวลาที่คำนวณแล้วในระบบเงินเดือน (หรือบัญชีนี้ไม่มีสิทธิ์ดู) — แสดงเฉพาะที่บันทึกในระบบ HR' : 'กำลังโหลดข้อมูลจากระบบเงินเดือน…')); }
 }
 function renderAttendanceSummary(){
   var grid=el('attSummaryGrid'); if(!grid) return;
   var rows=attendanceFilteredRecords();
-  var absent=rows.filter(function(r){return r.type==='absent';}).length;
-  var leave=rows.filter(function(r){return r.type==='leave';}).length;
+  var absent=rows.filter(function(r){return r.type==='absent';}).reduce(function(s,r){return s+attendanceDays(r);},0);
+  var leave=rows.filter(function(r){return r.type==='leave';}).reduce(function(s,r){return s+attendanceDays(r);},0);
   var lateRows=rows.filter(function(r){return r.type==='late';});
   var lateMinutesTotal=lateRows.reduce(function(s,r){return s+Number(r.lateMinutes||0);},0);
-  grid.innerHTML='<div class="summary-card"><div class="num">'+absent+'</div><div class="label">ขาดงาน (ครั้ง)</div></div>'
-    +'<div class="summary-card"><div class="num">'+leave+'</div><div class="label">ลา (ครั้ง)</div></div>'
+  grid.innerHTML='<div class="summary-card"><div class="num">'+absent+'</div><div class="label">ขาดงาน (วัน)</div></div>'
+    +'<div class="summary-card"><div class="num">'+leave+'</div><div class="label">ลา (วัน)</div></div>'
     +'<div class="summary-card"><div class="num">'+lateRows.length+'</div><div class="label">มาสาย (ครั้ง)</div></div>'
     +'<div class="summary-card"><div class="num">'+lateMinutesTotal+'</div><div class="label">รวมนาทีสาย</div></div>';
 }
@@ -8995,7 +9009,7 @@ window.refreshPerfEmployeeSelects=function(){
       var ov = (DB.leaveEntitlementOverrides||[]).find(function(r){return r.employeeCode===e.empCode && Number(r.year)===year && r.leaveType===t;});
       var df = (DB.leaveEntitlementDefaults||[]).find(function(r){return r.leaveType===t;});
       var ent = ov ? Number(ov.days||0) : Number(df ? df.defaultDays : 0);
-      var used = (DB.attendanceRecords||[]).filter(function(r){return r.employeeCode===e.empCode && r.type==='leave' && r.leaveType===t && String(r.date||'').slice(0,4)===String(year);}).length;
+      var used = getLeaveUsed(e.empCode, year, t);
       rows += row(t+'คงเหลือ', '<span class="ep-chip">'+Math.max(0,ent-used)+' / '+ent+' วัน</span>');
     });
     var sup = e.parentId ? getEmployeeByCode(e.parentId) : null;
@@ -11643,13 +11657,13 @@ function statusOf(id) {
 }
 function autoAtt(code) {
   const s = settings(), a = { late: 0, sick: 0, personal: 0, absent: 0 };
-  (DB.attendanceRecords || []).forEach((r) => {
+  (window.allAttendanceRecords ? window.allAttendanceRecords() : (DB.attendanceRecords || [])).forEach((r) => {
     if (r.employeeCode !== code) return;
     const d = parseDate(r.date); if (!d) return;
     const x = isoOf(d); if (x < s.cycleStart || x > s.cycleEnd) return;
     if (r.type === 'late') a.late++;
     else if (r.type === 'absent') a.absent++;
-    else if (r.type === 'leave') { if (r.leaveType === 'ลาป่วย') a.sick++; else if (r.leaveType === 'ลากิจ') a.personal++; }
+    else if (r.type === 'leave') { const n = Number(r.days) > 0 ? Number(r.days) : 1; if (r.leaveType === 'ลาป่วย') a.sick += n; else if (r.leaveType === 'ลากิจ') a.personal += n; }
   });
   return a;
 }
@@ -12160,6 +12174,85 @@ g.apRenderPanel = renderPanel;
 
 })();
 </script>
+<script id="payroll-attendance-script">
+/* ขาด ลา มาสาย จากระบบเงินเดือน (Payroll Full Loop, ตาราง plfl_doc) → ระบบ HR อ่านอย่างเดียว
+   - อ่านผลคำนวณเวลาของทุกงวด (period:YYYY-MM → calc) + รายชื่อพนักงาน (employees) + ประเภทลา (config)
+   - แปลงเป็นบันทึกแบบเดียวกับ DB.attendanceRecords แต่เก็บในหน่วยความจำ (window.payrollAttendance) ไม่บันทึกลง hr_db
+   - สิทธิ์อ่านคุมด้วย RLS ของ plfl_doc: บัญชีที่ไม่มีบทบาทในระบบเงินเดือนจะได้ข้อมูลว่าง → ใช้บันทึกในระบบ HR ตามเดิม */
+window.payrollAttendanceFromDocs = function(docs, hrCodes){
+  var emps = {}, ltName = {}, rows = [], covered = {}, periods = [];
+  (docs || []).forEach(function(d){
+    if(d.key === 'employees') emps = d.data || {};
+    if(d.key === 'config') ((d.data && d.data.leaveTypes) || []).forEach(function(l){ ltName[l.code] = l.name; });
+  });
+  var norm = function(c){ return String(c == null ? '' : c).trim().toUpperCase(); };
+  var codeOf = {}; (hrCodes || []).forEach(function(c){ codeOf[norm(c)] = c; });
+  var leaveName = function(code){
+    var n = ltName[code] || code || '';
+    var subs = typeof LEAVE_SUBTYPES !== 'undefined' ? LEAVE_SUBTYPES : ['ลาป่วย','ลากิจ','ลาพักร้อน','ลาคลอด','ลาบวช','อื่นๆ'];
+    if(subs.indexOf(n) >= 0) return n;
+    if(/ป่วย/.test(n)) return 'ลาป่วย';
+    if(/กิจ/.test(n)) return 'ลากิจ';
+    if(/พักร้อน|พักผ่อน/.test(n)) return 'ลาพักร้อน';
+    if(/คลอด/.test(n)) return 'ลาคลอด';
+    if(/บวช/.test(n)) return 'ลาบวช';
+    return 'อื่นๆ';
+  };
+  (docs || []).forEach(function(d){
+    if(String(d.key).indexOf('period:') !== 0) return;
+    var calc = (d.data && d.data.calc) || d.calc || [];
+    if(!calc.length) return;
+    var pk = d.key.slice(7); periods.push(pk);
+    calc.forEach(function(r){
+      var emp = emps[r.e] || {}, code = codeOf[norm(emp.code)] || emp.code;
+      if(!code || !r.d) return;
+      covered[code + '|' + r.d] = true;
+      var base = { employeeCode: code, date: r.d, source: 'payroll', note: '' };
+      var id = 'pl:' + pk + ':' + code + ':' + r.d + ':';
+      if(+r.absent > 0) rows.push(Object.assign({ id: id + 'absent', type: 'absent', days: +r.absent }, base));
+      if(+r.leave > 0) rows.push(Object.assign({ id: id + 'leave', type: 'leave', leaveType: leaveName(r.lt), days: +r.leave }, base, { note: r.lt && ltName[r.lt] && leaveName(r.lt) === 'อื่นๆ' ? ltName[r.lt] : '' }));
+      if(+r.late > 0) rows.push(Object.assign({ id: id + 'late', type: 'late', lateMinutes: +r.late }, base));
+    });
+  });
+  periods.sort();
+  return { rows: rows, covered: covered, periods: periods, loadedAt: new Date().toISOString() };
+};
+(function(){
+  'use strict';
+  var loading = false;
+  function rerender(){
+    var m = document.body && document.body.dataset.module;
+    try { if(m && TAB_RENDERERS[m]) TAB_RENDERERS[m](); } catch(e){ console.warn('payroll attendance rerender', e); }
+    try { if(document.getElementById('attTbody')){ renderAttendanceTable(); renderAttendanceSummary(); } } catch(e){}
+  }
+  function load(){
+    if(loading || typeof supabaseClient === 'undefined' || !supabaseClient) return;
+    loading = true;
+    supabaseClient.from('plfl_doc').select('key, data')
+      .or('key.eq.employees,key.eq.config')
+      .then(function(a){
+        if(a.error) throw a.error;
+        return supabaseClient.from('plfl_doc').select('key, calc:data->calc').like('key', 'period:%').then(function(b){
+          if(b.error) throw b.error;
+          var docs = (a.data || []).concat((b.data || []).map(function(x){ return { key: x.key, data: { calc: x.calc || [] } }; }));
+          window.payrollAttendance = window.payrollAttendanceFromDocs(docs, (DB.employees || []).map(function(e){ return e.empCode; }));
+        });
+      })
+      .catch(function(err){ window.payrollAttendance = { rows: [], covered: {}, periods: [], error: (err && err.message) || String(err) }; })
+      .then(function(){ loading = false; rerender(); });
+  }
+  window.reloadPayrollAttendance = load;
+  try {
+    supabaseClient.auth.onAuthStateChange(function(ev, sess){
+      if(sess && sess.user && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION')) setTimeout(load, 0);
+      if(!sess) window.payrollAttendance = null;
+    });
+  } catch(e){}
+  // กลับมาที่แท็บนี้หลังไปแก้ในระบบเงินเดือน → โหลดใหม่
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible' && window.payrollAttendance) load(); });
+})();
+</script>
+
 <script id="payroll-module-script">
 /* "เงินเดือน" = แอปย่อย Payroll Full Loop ที่ /payroll/ (เต็มหน้าจอ หน้าตา/เมนูของตัวเอง)
    ล็อกอินเดียว: ใช้ Supabase โปรเจกต์และ session เดียวกับระบบนี้ (โดเมนเดียวกัน) — ยังไม่ล็อกอิน แอปเงินเดือนจะส่งมาที่นี่พร้อม ?next=/payroll/...
@@ -12182,6 +12275,228 @@ g.apRenderPanel = renderPanel;
   }
   install();
   window.addEventListener('load', install);
+})();
+</script>
+<style id="app-launcher-style">
+/* หน้าเลือกหมวดงาน (5 แอพย่อย) — ใช้ฐานข้อมูลเดียวกันทั้งหมด */
+#appLauncher{display:none;padding:118px 28px 56px;max-width:1320px;margin:0 auto;color:var(--v4-text)}
+body.app-home #appLauncher{display:block}
+body.app-home .app-shell{display:none!important}
+@media(max-width:900px){#appLauncher{padding:22px 16px 40px}}
+.al-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+.al-hero h2{margin:0;font-size:28px;font-weight:800;letter-spacing:-.01em}
+.al-hero p{margin:6px 0 0;color:var(--v4-muted);font-size:15px}
+.al-stats{display:flex;gap:10px;flex-wrap:wrap}
+.al-stat{background:var(--v4-surface);border:1px solid var(--v4-border);border-radius:14px;padding:10px 16px;min-width:110px}
+.al-stat b{display:block;font-size:22px}
+.al-stat span{font-size:12.5px;color:var(--v4-muted)}
+.al-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px}
+.al-card{--c:#2f6fe4;position:relative;display:flex;flex-direction:column;gap:12px;text-align:left;font-family:inherit;color:inherit;cursor:pointer;
+  background:var(--v4-surface);border:1px solid var(--v4-border);border-radius:22px;padding:22px 22px 20px;min-height:250px;overflow:hidden;
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.al-card::before{content:"";position:absolute;inset:0 0 auto 0;height:5px;background:var(--c)}
+.al-card::after{content:"";position:absolute;right:-60px;top:-60px;width:180px;height:180px;border-radius:50%;background:var(--c);opacity:.09;pointer-events:none}
+.al-card:hover,.al-card:focus-visible{transform:translateY(-4px);border-color:var(--c);box-shadow:0 18px 40px rgba(0,0,0,.18);outline:none}
+.al-card,.al-card *{text-align:left!important;white-space:normal!important}
+.al-card{align-items:flex-start!important;justify-content:flex-start!important}
+.al-num{position:absolute;right:20px;top:18px;font-size:13px;font-weight:800;color:var(--c);opacity:.85}
+.al-icon{width:58px;height:58px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:30px;background:color-mix(in srgb,var(--c) 16%,transparent)}
+.al-title{font-size:19px;font-weight:800;line-height:1.3}
+.al-en{font-size:12.5px;color:var(--v4-muted);margin-top:2px}
+.al-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
+.al-list span{font-size:12.5px;padding:4px 10px;border-radius:999px;background:var(--v4-surface-2);border:1px solid var(--v4-border);color:var(--v4-text)}
+.al-go{font-size:13.5px;font-weight:700;color:var(--c);display:flex;align-items:center;gap:6px}
+.al-tools{margin-top:30px}
+.al-tools h3{font-size:14px;color:var(--v4-muted);font-weight:700;margin:0 0 10px;letter-spacing:.02em}
+.al-tools div{display:flex;flex-wrap:wrap;gap:10px}
+.al-tools button{font-family:inherit;font-size:14px;cursor:pointer;color:var(--v4-text);background:var(--v4-surface);border:1px solid var(--v4-border);border-radius:12px;padding:9px 14px}
+.al-tools button:hover{border-color:var(--v4-info)}
+/* หัวเมนูด้านซ้าย: หมวดงานที่เลือก + ปุ่มกลับหน้าเลือกหมวด */
+.al-current{order:-1;display:flex;flex-direction:column;gap:8px;padding:4px 4px 12px;margin-bottom:6px;border-bottom:1px solid var(--v4-border)}
+.al-current button{font-family:inherit;font-size:13px;cursor:pointer;align-self:flex-start;border:1px solid var(--v4-border);background:var(--v4-surface-2);color:var(--v4-text);border-radius:999px;padding:5px 12px}
+.al-current button:hover{border-color:var(--v4-info)}
+.al-cur-name{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;line-height:1.3}
+.al-cur-name i{font-style:normal;width:36px;height:36px;flex:none;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;background:color-mix(in srgb,var(--al-c,#2f6fe4) 18%,transparent)}
+.al-cur-name small{display:block;font-weight:500;font-size:11.5px;color:var(--v4-muted)}
+@media(max-width:900px){.al-current{flex-direction:row;align-items:center;border-bottom:0;padding:0 8px 0 0;margin:0;flex:none}.al-cur-name small{display:none}}
+html.theme-soft .al-card,html.theme-soft .al-stat,html.theme-soft .al-tools button{border-color:transparent;box-shadow:var(--neu-up)}
+html.theme-soft .al-card:hover{box-shadow:var(--neu-up),0 0 0 2px var(--c)}
+html.theme-soft .al-list span{background:#eef0f4}
+</style>
+<style id="app-launcher-filter"></style>
+<script id="app-launcher-script">
+/* หลังล็อกอิน: เลือกหมวดงาน HR 5 หมวด (แอพย่อย) — ทุกหมวดใช้ฐานข้อมูลเดียวกัน (DB / hr_db / plfl_*)
+   - เมนูซ้ายแสดงเฉพาะเมนูของหมวดที่เลือก (กรองด้วย CSS จาก APPS ด้านล่าง)
+   - หมวด 2 ค่าตอบแทนและสวัสดิการ = Payroll Full Loop (/payroll/) ซึ่งมีเมนู "ฐานข้อมูลพนักงาน" ก่อนขั้นตอนบันทึกเวลา
+   - เรียก showTab() ไปเมนูที่อยู่นอกหมวด (เช่น ค้นหาพนักงาน, กระดิ่ง) → สลับไปหมวดที่มีเมนูนั้นให้เอง
+   - จำหมวดที่เปิดไว้ในแท็บเบราว์เซอร์นี้ (sessionStorage) · /#home หรือออกจากระบบ → กลับหน้าเลือกหมวด */
+(function(){
+  'use strict';
+  var KEY = 'hru_app';
+  var APPS = [
+    { key:'rec', n:1, icon:'🧲', c:'#2f6fe4', th:'การสรรหาและคัดเลือก', en:'Talent Acquisition / Recruitment',
+      tabs:['orgchart','jobpositions','recruitment','onboarding'], items:['ผังองค์กร','การจัดการตำแหน่ง','สรรหาบุคลากร','ติดตามการเริ่มงาน'] },
+    { key:'cb', n:2, icon:'💰', c:'#059669', th:'การบริหารค่าตอบแทนและสวัสดิการ', en:'Compensation & Benefits', link:'/payroll/#/employees',
+      items:['ฐานข้อมูลพนักงาน','บันทึกเวลา','ขาด ลา มาสาย','เงินเดือน','สลิป / ภาษี / ประกันสังคม'] },
+    { key:'pm', n:3, icon:'📈', c:'#7c3aed', th:'การบริหารผลการปฏิบัติงาน', en:'Performance Management',
+      tabs:['performance-tracking'], items:['ขาด ลา มาสาย','โควตาวันลา','เป้าหมาย / OKR','ประเมินผล'] },
+    { key:'ld', n:4, icon:'🎓', c:'#d97706', th:'การฝึกอบรมและพัฒนา', en:'Learning & Development (L&D)',
+      tabs:['training'], items:['การฝึกอบรม HRD','OJT','งบประมาณ','Training Need'] },
+    { key:'er', n:5, icon:'💞', c:'#db2777', th:'พนักงานสัมพันธ์และความผูกพัน', en:'Employee Relations & Engagement',
+      tabs:['er-bday'], items:['วันเกิดพนักงาน'] },
+  ];
+  var COMMON = { key:'common', icon:'🧰', c:'#0ea5e9', th:'เครื่องมือส่วนกลาง', en:'Shared tools', tabs:['dashboard','employees','reports','documents','settings'] };
+  var ALL = APPS.concat([COMMON]);
+  var TOOLS = [['dashboard','🏠 ภาพรวม'],['employees','👥 ฐานข้อมูลพนักงาน'],['reports','📊 รายงาน'],['documents','📄 เอกสารอัตโนมัติ'],['settings','⚙️ ตั้งค่าระบบ']];
+  var byKey = function(k){ return ALL.filter(function(a){ return a.key === k; })[0]; };
+  var E = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); };
+  var store = {
+    get: function(){ try { return sessionStorage.getItem(KEY) || ''; } catch(e){ return ''; } },
+    set: function(v){ try { if(v) sessionStorage.setItem(KEY, v); else sessionStorage.removeItem(KEY); } catch(e){} }
+  };
+  var current = '';
+
+  /* CSS กรองเมนูซ้ายตามหมวด */
+  function buildFilterCss(){
+    var css = ALL.map(function(a){
+      var keep = (a.tabs || []).map(function(t){ return t === 'er-bday' ? ':not([data-al="er-bday"])' : ':not([data-tab="'+t+'"]):not([data-al])'; }).join('');
+      return 'body[data-app="'+a.key+'"] .tabbar > .tab-btn'+keep+'{display:none!important}';
+    }).join('\n');
+    css += '\nbody:not([data-app="er"]) .tabbar > .tab-btn[data-al="er-bday"]{display:none!important}'
+      + '\nbody[data-app="er"] #sideSub-onboarding,body[data-app="er"] #view-onboarding .subnav{display:none!important}'
+      + '\nbody[data-app="rec"] #sideSub-onboarding > [data-k="birthday"],body[data-app="rec"] #onboardSubBtnBirthday{display:none!important}';
+    document.getElementById('app-launcher-filter').textContent = css;
+  }
+
+  /* ปุ่ม "วันเกิด" ของหมวด 5 (เปิดหน้า ติดตามการเริ่มงาน > วันเกิด) + หัวเมนูหมวด */
+  function installSidebar(){
+    var tabbar = document.getElementById('tabbar'); if(!tabbar) return;
+    if(!tabbar.querySelector('[data-al="er-bday"]')){
+      var b = document.createElement('button'); b.className = 'tab-btn'; b.dataset.tab = 'onboarding'; b.dataset.al = 'er-bday';
+      b.onclick = function(){ openTab('er-bday'); };
+      if(typeof setTabLabelV42 === 'function') setTabLabelV42(b, '🎂', 'วันเกิดพนักงาน', 'Birthdays'); else b.textContent = '🎂 วันเกิดพนักงาน';
+      tabbar.insertBefore(b, tabbar.firstChild);
+    }
+    var head = document.getElementById('alCurrent');
+    if(!head){
+      head = document.createElement('div'); head.id = 'alCurrent'; head.className = 'al-current';
+      tabbar.insertBefore(head, tabbar.firstChild);
+    }
+    var a = byKey(current);
+    head.style.setProperty('--al-c', a ? a.c : '#2f6fe4');
+    head.innerHTML = '<button type="button" onclick="hrOpenLauncher()">‹ หมวดงานทั้งหมด</button>'
+      + (a ? '<div class="al-cur-name"><i>'+a.icon+'</i><div>'+E(a.th)+'<small>'+E(a.en)+'</small></div></div>' : '');
+    // เรียงเมนูตามลำดับของหมวด (เมนูย่อยตามหลังเมนูหลักของตัวเอง)
+    [].forEach.call(tabbar.children, function(x){ x.style.order = ''; });
+    head.style.order = '-1';
+    ((a && a.tabs) || []).forEach(function(t, i){
+      var btn = t === 'er-bday' ? tabbar.querySelector('[data-al="er-bday"]') : tabbar.querySelector('.tab-btn[data-tab="'+t+'"]:not([data-al])');
+      if(btn) btn.style.order = String(i * 2 + 1);
+      var sub = document.getElementById('sideSub-' + t); if(sub) sub.style.order = String(i * 2 + 2);
+    });
+    var prof = document.getElementById('sidebarProfile'); if(prof) prof.style.order = '999';
+  }
+
+  function stats(){
+    var emps = (typeof DB !== 'undefined' && DB.employees) || [];
+    var active = emps.filter(function(e){ return e.status !== 'Inactive'; }).length;
+    var m = new Date().getMonth() + 1, bd = emps.filter(function(e){
+      if(e.status === 'Inactive') return false;
+      var d = typeof parseDate === 'function' ? parseDate(e.birthDate || e.dob || e.birthday) : null;
+      return d && d.getMonth() + 1 === m;
+    }).length;
+    return '<div class="al-stat"><b>'+active.toLocaleString('th-TH')+'</b><span>พนักงานปัจจุบัน</span></div>'
+      + '<div class="al-stat"><b>'+bd+'</b><span>วันเกิดเดือนนี้</span></div>';
+  }
+  function renderLauncher(){
+    var box = document.getElementById('appLauncher'); if(!box) return;
+    var now = new Date();
+    var date = now.toLocaleDateString('th-TH', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    box.innerHTML = '<div class="al-hero"><div><h2>เลือกหมวดงาน HR</h2><p>'+E(date)+' · ทุกหมวดใช้ฐานข้อมูลพนักงานชุดเดียวกัน</p></div><div class="al-stats">'+stats()+'</div></div>'
+      + '<div class="al-grid">' + APPS.map(function(a){
+          return '<button type="button" class="al-card" style="--c:'+a.c+'" onclick="hrSelectApp(\''+a.key+'\')">'
+            + '<span class="al-num">'+String(a.n).padStart(2,'0')+'</span>'
+            + '<span class="al-icon">'+a.icon+'</span>'
+            + '<span><span class="al-title">'+E(a.th)+'</span><span class="al-en" style="display:block">'+E(a.en)+'</span></span>'
+            + '<span class="al-list">'+a.items.map(function(x){ return '<span>'+E(x)+'</span>'; }).join('')+'</span>'
+            + '<span class="al-go">'+(a.link ? 'เปิดระบบเงินเดือน ↗' : 'เข้าใช้งาน →')+'</span></button>';
+        }).join('') + '</div>'
+      + '<div class="al-tools"><h3>เครื่องมือส่วนกลาง</h3><div>' + TOOLS.map(function(t){
+          return '<button type="button" onclick="hrSelectApp(\'common\',\''+t[0]+'\')">'+t[1]+'</button>';
+        }).join('') + '</div></div>';
+  }
+
+  var realShowTab = null;
+  function openTab(t){
+    if(t === 'er-bday'){
+      realShowTab('onboarding');
+      if(typeof window.showOnboardingSubtab === 'function') window.showOnboardingSubtab('birthday');
+      return;
+    }
+    realShowTab(t);
+    fixRecOnboarding(t);
+  }
+  // หมวดสรรหา: ไม่แสดงหน้าวันเกิด (อยู่หมวดพนักงานสัมพันธ์) → กลับไป Checklist
+  function fixRecOnboarding(t){
+    if(t !== 'onboarding' || current !== 'rec') return;
+    var bp = document.getElementById('onboarding-sub-birthday');
+    if(bp && bp.classList.contains('active') && typeof window.showOnboardingSubtab === 'function') window.showOnboardingSubtab('checklist');
+  }
+  function appFor(tab){
+    var a = byKey(current);
+    if(a && a.tabs && a.tabs.indexOf(tab) >= 0) return a;
+    return ALL.filter(function(x){ return x.tabs && x.tabs.indexOf(tab) >= 0; })[0] || null;
+  }
+  function apply(key){
+    current = key; document.body.dataset.app = key; document.body.classList.remove('app-home');
+    store.set(key); installSidebar();
+  }
+
+  window.hrSelectApp = function(key, tab){
+    var a = byKey(key); if(!a) return;
+    if(a.link){ location.href = a.link; return; }
+    apply(key);
+    openTab(tab || a.tabs[0]);
+    window.scrollTo(0, 0);
+  };
+  window.hrOpenLauncher = function(){
+    current = ''; store.set(''); document.body.dataset.app = ''; document.body.classList.add('app-home');
+    renderLauncher(); installSidebar();
+    if(location.hash === '#home') history.replaceState(null, '', location.pathname + location.search);
+    window.scrollTo(0, 0);
+  };
+
+  function install(){
+    if(document.getElementById('appLauncher')) return;
+    var box = document.createElement('div'); box.id = 'appLauncher';
+    var shell = document.querySelector('.app-shell'); if(!shell) return;
+    shell.parentNode.insertBefore(box, shell);
+    buildFilterCss();
+    // showTab ไปเมนูนอกหมวดปัจจุบัน → สลับหมวดให้อัตโนมัติ
+    realShowTab = window.showTab;
+    window.showTab = function(name){
+      var a = appFor(name);
+      if(a && (a.key !== current || document.body.classList.contains('app-home'))) apply(a.key);
+      var r = realShowTab.apply(this, arguments);
+      fixRecOnboarding(name);
+      return r;
+    };
+    try { (0, eval)('showTab = window.showTab'); } catch(e){}
+    // ออกจากระบบ → ครั้งหน้าเริ่มที่หน้าเลือกหมวด
+    var prevLogout = window.authGateLogout;
+    if(typeof prevLogout === 'function'){
+      window.authGateLogout = function(){ store.set(''); return prevLogout.apply(this, arguments); };
+      try { (0, eval)('authGateLogout = window.authGateLogout'); } catch(e){}
+    }
+    var saved = store.get();
+    if(location.hash !== '#home' && byKey(saved) && !byKey(saved).link) window.hrSelectApp(saved);
+    else window.hrOpenLauncher();
+    window.addEventListener('hashchange', function(){ if(location.hash === '#home') window.hrOpenLauncher(); });
+    // ข้อมูลพนักงานโหลดจากคลาวด์ทีหลัง → อัปเดตตัวเลขบนหน้าเลือกหมวด
+    setTimeout(function(){ if(document.body.classList.contains('app-home')) renderLauncher(); }, 2500);
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install();
+  window.addEventListener('load', function(){ install(); installSidebar(); });
 })();
 </script>
 </body>

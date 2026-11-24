@@ -193,6 +193,40 @@ if (regOk) ok('index.html: บรรทัดตั้งค่า TAB_RENDERERS
   if (!fails) ok('คะแนนประเมินประจำปี: ผ่านการทดสอบ 26 ข้อ (ชุดเดียวกับแอปต้นฉบับ)');
 })();
 
+/* ---------- 3d) ขาด ลา มาสาย จากระบบเงินเดือน → รูปแบบบันทึกของระบบ HR ---------- */
+(function payrollAttendanceTests() {
+  const blk = main.find((s) => s.code.includes('payrollAttendanceFromDocs = function'));
+  if (!blk) { bad('ไม่พบโค้ดดึงขาด ลา มาสาย จากระบบเงินเดือนใน index.html'); return; }
+  const sandbox = { window: {}, document: { addEventListener() {} }, LEAVE_SUBTYPES: ['ลาป่วย', 'ลากิจ', 'ลาพักร้อน', 'ลาคลอด', 'ลาบวช', 'อื่นๆ'], supabaseClient: { auth: { onAuthStateChange() {} } }, console };
+  vm.createContext(sandbox);
+  try { vm.runInContext(blk.code, sandbox); } catch (e) { bad('โหลดโค้ดดึงขาด ลา มาสาย ไม่ได้: ' + e.message); return; }
+  let fails = 0;
+  const eq = (name, a, b) => { if (JSON.stringify(a) !== JSON.stringify(b)) { fails++; bad(`ขาด ลา มาสาย จากเงินเดือน "${name}": ได้ ${JSON.stringify(a)} ควรเป็น ${JSON.stringify(b)}`); } };
+  const docs = [
+    { key: 'employees', data: { E0001: { code: 't001' }, E0002: { code: 'T002' } } },
+    { key: 'config', data: { leaveTypes: [{ code: 'SICK', name: 'ลาป่วย' }, { code: 'PERSONAL', name: 'ลากิจ' }, { code: 'UNPAID', name: 'ลาไม่รับค่าจ้าง' }] } },
+    { key: 'period:2026-10', data: { calc: [
+      { e: 'E0001', d: '2026-10-01', late: 12 },
+      { e: 'E0001', d: '2026-10-02', leave: 0.5, lt: 'SICK', late: 0 },
+      { e: 'E0001', d: '2026-10-03' },
+      { e: 'E0002', d: '2026-10-01', absent: 1 },
+      { e: 'E0002', d: '2026-10-02', leave: 1, lt: 'UNPAID' },
+      { e: 'E9999', d: '2026-10-01', absent: 1 },
+    ] } },
+  ];
+  const r = sandbox.window.payrollAttendanceFromDocs(docs, ['T001', 'T002']);
+  const pick = (x) => [x.employeeCode, x.date, x.type, x.lateMinutes || x.leaveType || '', x.days || 0];
+  eq('แปลงแถวเป็นบันทึก', r.rows.map(pick), [
+    ['T001', '2026-10-01', 'late', 12, 0], ['T001', '2026-10-02', 'leave', 'ลาป่วย', 0.5],
+    ['T002', '2026-10-01', 'absent', '', 1], ['T002', '2026-10-02', 'leave', 'อื่นๆ', 1]]);
+  eq('รหัสพนักงานจับคู่ไม่สนตัวพิมพ์', r.rows[0].employeeCode, 'T001');
+  eq('ประเภทลาที่ไม่มีใน HR เก็บชื่อเดิมในหมายเหตุ', r.rows[3].note, 'ลาไม่รับค่าจ้าง');
+  eq('วันที่คำนวณแล้วถูกนับว่าครอบคลุม (กันซ้ำกับที่กรอกใน HR)', [!!r.covered['T001|2026-10-03'], !!r.covered['T001|2026-10-04']], [true, false]);
+  eq('ทุกแถวมาจากระบบเงินเดือน', r.rows.every((x) => x.source === 'payroll'), true);
+  eq('งวดที่อ่าน', r.periods, ['2026-10']);
+  if (!fails) ok('ขาด ลา มาสาย จากระบบเงินเดือน: ผ่านการทดสอบ 6 ข้อ');
+})();
+
 /* ---------- 4) functions declared more than once (information) ---------- */
 (function duplicates() {
   const seen = new Map();
