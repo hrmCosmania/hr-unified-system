@@ -4,6 +4,7 @@ import { ChevronRight, ClipboardCheck, MessagesSquare, MessageSquareHeart, Targe
 import { useStore } from "../data/store";
 import * as liveApi from "../data/live";
 import type { LivePhase } from "../data/live";
+import { ResultCard, useMyResult } from "../components/ResultCard";
 import { competencies, cycle as demoCycle, readiness, todosByRole, badges, careerPath } from "../data/mock";
 import { Avatar, Card, CardTitle, Progress, Stepper, cx, thDate } from "../components/ui";
 import { Donut } from "../components/charts";
@@ -57,6 +58,7 @@ export default function Home() {
   const mgr = ready ? managerOf(subject) : null;
   const nextCk = ready ? checkins.find((c) => c.nextDate && c.nextDate >= todayIso)?.nextDate ?? null : null;
   const firstName = me.name.split(" ")[0];
+  const { res: myResult, reload: reloadResult } = useMyResult();
 
   return (
     <div className="space-y-5">
@@ -71,6 +73,8 @@ export default function Home() {
         </div>
         <p className="absolute right-5 top-4 font-display italic text-navy-700/80 text-sm sm:text-lg hidden sm:block">Small Steps, Big Progress</p>
       </section>
+
+      {ready && <ResultCard res={myResult} onChanged={reloadResult} />}
 
       {/* Cycle timeline */}
       <Card className="p-5">

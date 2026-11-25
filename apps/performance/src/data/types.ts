@@ -84,7 +84,7 @@ export interface IdpAction {
 }
 
 export interface TeamMember extends Person {
-  planStatus: "goal_pending" | "goal_approved" | "self_review" | "manager_review" | "released";
+  planStatus: "goal_pending" | "goal_approved" | "self_review" | "manager_review" | "calibration" | "released" | "acknowledged";
   goals: number;
   progress: number;
   health: "on_track" | "at_risk" | "off_track" | "no_goal";

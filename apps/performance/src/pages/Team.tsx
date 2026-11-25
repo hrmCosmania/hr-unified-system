@@ -9,7 +9,9 @@ const planLabel: Record<string, { l: string; c: string }> = {
   goal_approved: { l: "เป้าอนุมัติแล้ว", c: "bg-good-bg text-[#087a08]" },
   self_review: { l: "รอประเมินตนเอง", c: "bg-[#eef1f5] text-ink-2" },
   manager_review: { l: "รอคุณประเมิน", c: "bg-warn-bg text-warn" },
-  released: { l: "แจ้งผลแล้ว", c: "bg-good-bg text-[#087a08]" },
+  calibration: { l: "รอ Calibration", c: "bg-[#f1eefc] text-[#4b3bb5]" },
+  released: { l: "แจ้งผลแล้ว · รอรับทราบ", c: "bg-brand-50 text-brand-700" },
+  acknowledged: { l: "รับทราบผลแล้ว", c: "bg-good-bg text-[#087a08]" },
 };
 const daysSince = (d: string | null) => (d ? Math.round((Date.now() - Date.parse(d)) / 86400000) : null);
 

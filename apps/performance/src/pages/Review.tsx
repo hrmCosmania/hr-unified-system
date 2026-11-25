@@ -6,10 +6,11 @@ import * as liveApi from "../data/live";
 import type { LiveReview } from "../data/live";
 import { Avatar, Button, Card, CardTitle, Field, PageHeader, RatingPicker, Segmented, SourceTag, Stepper, cx, fmtCompact } from "../components/ui";
 import { progressOf } from "./Home";
+import { ResultCard, useMyResult } from "../components/ResultCard";
 
 const ratingLabel = ["", "ต่ำกว่ามาตรฐาน", "ต้องพัฒนา", "ตามความคาดหวัง", "เกินความคาดหวัง", "โดดเด่น"];
 const bandScore = (p: number) => (p >= 115 ? 5 : p >= 105 ? 4 : p >= 95 ? 3 : p >= 80 ? 2 : 1);
-const KPI_W = 60, COMP_W = 40;
+const DEMO_KPI_W = 60, DEMO_COMP_W = 40;
 
 export default function Review() {
   const { role, goals, toast, liveStatus, subject: liveSubject, managerOf, cycle, ensurePlanId, posComps, posKpis, goalsFromPositionKpis } = useStore();
@@ -17,6 +18,10 @@ export default function Review() {
   // Competency ตามตำแหน่งจากแอปหลัก (JD/KPI/Competency) — ถ้ายังไม่มี ใช้ชุดตัวอย่าง
   const compFromHr = ready && posComps.length > 0;
   const competencies = compFromHr ? posComps : demoCompetencies;
+  // ข้อมูลจริง: น้ำหนัก KPI/Competency ตามแผนประเมินของพนักงาน (ตรงกับที่ฐานข้อมูลคำนวณ) · สถานะขั้นตอน
+  const { res: plan, reload: reloadPlan } = useMyResult();
+  const KPI_W = ready && plan ? plan.kpiWeight : ready ? 70 : DEMO_KPI_W, COMP_W = ready && plan ? plan.compWeight : ready ? 30 : DEMO_COMP_W;
+  const stepNow = !ready || !plan ? null : plan.releasedAt ? 3 : plan.status === "calibration" || plan.lockedAt ? 2 : plan.status === "manager_review" ? 1 : 0;
   const [mode, setMode] = useState<"self" | "manager">(role === "employee" ? "self" : "manager");
   const [subject, setSubject] = useState("t3");
   const [kpiR, setKpiR] = useState<Record<string, number>>(() => Object.fromEntries(goals.map((g) => [g.id, bandScore(progressOf(g))])));
@@ -61,7 +66,7 @@ export default function Review() {
         goalRatings: Object.fromEntries(goals.filter((g) => kpiR[g.id]).map((g) => [g.id, kpiR[g.id]])),
         competencyRatings: Object.fromEntries(competencies.filter((c) => compR[c.id]).map((c) => [c.code, compR[c.id]])),
       });
-      if (submit) setSubmitted(true);
+      if (submit) { setSubmitted(true); reloadPlan(); }
       toast(submit ? `ส่งแบบประเมิน${mode === "self" ? "ตนเอง" : "ของหัวหน้า"}ของ ${liveSubject.name} แล้ว` : "บันทึกร่างแล้ว", submit ? "good" : "info");
     } catch (e) {
       toast(e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e), "crit");
@@ -93,11 +98,12 @@ export default function Review() {
         actions={role !== "employee" ? <Segmented value={mode} onChange={setMode} items={[{ value: "self", label: "ประเมินตนเอง" }, { value: "manager", label: "ประเมินลูกทีม" }]} /> : undefined} />
 
       <Card className="p-5 mb-5">
-        <Stepper current={submitted ? 1 : 0} steps={mode === "self"
+        <Stepper current={stepNow ?? (submitted ? 1 : 0)} steps={mode === "self"
           ? [{ label: "ประเมินตนเอง", sub: "ถึง 5 ธ.ค." }, { label: "หัวหน้าประเมิน", sub: "ถึง 15 ธ.ค." }, { label: "Calibration", sub: "16–23 ธ.ค." }, { label: "แจ้งผล & รับทราบ", sub: "ม.ค. 2027" }]
           : [{ label: "ลูกทีมประเมินตนเอง" }, { label: "หัวหน้าประเมิน" }, { label: "Calibration" }, { label: "แจ้งผล" }].map((s, i) => ({ ...s, sub: i === 1 ? "คุณอยู่ที่นี่" : undefined }))} />
       </Card>
 
+      {ready && <ResultCard res={plan} onChanged={reloadPlan} />}
       {ready && liveSubject && (
         <Card className="p-4 mb-5 flex flex-wrap items-center gap-4">
           <Avatar p={liveSubject} size={44} />

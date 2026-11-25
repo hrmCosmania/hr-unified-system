@@ -292,7 +292,8 @@ export async function loadTeamStatus(cycleId: string, members: LiveEmployee[]): 
     const rv = (t: string) => (plan?.reviews ?? []).find((x: any) => x.review_type === t);
     const self = rv("self"), mgr = rv("manager");
     const pending = gs.some((g: any) => g.status === "pending_approval");
-    const planStatus: TeamMember["planStatus"] = plan?.status === "released" || plan?.status === "acknowledged" ? "released"
+    const planStatus: TeamMember["planStatus"] = plan?.status === "acknowledged" ? "acknowledged" : plan?.status === "released" ? "released"
+      : plan?.status === "calibration" ? "calibration"
       : self?.status === "submitted" && !(mgr && mgr.status === "submitted") ? "manager_review"
       : pending || !gs.length ? "goal_pending" : gs.every((g: any) => g.status !== "draft") && !self ? "goal_approved" : "self_review";
     return { ...m, planStatus, goals: gs.length, progress, health,
@@ -373,18 +374,21 @@ export async function load360(empId: string, cycleId: string): Promise<Live360> 
 
 // ---------- Calibration / Analytics ----------
 export interface LivePlanRow { planId: string; employeeId: string; name: string; code: string; position: string; orgUnit: string; company: string;
-  status: string; overall: number | null; finalRating: number | null; calibrated: number | null; potential: number | null }
+  status: string; overall: number | null; finalRating: number | null; calibrated: number | null; potential: number | null;
+  kpiScore: number | null; compScore: number | null; note: string; lockedAt: string | null; releasedAt: string | null; ackAt: string | null }
 export async function loadPlans(cycleId: string): Promise<LivePlanRow[]> {
   const { data, error } = await db().from("performance_plans")
-    .select("id, employee_id, status, overall_score, final_rating, calibrated_rating, potential_rating, employee:employees!performance_plans_employee_id_fkey(employee_code, first_name_th, last_name_th, org_unit:org_units!employees_org_unit_id_fkey(code, name_th), position:positions!employees_position_id_fkey(title_th))")
+    .select("*, employee:employees!performance_plans_employee_id_fkey(employee_code, first_name_th, last_name_th, org_unit:org_units!employees_org_unit_id_fkey(code, name_th), position:positions!employees_position_id_fkey(title_th))")
     .eq("cycle_id", cycleId);
   if (error) throw error;
   return ((data ?? []) as any[]).map((r) => { const e = one<any>(r.employee) ?? {}; const ou = one<any>(e.org_unit) ?? {};
     return { planId: r.id, employeeId: r.employee_id, name: nameOf(e), code: e.employee_code ?? "", position: one<any>(e.position)?.title_th ?? "", orgUnit: ou.name_th ?? "",
       company: String(ou.code ?? "").split("-")[0], status: r.status, overall: r.overall_score == null ? null : Number(r.overall_score),
-      finalRating: r.final_rating, calibrated: r.calibrated_rating, potential: r.potential_rating }; });
+      finalRating: r.final_rating, calibrated: r.calibrated_rating, potential: r.potential_rating,
+      kpiScore: num(r.kpi_score), compScore: num(r.competency_score), note: r.calibration_note ?? "", lockedAt: r.locked_at ?? null,
+      releasedAt: r.released_at ?? null, ackAt: r.acknowledged_at ?? null }; });
 }
-export async function saveCalibration(planId: string, patch: { calibrated_rating?: number; potential_rating?: number }) {
+export async function saveCalibration(planId: string, patch: { calibrated_rating?: number; potential_rating?: number; calibration_note?: string }) {
   const { error } = await db().from("performance_plans").update(patch).eq("id", planId);
   if (error) throw error;
 }
@@ -547,4 +551,33 @@ export async function saveCycle(c: CycleInfo, phases: LivePhase[]) {
   if (d.error) throw d.error;
   const rows = phases.filter((p) => p.start && p.end).map((p, i) => ({ cycle_id: c.id, phase: p.phase, start_date: p.start, end_date: p.end, sort_order: i + 1 }));
   if (rows.length) { const ins = await db_.from("cycle_phases").insert(rows); if (ins.error) throw ins.error; }
+}
+
+const num = (x: unknown) => (x === null || x === undefined ? null : Number(x));
+
+// ---------- ล็อกผล / แจ้งผล / รับทราบ ----------
+export async function lockCalibration(planIds: string[], lock = true): Promise<number> {
+  const { data, error } = await db().rpc("lock_calibration", { p_plan_ids: planIds, p_lock: lock });
+  if (error) throw error;
+  return Number(data ?? 0);
+}
+export async function releaseResults(planIds: string[]): Promise<number> {
+  const { data, error } = await db().rpc("release_results", { p_plan_ids: planIds });
+  if (error) throw error;
+  return Number(data ?? 0);
+}
+export async function acknowledgeResult(planId: string) {
+  const { error } = await db().rpc("acknowledge_result", { p_plan_id: planId });
+  if (error) throw error;
+}
+/** แผนประเมินของพนักงานคนหนึ่งในรอบนี้: น้ำหนัก, คะแนน, เกรด, สถานะแจ้งผล */
+export interface MyResult { planId: string; status: string; kpiWeight: number; compWeight: number; kpiScore: number | null; compScore: number | null;
+  overall: number | null; finalRating: number | null; calibrated: number | null; releasedAt: string | null; ackAt: string | null; lockedAt: string | null }
+export async function loadMyResult(cycleId: string, empId: string): Promise<MyResult | null> {
+  const { data, error } = await db().from("performance_plans").select("*").eq("cycle_id", cycleId).eq("employee_id", empId).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const r = data as any;
+  return { planId: r.id, status: r.status, kpiWeight: Number(r.kpi_weight ?? 70), compWeight: Number(r.competency_weight ?? 30), kpiScore: num(r.kpi_score), compScore: num(r.competency_score),
+    overall: num(r.overall_score), finalRating: r.final_rating, calibrated: r.calibrated_rating, releasedAt: r.released_at ?? null, ackAt: r.acknowledged_at ?? null, lockedAt: r.locked_at ?? null };
 }

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import * as liveApi from "../data/live";
 import { Grid3x3, Lock, Users, GripVertical } from "lucide-react";
 import { useStore } from "../data/store";
 import { nineBoxMeta, ratingGuideline } from "../data/mock";
@@ -8,12 +9,30 @@ import { GroupedBars, Legend } from "../components/charts";
 const boxOf = (perf: number, pot: number) => (pot - 1) * 3 + perf;
 
 export default function Calibration() {
-  const { calibration, moveCalibration, toast, liveStatus, cycle } = useStore();
+  const { calibration, moveCalibration, toast, liveStatus, cycle, livePlans, reloadPlans } = useStore();
   const ready = liveStatus === "ready";
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
   const [sel, setSel] = useState(calibration[0]?.id ?? "");
   const [drag, setDrag] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
   const p = calibration.find((x) => x.id === sel) ?? calibration[0];
+  // สถานะจริงของแผนประเมิน (ล็อก / แจ้งผล / รับทราบ)
+  const plan = (id: string) => livePlans.find((x) => x.planId === id);
+  const cur = p ? plan(p.id) : undefined;
+  useEffect(() => { setNote(cur?.note ?? ""); }, [cur?.planId, cur?.note]);
+  const ids = calibration.map((x) => x.id);
+  const unlocked = ids.filter((id) => !plan(id)?.lockedAt);
+  const toRelease = ids.filter((id) => plan(id)?.lockedAt && !plan(id)?.releasedAt);
+  const released = ids.filter((id) => plan(id)?.releasedAt).length;
+  const acked = ids.filter((id) => plan(id)?.ackAt).length;
+  const pLocked = ready ? !!cur?.lockedAt : locked;
+  const act = async (fn: () => Promise<number>, ok: (n: number) => string) => {
+    setBusy(true);
+    try { const n = await fn(); toast(ok(n)); reloadPlans(); }
+    catch (e) { toast(e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e), "crit"); }
+    finally { setBusy(false); }
+  };
   if (!p) return (
     <div>
       <PageHeader icon={<Grid3x3 size={22} />} title="Calibration · 9-Box" subtitle={cycle?.name} />
@@ -26,7 +45,15 @@ export default function Calibration() {
   return (
     <div>
       <PageHeader icon={<Grid3x3 size={22} />} title="Calibration · 9-Box" subtitle={ready ? `${cycle?.name ?? ""} · ${calibration.length} คน · ลากเพื่อปรับผลงาน/ศักยภาพ — บันทึกลงแผนประเมินทันที` : "Retail · เขตกรุงเทพฯ ตะวันออก · 18 คน · ผู้ดำเนินการ: ชลธิชา (HRBP) · 18 ธ.ค. 2026"}
-        actions={<>
+        actions={ready ? <>
+          <span className="inline-flex items-center gap-1.5 text-sm text-ink-3"><Users size={15} />ล็อกแล้ว {ids.length - unlocked.length}/{ids.length} · แจ้งผล {released} · รับทราบ {acked}</span>
+          <Button variant="secondary" disabled={busy || unlocked.length === 0}
+            onClick={() => { if (confirm(`ล็อกผลประเมิน ${unlocked.length} คน?\nล็อกแล้วจะแก้เกรดไม่ได้จนกว่าจะปลดล็อก`)) act(() => liveApi.lockCalibration(unlocked), (n) => `ล็อกผลแล้ว ${n} คน`); }}>
+            <Lock size={15} />ล็อกผล ({unlocked.length})</Button>
+          <Button disabled={busy || toRelease.length === 0}
+            onClick={() => { if (confirm(`แจ้งผลประเมินให้พนักงาน ${toRelease.length} คน?\nพนักงานจะเห็นเกรดสุดท้ายและกดรับทราบได้ · แจ้งแล้วยกเลิกไม่ได้`)) act(() => liveApi.releaseResults(toRelease), (n) => `แจ้งผลแล้ว ${n} คน`); }}>
+            แจ้งผล ({toRelease.length})</Button>
+        </> : <>
           {!ready && <span className="inline-flex items-center gap-1.5 text-sm text-ink-3"><Users size={15} />ผู้เข้าร่วม 5 คน</span>}
           <Button variant={locked ? "ghost" : "primary"} disabled={locked} onClick={() => { setLocked(true); toast("ล็อกผล Calibration แล้ว · ส่งผลไป Payroll & Internal Job ผ่าน Outbox"); }}>
             <Lock size={15} />{locked ? "ล็อกแล้ว" : "ล็อกผลและส่งต่อ"}
@@ -49,7 +76,7 @@ export default function Calibration() {
                 const members = calibration.filter((x) => x.performance === perf && x.potential === pot);
                 return (
                   <div key={b} onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => { if (drag && !locked) { moveCalibration(drag, { performance: perf as 1 | 2 | 3, potential: pot as 1 | 2 | 3 }); setSel(drag); } setDrag(null); }}
+                    onDrop={() => { if (drag && !(ready ? plan(drag)?.lockedAt : locked)) { moveCalibration(drag, { performance: perf as 1 | 2 | 3, potential: pot as 1 | 2 | 3 }); setSel(drag); } setDrag(null); }}
                     className={cx("rounded-xl p-2.5 min-h-[118px] border border-transparent transition-colors", drag && "border-dashed border-brand-200")}
                     style={{ background: meta.tone }}>
                     <div className="flex items-start justify-between gap-1">
@@ -58,7 +85,7 @@ export default function Calibration() {
                     </div>
                     <div className="flex flex-wrap gap-1 mt-2">
                       {members.map((m) => (
-                        <button key={m.id} draggable={!locked} onDragStart={() => setDrag(m.id)} onClick={() => setSel(m.id)} title={`${m.name} · ${m.score}`}
+                        <button key={m.id} draggable={!(ready ? plan(m.id)?.lockedAt : locked)} onDragStart={() => setDrag(m.id)} onClick={() => setSel(m.id)} title={`${m.name} · ${m.score}`}
                           className={cx("rounded-full cursor-grab active:cursor-grabbing transition-transform hover:scale-110", sel === m.id && "ring-2 ring-navy-800 ring-offset-1 rounded-full")}>
                           <Avatar p={m} size={28} />
                         </button>
@@ -85,12 +112,23 @@ export default function Calibration() {
               <p className="text-xs text-ink-2 mt-1">แนวทาง: {nineBoxMeta[boxOf(p.performance, p.potential)].action}</p>
             </div>
             <dl className="grid grid-cols-3 gap-2 mt-4 text-center">
-              <div className="rounded-lg bg-canvas p-2"><dt className="text-[11px] text-ink-3">คะแนนรวม</dt><dd className="font-display font-semibold">{p.score}</dd></div>
+              <div className="rounded-lg bg-canvas p-2"><dt className="text-[11px] text-ink-3">คะแนนรวม</dt><dd className="font-display font-semibold">{ready ? (cur?.overall != null ? cur.overall.toFixed(2) : "–") : p.score}</dd></div>
               <div className="rounded-lg bg-canvas p-2"><dt className="text-[11px] text-ink-3">หัวหน้าเสนอ</dt><dd className="font-display font-semibold">{p.preRating}</dd></div>
               <div className="rounded-lg bg-canvas p-2"><dt className="text-[11px] text-ink-3">หลังปรับ</dt><dd className={cx("font-display font-semibold", p.rating !== p.preRating && "text-brand-600")}>{p.rating}</dd></div>
             </dl>
-            <div className="mt-4"><span className="label">ผลประเมินหลัง Calibration</span><RatingPicker value={p.rating} onChange={(v) => moveCalibration(p.id, { rating: v })} disabled={locked} /></div>
-            <div className="mt-3"><Field label="เหตุผลการปรับ (บันทึกใน Audit log)"><textarea className="input" rows={2} placeholder="เช่น ผลงานโดดเด่นเทียบกับสาขาขนาดเดียวกัน" disabled={locked} /></Field></div>
+            <div className="mt-4"><span className="label">ผลประเมินหลัง Calibration</span><RatingPicker value={p.rating} onChange={(v) => moveCalibration(p.id, { rating: v })} disabled={pLocked} /></div>
+            <div className="mt-3"><Field label="เหตุผลการปรับ"><textarea className="input" rows={2} placeholder="เช่น ผลงานโดดเด่นเทียบกับหน่วยงานเดียวกัน" disabled={pLocked}
+              value={ready ? note : undefined} onChange={ready ? (e) => setNote(e.target.value) : undefined}
+              onBlur={ready && cur && note !== (cur.note ?? "") ? () => liveApi.saveCalibration(cur.planId, { calibration_note: note }).then(() => { toast("บันทึกเหตุผลแล้ว"); reloadPlans(); }, (e) => toast(String(e?.message ?? e), "crit")) : undefined} /></Field></div>
+            {ready && cur && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                {cur.kpiScore != null && <span className="rounded-full bg-canvas px-2 py-0.5">KPI {cur.kpiScore.toFixed(2)}</span>}
+                {cur.compScore != null && <span className="rounded-full bg-canvas px-2 py-0.5">Competency {cur.compScore.toFixed(2)}</span>}
+                <span className={cx("rounded-full px-2 py-0.5 font-medium", cur.ackAt ? "bg-good-bg text-[#087a08]" : cur.releasedAt ? "bg-brand-50 text-brand-700" : cur.lockedAt ? "bg-warn-bg text-warn" : "bg-canvas text-ink-2")}>
+                  {cur.ackAt ? "รับทราบแล้ว" : cur.releasedAt ? "แจ้งผลแล้ว · รอรับทราบ" : cur.lockedAt ? "ล็อกแล้ว · รอแจ้งผล" : cur.finalRating == null ? "หัวหน้ายังไม่ส่งแบบประเมิน" : "รอ Calibration"}</span>
+                {cur.lockedAt && !cur.releasedAt && <Button size="sm" variant="ghost" disabled={busy} onClick={() => act(() => liveApi.lockCalibration([cur.planId], false), () => "ปลดล็อกแล้ว")}>ปลดล็อก</Button>}
+              </div>
+            )}
           </Card>
 
           <Card className="p-5">
