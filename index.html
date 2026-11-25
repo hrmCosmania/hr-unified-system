@@ -12417,6 +12417,19 @@ body.app-home .app-shell{display:none!important}
 @media(max-width:900px){.al-grid,.al-tools{grid-template-columns:repeat(3,minmax(0,1fr))}.al-panel{padding:22px 10px 20px;border-radius:22px}.al-app img{width:80px;height:80px;border-radius:19px}.al-tools .al-app img{width:64px;height:64px;border-radius:15px}.al-app .al-title{font-size:14px}.al-app .al-link{right:calc(50% - 50px)}}
 @media(max-width:600px){.al-grid{gap:18px 6px}.al-app img{width:70px;height:70px;border-radius:17px}.al-tools .al-app img{width:56px;height:56px;border-radius:14px}.al-app .al-title{font-size:13px}.al-app .al-en{font-size:11px}.al-app .al-link{right:calc(50% - 46px)}}
 @media(max-width:330px){.al-app img{width:60px;height:60px}}  /* คง 3x3 บนจอเล็ก */
+/* เมนูซ้าย: ใช้ไอคอนชุดเดียวกับหน้าเลือกหมวดงาน (แทนอีโมจิ) */
+.tabbar > .tab-btn > span[aria-hidden]:first-child{display:inline-block;flex:none;width:26px;height:26px;border-radius:7px;background-size:cover;background-position:center;box-shadow:0 2px 6px rgba(15,23,42,.18)}
+.tabbar > .tab-btn[data-tab="recruitment"] > span[aria-hidden]:first-child{font-size:0;color:transparent;background-image:url(/app-icons/rec.png)}
+.tabbar > .tab-btn[data-tab="onboarding"] > span[aria-hidden]:first-child{font-size:0;color:transparent;background-image:url(/app-icons/dashboard.png)}
+.tabbar > .tab-btn[data-tab="orgchart"] > span[aria-hidden]:first-child{font-size:0;color:transparent;background-image:url(/app-icons/employees.png)}
+.tabbar > .tab-btn[data-tab="jobpositions"] > span[aria-hidden]:first-child{font-size:0;color:transparent;background-image:url(/app-icons/documents.png)}
+.tabbar > .tab-btn[data-tab="employees"] > span[aria-hidden]:first-child{font-size:0;color:transparent;background-image:url(/app-icons/employees.png)}
+.tabbar > .tab-btn[data-tab="reports"] > span[aria-hidden]:first-child{font-size:0;color:transparent;background-image:url(/app-icons/reports.png)}
+.tabbar > .tab-btn[data-tab="documents"] > span[aria-hidden]:first-child{font-size:0;color:transparent;background-image:url(/app-icons/documents.png)}
+.tabbar > .tab-btn[data-tab="settings"] > span[aria-hidden]:first-child{font-size:0;color:transparent;background-image:url(/app-icons/settings.png)}
+.tabbar > .tab-btn[data-tab="performance-tracking"] > span[aria-hidden]:first-child{font-size:0;color:transparent;background-image:url(/app-icons/pm.png)}
+.tabbar > .tab-btn[data-tab="training"] > span[aria-hidden]:first-child{font-size:0;color:transparent;background-image:url(/app-icons/ld.png)}
+.tabbar > .tab-btn[data-tab="payroll-app"] > span[aria-hidden]:first-child{font-size:0;color:transparent;background-image:url(/app-icons/cb.png)}
 /* หัวเมนูด้านซ้าย: หมวดงานที่เลือก + ปุ่มกลับหน้าเลือกหมวด */
 .al-current{order:-1;display:flex;flex-direction:column;gap:8px;padding:4px 4px 12px;margin-bottom:6px;border-bottom:1px solid var(--v4-border)}
 .al-current button{font-family:inherit;font-size:13px;cursor:pointer;align-self:flex-start;border:1px solid var(--v4-border);background:var(--v4-surface-2);color:var(--v4-text);border-radius:999px;padding:5px 12px}
