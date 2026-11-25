@@ -12278,8 +12278,8 @@ window.payrollAttendanceFromDocs = function(docs, hrCodes){
   'use strict';
   var TAB = 'payroll-app';
   var next = new URLSearchParams(location.search).get('next') || '';
-  if(/^\/(payroll|training|performance)\//.test(next)){
-    var st = document.getElementById('authGateStatus'); if(st) st.textContent = /^\/training\//.test(next) ? 'เข้าสู่ระบบเพื่อไปที่ระบบฝึกอบรมและพัฒนา' : /^\/performance\//.test(next) ? 'เข้าสู่ระบบเพื่อไปที่ GrowTogether (บริหารผลการปฏิบัติงาน)' : 'เข้าสู่ระบบเพื่อไปที่ระบบเงินเดือน';
+  if(/^\/(payroll|training|performance|relations)\//.test(next)){
+    var st = document.getElementById('authGateStatus'); if(st) st.textContent = /^\/training\//.test(next) ? 'เข้าสู่ระบบเพื่อไปที่ระบบฝึกอบรมและพัฒนา' : /^\/performance\//.test(next) ? 'เข้าสู่ระบบเพื่อไปที่ GrowTogether (บริหารผลการปฏิบัติงาน)' : /^\/relations\//.test(next) ? 'เข้าสู่ระบบเพื่อไปที่ PeopleConnect (พนักงานสัมพันธ์)' : 'เข้าสู่ระบบเพื่อไปที่ระบบเงินเดือน';
     supabaseClient.auth.onAuthStateChange(function(ev, session){ if(session && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION')) location.replace(next); });
   }
   function install(){
@@ -12447,8 +12447,8 @@ html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-
       items:['GrowTogether: เป้าหมาย/KPI · Check-in · Feedback · แบบประเมิน · 360° · IDP · Calibration'] },
     { key:'ld', n:4, icon:'🎓', c:'#d97706', th:'การฝึกอบรมและพัฒนา', en:'Learning & Development (L&D)', link:'/training/',
       items:['หลักสูตรและอบรม','แผนพัฒนา IDP','สมรรถนะ','เส้นทางอาชีพ','Talent & Succession'] },
-    { key:'er', n:5, icon:'💞', c:'#db2777', th:'พนักงานสัมพันธ์และความผูกพัน', en:'Employee Relations & Engagement',
-      tabs:['er-bday'], items:['วันเกิดพนักงาน'] },
+    { key:'er', n:5, icon:'💞', c:'#db2777', th:'พนักงานสัมพันธ์และความผูกพัน', en:'Employee Relations & Engagement', link:'/relations/',
+      items:['People Journey','สื่อสารองค์กร','กิจกรรม','แบบสำรวจความผูกพัน','การยกย่อง','Wellbeing','รับฟังและช่วยเหลือ','ER Case'] },
   ];
   var COMMON = { key:'common', icon:'🧰', c:'#0ea5e9', th:'เครื่องมือส่วนกลาง', en:'Shared tools', tabs:['employees','reports','documents'] };
   /* ตั้งค่าองค์กร = ตั้งค่าระบบ + ผังองค์กร + จัดการตำแหน่งงาน (ปุ่มที่ 9 ในเครื่องมือส่วนกลาง) */
@@ -12476,7 +12476,7 @@ html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-
     css += '\nbody:not([data-app="er"]) .tabbar > .tab-btn[data-al="er-bday"]{display:none!important}'
 
       + '\nbody[data-app="er"] #sideSub-onboarding,body[data-app="er"] #view-onboarding .subnav{display:none!important}'
-      + '\nbody[data-app="rec"] #sideSub-onboarding > [data-k="birthday"],body[data-app="rec"] #onboardSubBtnBirthday{display:none!important}';
+      ;  // วันเกิดกลับมาอยู่ใต้ ติดตามการเริ่มงาน (หมวด 1) — หมวด 5 เป็นแอปแยก PeopleConnect ER (/relations/)
     document.getElementById('app-launcher-filter').textContent = css;
   }
 
@@ -12556,6 +12556,7 @@ html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-
   }
   // หมวดสรรหา: ไม่แสดงหน้าวันเกิด (อยู่หมวดพนักงานสัมพันธ์) → กลับไป Checklist
   function fixRecOnboarding(t){
+    return;  // วันเกิดแสดงในหมวด 1 ได้แล้ว (หมวด 5 เป็นแอปแยก)
     if(t !== 'onboarding' || current !== 'rec') return;
     var bp = document.getElementById('onboarding-sub-birthday');
     if(bp && bp.classList.contains('active') && typeof window.showOnboardingSubtab === 'function') window.showOnboardingSubtab('checklist');

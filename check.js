@@ -67,7 +67,7 @@ if (fs.existsSync('api')) {
 }
 
 /* ---------- 1c) sub-apps built with Vite: /training (apps/training) และ /performance (apps/performance) ---------- */
-[['training', 'แอปฝึกอบรม', 'vite.config.js'], ['performance', 'GrowTogether', 'vite.config.ts']].forEach(([app, label, cfg]) => {
+[['training', 'แอปฝึกอบรม', 'vite.config.js'], ['performance', 'GrowTogether', 'vite.config.ts'], ['relations', 'PeopleConnect ER', 'vite.config.js']].forEach(([app, label, cfg]) => {
   if (!fs.existsSync(`apps/${app}/src`)) return;
   const idx = fs.existsSync(`${app}/index.html`) ? fs.readFileSync(`${app}/index.html`, 'utf8') : '';
   if (!idx) { bad(`ไม่พบ ${app}/index.html — สั่ง build: npm --prefix apps/${app} run build`); return; }
@@ -86,7 +86,7 @@ if (fs.existsSync('shared')) {
   let okAll = true;
   files.forEach((f) => { try { new vm.Script(fs.readFileSync(path.join('shared', f), 'utf8'), { filename: 'shared/' + f }); } catch (e) { okAll = false; bad(`shared/${f}: ${e.message}`); } });
   if (okAll) ok(`shared/: ไวยากรณ์ถูกต้องทั้ง ${files.length} ไฟล์`);
-  ['payroll/index.html', 'apps/training/index.html', 'apps/performance/index.html'].forEach((f) => {
+  ['payroll/index.html', 'apps/training/index.html', 'apps/performance/index.html', 'apps/relations/index.html'].forEach((f) => {
     if (fs.existsSync(f) && !fs.readFileSync(f, 'utf8').includes('/shared/company.js')) bad(`${f} ไม่ได้โหลด /shared/company.js (บริษัทที่ทำงาน)`);
   });
 }

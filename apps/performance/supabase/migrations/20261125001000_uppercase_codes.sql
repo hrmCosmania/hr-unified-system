@@ -32,3 +32,9 @@ revoke execute on function public.hr_db_employee_rows() from public, anon, authe
 
 -- แก้รหัสตัวพิมพ์เล็กในข้อมูลระบบ HR (พนักงาน, หัวหน้างาน, ผังองค์กร, ทดลองงาน) — ทำครั้งเดียว
 -- update public.hr_db set data = replace(data::text, '"<รหัสเดิม>"', '"<รหัสใหม่>"')::jsonb where id = 'main';
+
+-- ความปลอดภัย (25 พ.ย. 2026): ฟังก์ชันใน schema pm เรียกได้เฉพาะผู้ที่ล็อกอิน (ไม่ให้ anon/public)
+revoke execute on all functions in schema pm from public, anon;
+grant execute on all functions in schema pm to authenticated, service_role;
+revoke execute on function pm.apply_hr_db() from authenticated;
+alter default privileges in schema pm revoke execute on functions from public;
