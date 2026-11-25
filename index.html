@@ -10,7 +10,7 @@ try{if(localStorage.getItem("sb-zkqewnwulnugbhndtnkr-auth-token"))document.docum
 <title>PeopleConnect — HR Management System v4.7</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&amp;family=Prompt:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/namecard-assets/qrgen.js"></script>
@@ -12935,5 +12935,95 @@ html.theme-soft .cs-box{background:#eef0f4;border-color:transparent}
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install();
 })();
 </script>
+<style id="corporate-design-system">
+/* =====================================================================
+   CMN · CIL Enterprise HR Platform — Corporate Design System (2026-11-25)
+   ปรับ UX/UI แอพหลักตามระบบดีไซน์ Navy/Blue/Teal สำหรับองค์กรขนาดใหญ่
+   - ไม่แก้โครงสร้าง HTML หรือรูปแบบปุ่ม (ขนาด/รัศมีขอบ/ระยะห่างเดิมของ .btn-* คงไว้ตามเดิม)
+     เซ็ตเฉพาะสี/เงาให้ตรงจานสี เพื่อให้ตัว "ฟอร์แมตปุ่ม" แบบเดิมไม่เปลี่ยน
+   - ไม่แตะธีม "แยกโหมดมืด/สว่าง" ที่มีอยู่ ใช้ตัวแปร CSS เดิม (--v4-*, --cmn-color, --cil-color, --gold, --module-accent)
+     แก้ "ค่า" ของตัวแปรให้เป็นจานสีองค์กร ของเดิมที่ผูกกับตัวแปรเหล่านี้จึงเปลี่ยนตามอัตโนมัติ
+   - วาง <style> นี้ไว้ท้ายสุดของเอกสาร เพื่อให้ชนะกฎเดิมทุกชั้น (v4 / v42 / v46 / v47) ที่ซ้อนกันมาก่อนหน้านี้
+   ===================================================================== */
+
+/* ---------- 1) ฟอนต์: Prompt (ไทย) + Inter (อังกฤษ) ---------- */
+:root{
+  --font-ui:'Prompt','IBM Plex Sans Thai','Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --font-data:'Inter','Prompt','IBM Plex Sans Thai',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+
+/* ---------- 2) จานสีองค์กร: Navy / Blue / Teal (ทับตัวแปรเดิม ของเดิมที่ผูกกับตัวแปรนี้จะเปลี่ยนสีอัตโนมัติ) ---------- */
+:root{
+  --cmn-color:#1677D2; --cmn-bg:#E6F4FB; --cil-color:#00A3B4; --cil-bg:#F0F7FC;
+  --gold:#13B8C4; /* ใช้แทนสี "ทุกบริษัท" / จุดเน้นรอง เดิมเป็นสีทอง เปลี่ยนเป็น Accent Teal ตามจานสีใหม่ */
+  --danger:#E65B67; --ok:#18B77A; --warn:#F5A623; --info:#368CE5;
+  --v4-success:#18B77A; --v4-warning:#F5A623; --v4-danger:#E65B67; --v4-info:#368CE5;
+  --corp-navy-1:#0D2B45; --corp-navy-2:#123B5D; --corp-blue-1:#1677D2; --corp-blue-2:#2589E8;
+  --corp-teal-1:#00A3B4; --corp-teal-2:#13B8C4; --corp-text:#142B45; --corp-text-2:#60758A; --corp-muted:#8A9BAC;
+  --corp-bg:#F4F8FC; --corp-light-blue:#E6F4FB;
+}
+/* โทนสีเดียวกันทุกโมดูล (ตามหลัก Design Consistency — ไม่สร้างอัตลักษณ์สีแยกรายโมดูล) */
+body[data-module="dashboard"],body[data-module="employees"],body[data-module="orgchart"],body[data-module="onboarding"],
+body[data-module="jobpositions"],body[data-module="training"],body[data-module="reports"],body[data-module="settings"],
+body[data-module="performance-tracking"],body[data-module="recruitment"]{
+  --module-accent:var(--corp-blue-1)!important;--module-accent-soft:rgba(22,119,210,.14)!important;--module-accent-border:rgba(22,119,210,.45)!important;
+}
+
+/* ---------- 3) พื้นหลังพื้นที่ทำงาน: ฟ้าเทาอ่อน ---------- */
+html.theme-soft body{background:var(--corp-bg)!important}
+
+/* ---------- 4) แถบเมนูซ้าย (Sidebar): กรมท่าเข้มเสมอ ไม่ว่าจะสลับธีมมืด/สว่าง ---------- */
+html.theme-soft body .app-shell > .tabbar,html:not(.theme-soft) body .app-shell > .tabbar,.app-shell > .tabbar{
+  background:linear-gradient(180deg,var(--corp-navy-2),var(--corp-navy-1))!important;
+  -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+  border-right:0!important;box-shadow:2px 0 18px rgba(13,43,69,.22)!important;
+}
+#tabbar,#tabbar *{color:#C9D9EA}
+#tabbar .tab-btn{color:#C9D9EA!important;background:transparent!important}
+#tabbar .tab-btn:hover:not(.active){background:rgba(255,255,255,.08)!important;color:#fff!important}
+#tabbar .tab-btn.active{background:var(--corp-teal-1)!important;color:#fff!important;box-shadow:0 2px 10px rgba(0,163,180,.35)!important;font-weight:600}
+#tabbar .tab-label-en{color:#7FA0C4!important}
+#tabbar .tab-btn.active .tab-label-en{color:rgba(255,255,255,.82)!important}
+#tabbar .sidebar-profile{background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.14)!important}
+#tabbar .sidebar-profile-name{color:#fff!important}
+#tabbar .sidebar-profile-role{color:#9FB7D1!important}
+#tabbar .sidebar-avatar{background:linear-gradient(135deg,var(--corp-teal-1),var(--corp-blue-1))!important}
+/* หัวเมนู: ชื่อหมวดงานที่เลือก + ปุ่ม "หมวดงานทั้งหมด" (มาจาก script#app-launcher-script) */
+#tabbar #alCurrent{border-bottom-color:rgba(255,255,255,.14)!important}
+#tabbar .al-current button{background:rgba(255,255,255,.1)!important;border-color:rgba(255,255,255,.22)!important;color:#fff!important}
+#tabbar .al-current button:hover{border-color:var(--corp-teal-2)!important}
+#tabbar .al-cur-name{color:#fff!important}
+#tabbar .al-cur-name small{color:#9FB7D1!important}
+/* เมนูย่อย (side-submenu-script) บนพื้นกรมท่า */
+#tabbar .side-sub{border-left-color:rgba(255,255,255,.16)!important}
+#tabbar .side-sub button{color:#B8CCE2!important}
+#tabbar .side-sub button:hover{background:rgba(255,255,255,.08)!important;color:#fff!important}
+#tabbar .side-sub button.on{background:rgba(0,163,180,.22)!important;color:#fff!important}
+#tabbar .side-sub button.on::before{background:var(--corp-teal-2)!important}
+
+/* ---------- 5) หัวเว็บ (Topbar): พื้นขาว ตัวอักษร/โลโก้โทนกรมท่า ---------- */
+html.theme-soft body .brand .mark{background:linear-gradient(135deg,var(--corp-navy-2),var(--corp-blue-1))!important;box-shadow:0 2px 10px rgba(22,119,210,.3)!important}
+html.theme-soft .brand h1,html.theme-soft body .brand h1{color:var(--corp-text)!important}
+html.theme-soft body .brand p{color:var(--corp-text-2)!important}
+
+/* ---------- 6) ปุ่ม: คงรูปแบบเดิม (ขนาด/รัศมี/ระยะห่าง) เปลี่ยนเฉพาะสี ---------- */
+html.theme-soft body :is(.btn-primary,.btn-green,.btn-gold,.btn-purple,#view-employees .btn-primary){
+  background:var(--corp-blue-1)!important;box-shadow:0 2px 8px rgba(22,119,210,.3)!important;
+}
+html.theme-soft body :is(.btn-primary,.btn-green,.btn-gold,.btn-purple):hover{background:#115fab!important;box-shadow:0 3px 12px rgba(22,119,210,.35)!important}
+html.theme-soft body .btn-danger{background:rgba(230,91,103,.12)!important;color:#C23B47!important;border-color:rgba(230,91,103,.35)!important}
+html.theme-soft body :is(input,select,textarea):focus,html.theme-soft body .global-search input:focus{
+  border-color:var(--corp-blue-1)!important;box-shadow:0 0 0 3px rgba(22,119,210,.18)!important;
+}
+
+/* ---------- 7) ป้ายบริษัท (Badge) ---------- */
+html.theme-soft body .badge.CMN{background:var(--corp-light-blue)!important;color:var(--corp-blue-1)!important}
+html.theme-soft body :is(.badge.CIL,.badge.active){background:#E3F6F7!important;color:#007E8A!important}
+
+/* ---------- 8) ปุ่มเลือกบริษัทบนหัวเว็บ (company-toggle) ---------- */
+html.theme-soft body .cf-btn.active[data-c="CMN"]{background:var(--corp-blue-1)!important;color:#fff!important}
+html.theme-soft body .cf-btn.active[data-c="CIL"]{background:var(--corp-teal-1)!important;color:#fff!important}
+html.theme-soft body .cf-btn.active[data-c="ALL"]{background:var(--corp-navy-2)!important;color:#fff!important}
+</style>
 </body>
 </html>
