@@ -2,7 +2,9 @@
 
 <html lang="th">
 <head>
-<script>try{if(localStorage.getItem("hr_theme")!=="dark")document.documentElement.classList.add("theme-soft");}catch(e){document.documentElement.classList.add("theme-soft");}</script>
+<script>try{if(localStorage.getItem("hr_theme")!=="dark")document.documentElement.classList.add("theme-soft");}catch(e){document.documentElement.classList.add("theme-soft");}
+/* มีบัญชีที่ล็อกอินค้างไว้ (เช่น กลับมาจากแอปย่อย) → แสดงหน้ากำลังโหลดแทนฟอร์มล็อกอิน จนกว่าจะตรวจ session และโหลดข้อมูลเสร็จ */
+try{if(localStorage.getItem("sb-zkqewnwulnugbhndtnkr-auth-token"))document.documentElement.classList.add("auth-checking");}catch(e){}</script>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>PeopleConnect — HR Management System v4.7</title>
@@ -218,6 +220,15 @@
   .stat-count{background:var(--cmn-bg); color:var(--cmn-color); padding:2px 8px; border-radius:20px; font-weight:700; font-size:11.5px;}
   .auth-gate{position:fixed; inset:0; z-index:5000; display:flex; align-items:center; justify-content:center; background:var(--navy-950); padding:16px;}
   .auth-gate.hidden{display:none;}
+  .auth-gate-loading{display:none; flex-direction:column; align-items:center; gap:16px; color:#e8edf7;}
+  html.auth-checking .auth-gate-loading{display:flex;}
+  html.auth-checking .auth-gate-box{display:none!important;}
+  .agl-mark{width:56px; height:56px; border-radius:16px; background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:20px; box-shadow:0 12px 28px -10px rgba(37,99,235,.7);}
+  .agl-spin{width:26px; height:26px; border-radius:50%; border:3px solid rgba(148,163,184,.35); border-top-color:#3b82f6; animation:aglSpin .8s linear infinite;}
+  .agl-text{font-size:14px; opacity:.85;}
+  html.theme-soft .auth-gate-loading{color:#1d2230;}
+  @keyframes aglSpin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.agl-spin{animation-duration:2.4s}}
   .auth-gate-box{width:100%; max-width:360px; background:var(--navy-900); border:1px solid var(--navy-700); border-radius:14px; padding:28px; text-align:center; color:#fff;}
   .auth-gate-brand{width:44px; height:44px; margin:0 auto 12px; border-radius:10px; background:var(--cmn-color,#3b82f6); display:flex; align-items:center; justify-content:center; font-weight:700;}
   .auth-gate-box h2{margin:0 0 4px; font-size:18px;}
@@ -360,6 +371,7 @@ button,.btn{font-weight:500!important;letter-spacing:-.006em}.btn-primary,.btn-g
 </style></head>
 <body>
 <div id="authGate" class="auth-gate">
+  <div class="auth-gate-loading" id="authGateLoading" role="status" aria-live="polite"><div class="agl-mark">HR</div><div class="agl-spin" aria-hidden="true"></div><div class="agl-text" id="authGateLoadingText">กำลังโหลดข้อมูล…</div></div>
   <div class="auth-gate-box">
     <div class="auth-gate-brand">HR</div>
     <h2>เข้าสู่ระบบ HR รวมศูนย์</h2>
@@ -6920,8 +6932,8 @@ body{background:transparent!important}
   var cloudReady = false;
 
   function setSyncLabel(text){ var elLabel=document.getElementById('cloudSyncLabel'); if(elLabel) elLabel.textContent=text; }
-  function showAuthGate(){ document.getElementById('authGate').classList.remove('hidden'); }
-  function hideAuthGate(){ document.getElementById('authGate').classList.add('hidden'); }
+  function showAuthGate(){ document.documentElement.classList.remove('auth-checking'); document.getElementById('authGate').classList.remove('hidden'); }
+  function hideAuthGate(){ document.getElementById('authGate').classList.add('hidden'); document.documentElement.classList.remove('auth-checking'); }
   function setAuthError(msg){ var elErr=document.getElementById('authGateError'); if(elErr) elErr.textContent = msg||''; }
   function setAuthStatus(msg){ var elStatus=document.getElementById('authGateStatus'); if(elStatus) elStatus.textContent = msg||''; }
 
@@ -7005,10 +7017,15 @@ body{background:transparent!important}
   document.getElementById('authGatePassword').addEventListener('keydown', function(e){ if(e.key==='Enter') authGateLogin(); });
 
   setSyncLabel('กำลังตรวจสอบสถานะเข้าสู่ระบบ...');
+  // เครือข่ายช้า: บอกผู้ใช้ · ถ้าตรวจ session ไม่เสร็จใน 15 วินาที ให้แสดงฟอร์มล็อกอิน (ถ้ามี session แล้ว รอโหลดข้อมูลต่อ)
+  var slowTimer = setTimeout(function(){ var t = document.getElementById('authGateLoadingText'); if(t) t.textContent = 'เครือข่ายช้า กำลังโหลดข้อมูล…'; }, 4000);
+  var sessionKnown = false;
+  var giveUpTimer = setTimeout(function(){ if(!sessionKnown) showAuthGate(); }, 15000);
   supabaseClient.auth.getSession().then(function(res){
+    sessionKnown = true;
     if(res.data && res.data.session){ onAuthenticated(); }
-    else { setSyncLabel('ยังไม่ได้เข้าสู่ระบบ'); showAuthGate(); }
-  });
+    else { clearTimeout(slowTimer); clearTimeout(giveUpTimer); setSyncLabel('ยังไม่ได้เข้าสู่ระบบ'); showAuthGate(); }
+  }).catch(function(){ clearTimeout(slowTimer); clearTimeout(giveUpTimer); showAuthGate(); });
 })();
 </script>
 
