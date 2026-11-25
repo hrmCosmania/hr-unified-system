@@ -12397,7 +12397,7 @@ body.app-home .app-shell{display:none!important}
 .al-panel{background:var(--v4-surface);border:1px solid var(--v4-border);border-radius:26px;padding:30px 24px 26px}
 .al-panel + .al-panel{margin-top:18px}
 .al-panel h3{margin:0 0 18px;font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--v4-muted)}
-.al-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:22px 12px}
+.al-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px 16px;max-width:760px;margin:0 auto}  /* 3x3 */
 .al-app{position:relative;display:flex!important;flex-direction:column;align-items:center!important;text-align:center!important;gap:0;font-family:inherit;color:inherit;cursor:pointer;
   background:transparent!important;border:0!important;box-shadow:none!important;padding:6px 4px;border-radius:18px;white-space:normal!important;-webkit-tap-highlight-color:transparent}
 .al-app *{text-align:center!important;white-space:normal!important}
@@ -12416,7 +12416,7 @@ body.app-home .app-shell{display:none!important}
 .al-tools .al-app .al-title{font-size:14.5px}
 @media(max-width:900px){.al-grid,.al-tools{grid-template-columns:repeat(3,minmax(0,1fr))}.al-panel{padding:22px 10px 20px;border-radius:22px}.al-app img{width:80px;height:80px;border-radius:19px}.al-tools .al-app img{width:64px;height:64px;border-radius:15px}.al-app .al-title{font-size:14px}.al-app .al-link{right:calc(50% - 50px)}}
 @media(max-width:600px){.al-grid{gap:18px 6px}.al-app img{width:70px;height:70px;border-radius:17px}.al-tools .al-app img{width:56px;height:56px;border-radius:14px}.al-app .al-title{font-size:13px}.al-app .al-en{font-size:11px}.al-app .al-link{right:calc(50% - 46px)}}
-@media(max-width:330px){.al-grid,.al-tools{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:330px){.al-app img{width:60px;height:60px}}  /* คง 3x3 บนจอเล็ก */
 /* หัวเมนูด้านซ้าย: หมวดงานที่เลือก + ปุ่มกลับหน้าเลือกหมวด */
 .al-current{order:-1;display:flex;flex-direction:column;gap:8px;padding:4px 4px 12px;margin-bottom:6px;border-bottom:1px solid var(--v4-border)}
 .al-current button{font-family:inherit;font-size:13px;cursor:pointer;align-self:flex-start;border:1px solid var(--v4-border);background:var(--v4-surface-2);color:var(--v4-text);border-radius:999px;padding:5px 12px}
@@ -12527,20 +12527,20 @@ html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-
     var cf = 'ALL'; try { cf = companyFilter; } catch(e){}
     var date = now.toLocaleDateString('th-TH', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
     box.innerHTML = '<div class="al-hero"><div><h2>เลือกหมวดงาน HR</h2><p>'+E(date)+' · '+(cf === 'ALL' ? 'ทุกบริษัท (CMN + CIL)' : 'บริษัท '+E(cf))+' · ทุกหมวดใช้ฐานข้อมูลพนักงานชุดเดียวกัน</p></div><div class="al-stats">'+stats()+'</div></div>'
-      + '<section class="al-panel"><h3>หมวดงาน HR</h3><div class="al-grid">' + APPS.map(function(a){
+      /* หมวดงานและเครื่องมือส่วนกลางอยู่ในแผงเดียวกัน (01–09) */
+      + '<section class="al-panel"><div class="al-grid">' + APPS.map(function(a){
           return '<div class="al-cell"><button type="button" class="al-app" style="--c:'+a.c+'" onclick="hrSelectApp(\''+a.key+'\')" title="'+E(a.items.join(' · '))+(a.link ? ' (เปิดแอปแยก)' : '')+'">'
             + '<img src="'+ICON(a.key)+'" alt="" width="104" height="104">'
             + (a.link ? '<span class="al-link" aria-hidden="true">↗</span>' : '')
             + '<span class="al-num">'+String(a.n).padStart(2,'0')+'</span>'
             + '<span class="al-title">'+E(a.th)+'</span><span class="al-en">'+E(a.en)+'</span></button>'
             + '</div>';
-        }).join('') + '</div></section>'
-      + '<section class="al-panel"><h3>เครื่องมือส่วนกลาง</h3><div class="al-grid al-tools">' + TOOLS.map(function(t, i){
+        }).join('') + TOOLS.map(function(t, i){
           var info = TOOL_INFO[t[0]] || [t[1], '', '#64748b'];
-          return '<button type="button" class="al-app" style="--c:'+info[2]+'" onclick="hrSelectApp(\''+t[2]+'\',\''+t[0]+'\')">'
-            + '<img src="'+ICON(t[0])+'" alt="" width="76" height="76">'
-            + '<span class="al-num">'+(APPS.length + i + 1)+'</span>'
-            + '<span class="al-title">'+E(info[0])+'</span><span class="al-en">'+E(info[1])+'</span></button>';
+          return '<div class="al-cell"><button type="button" class="al-app" style="--c:'+info[2]+'" onclick="hrSelectApp(\''+t[2]+'\',\''+t[0]+'\')">'
+            + '<img src="'+ICON(t[0])+'" alt="" width="104" height="104">'
+            + '<span class="al-num">'+String(APPS.length + i + 1).padStart(2,'0')+'</span>'
+            + '<span class="al-title">'+E(info[0])+'</span><span class="al-en">'+E(info[1])+'</span></button></div>';
         }).join('') + '</div></section>';
   }
 
