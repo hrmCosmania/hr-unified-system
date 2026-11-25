@@ -12397,7 +12397,7 @@ body.app-home .app-shell{display:none!important}
 .al-panel{background:var(--v4-surface);border:1px solid var(--v4-border);border-radius:26px;padding:30px 24px 26px}
 .al-panel + .al-panel{margin-top:18px}
 .al-panel h3{margin:0 0 18px;font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--v4-muted)}
-.al-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px 16px;max-width:760px;margin:0 auto}  /* 3x3 */
+.al-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:26px 16px;max-width:980px;margin:0 auto}  /* 4 คอลัมน์ (จอเล็กเหลือ 3) */
 .al-app{position:relative;display:flex!important;flex-direction:column;align-items:center!important;text-align:center!important;gap:0;font-family:inherit;color:inherit;cursor:pointer;
   background:transparent!important;border:0!important;box-shadow:none!important;padding:6px 4px;border-radius:18px;white-space:normal!important;-webkit-tap-highlight-color:transparent}
 .al-app *{text-align:center!important;white-space:normal!important}
@@ -12463,15 +12463,18 @@ html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-
     { key:'er', n:5, icon:'💞', c:'#db2777', th:'พนักงานสัมพันธ์และความผูกพัน', en:'Employee Relations & Engagement', link:'/relations/',
       items:['People Journey','สื่อสารองค์กร','กิจกรรม','แบบสำรวจความผูกพัน','การยกย่อง','Wellbeing','รับฟังและช่วยเหลือ','ER Case'] },
   ];
-  var COMMON = { key:'common', icon:'🧰', c:'#0ea5e9', th:'เครื่องมือส่วนกลาง', en:'Shared tools', tabs:['employees','reports','documents'] };
+  /* ปุ่ม 06–08 เปิดเมนูของตัวเอง (ไม่มีกลุ่ม "เครื่องมือส่วนกลาง" แล้ว) */
+  var EMP = { key:'emp', icon:'👥', c:'#4f46e5', th:'ฐานข้อมูลพนักงาน', en:'Employee Database', tabs:['employees'] };
+  var ANA = { key:'analytics', icon:'📊', c:'#0f766e', th:'วิเคราะห์ข้อมูล HR', en:'HR Analytics', tabs:['reports'] };
+  var DOCS = { key:'docs', icon:'📄', c:'#f59e0b', th:'เอกสารอัตโนมัติ', en:'Document Automation', tabs:['documents'] };
   /* ตั้งค่าองค์กร = ตั้งค่าระบบ + ผังองค์กร + จัดการตำแหน่งงาน (ปุ่มที่ 9 ในเครื่องมือส่วนกลาง) */
   var ORG = { key:'org', icon:'⚙️', c:'#6b7280', th:'ตั้งค่าองค์กร', en:'Organization Settings', tabs:['settings','orgchart','jobpositions'] };
-  var ALL = APPS.concat([COMMON, ORG]);
+  var ALL = APPS.concat([EMP, ANA, DOCS, ORG]);
   /* ไอคอนแบบ Apple (ไฟล์ในโฟลเดอร์ /app-icons/ ตัดจากภาพต้นแบบของเจ้าของระบบ) */
-  var ICON = function(k){ return '/app-icons/' + (k === 'common' ? 'dashboard' : k === 'org' ? 'settings' : k) + '.png'; };
+  var ICON = function(k){ return '/app-icons/' + ({ emp:'employees', analytics:'reports', docs:'documents', org:'settings' }[k] || k) + '.png'; };
   var TOOL_INFO = { employees:['ฐานข้อมูลพนักงาน','Employee Database','#4f46e5'], reports:['วิเคราะห์ข้อมูล HR','HR Analytics','#0f766e'], documents:['เอกสารอัตโนมัติ','Document Automation','#f59e0b'], settings:['ตั้งค่าองค์กร','ผังองค์กร · ตำแหน่งงาน · ระบบ','#6b7280'] };
   /* [แท็บ, ป้าย, หมวด] — ตั้งค่าองค์กรเปิดหมวด org (ตั้งค่า + ผังองค์กร + ตำแหน่งงาน) */
-  var TOOLS = [['employees','👥 ฐานข้อมูลพนักงาน','common'],['reports','📊 วิเคราะห์ข้อมูล HR','common'],['documents','📄 เอกสารอัตโนมัติ','common'],['settings','⚙️ ตั้งค่าองค์กร','org']];
+  var TOOLS = [['employees','👥 ฐานข้อมูลพนักงาน','emp'],['reports','📊 วิเคราะห์ข้อมูล HR','analytics'],['documents','📄 เอกสารอัตโนมัติ','docs'],['settings','⚙️ ตั้งค่าองค์กร','org']];
   var byKey = function(k){ return ALL.filter(function(a){ return a.key === k; })[0]; };
   var E = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); };
   var store = {
