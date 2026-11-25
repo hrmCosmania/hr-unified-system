@@ -12,7 +12,7 @@ const bandScore = (p: number) => (p >= 115 ? 5 : p >= 105 ? 4 : p >= 95 ? 3 : p 
 const KPI_W = 60, COMP_W = 40;
 
 export default function Review() {
-  const { role, goals, toast, liveStatus, subject: liveSubject, managerOf, cycle, ensurePlanId, posComps } = useStore();
+  const { role, goals, toast, liveStatus, subject: liveSubject, managerOf, cycle, ensurePlanId, posComps, posKpis, goalsFromPositionKpis } = useStore();
   const ready = liveStatus === "ready";
   // Competency ตามตำแหน่งจากแอปหลัก (JD/KPI/Competency) — ถ้ายังไม่มี ใช้ชุดตัวอย่าง
   const compFromHr = ready && posComps.length > 0;
@@ -124,6 +124,23 @@ export default function Review() {
           {/* KPI */}
           <Card className="overflow-hidden">
             <div className="px-5 pt-5"><CardTitle action={<span className="text-xs text-ink-3">น้ำหนัก {KPI_W}%</span>}>ส่วนที่ 1 · ผลงานตามเป้าหมาย (KPI)</CardTitle></div>
+            {ready && goals.length === 0 && (
+              <div className="px-5 pb-5">
+                {posKpis.length === 0
+                  ? <p className="text-sm text-ink-3">ยังไม่มีเป้าหมาย และตำแหน่ง {liveSubject?.positionCode} ยังไม่มี KPI ในระบบ HR หลัก — ตั้งเป้าหมายเองที่หน้า “เป้าหมาย”</p>
+                  : <>
+                    <p className="text-sm text-ink-2 mb-3">ยังไม่มีเป้าหมายในรอบนี้ · KPI ตามตำแหน่ง {liveSubject?.positionCode} จากระบบ HR หลัก ({posKpis.length} ข้อ) — สร้างเป็นเป้าหมายก่อน แล้วจึงให้คะแนนได้</p>
+                    <ul className="divide-y divide-line rounded-xl border border-line mb-3">
+                      {posKpis.map((k) => (
+                        <li key={k.code} className="px-4 py-3 text-sm">
+                          <p className="font-medium">{k.name} {k.weight != null && <span className="text-xs text-ink-3 font-normal">· {k.weight}%</span>}</p>
+                          <p className="text-xs text-ink-3 mt-0.5">{[k.target && `เป้าหมาย ${k.target}`, k.formula, k.frequency].filter(Boolean).join(" · ")}</p>
+                        </li>))}
+                    </ul>
+                    <Button onClick={goalsFromPositionKpis}>สร้างเป้าหมายจาก KPI ตามตำแหน่ง</Button>
+                  </>}
+              </div>
+            )}
             <div className="divide-y divide-line">
               {goals.map((g) => {
                 const p = progressOf(g), sug = bandScore(p);

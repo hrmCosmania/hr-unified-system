@@ -47,6 +47,8 @@ interface Store {
   addGoal: (g: Omit<Goal, "id" | "status">) => void;
   updateGoal: (id: string, patch: Partial<Goal>, note?: string) => void;
   removeGoal: (id: string) => void;
+  /** สร้างเป้าหมายฉบับร่างจาก KPI ตามตำแหน่ง (JD/KPI/Competency ในแอปหลัก) — ข้าม KPI ที่มีเป้าหมายแล้ว */
+  goalsFromPositionKpis: () => void;
   goalsSubmitted: boolean;
   submitGoals: () => void;
   approveGoals: () => void;
@@ -268,6 +270,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const planId = await ensurePlanId();
         await live.createGoal(cycle!.id, planId, subject!.id, { ...g, parentId: undefined, dueDate: cycle!.endDate }, cycle!.endDate);
       }, undefined, reloadGoals);
+    },
+    goalsFromPositionKpis: () => {
+      if (!ready || !cycle || !subject || !posKpis.length) return;
+      const have = new Set(liveGoals.map((g) => g.kpiCode).filter(Boolean));
+      const todo = posKpis.filter((k) => !have.has(k.code));
+      if (!todo.length) { toast("KPI ตามตำแหน่งมีเป้าหมายครบแล้ว", "info"); return; }
+      // น้ำหนักตาม KPI ในแอปหลัก · ไม่มีน้ำหนัก → เฉลี่ยเท่ากัน
+      const even = Math.floor(100 / todo.length);
+      run(async () => {
+        const planId = await ensurePlanId();
+        for (const k of todo) {
+          const n = Number(((k.target ?? "").replace(/,/g, "").match(/-?\d+(\.\d+)?/) ?? [""])[0]);
+          await live.createGoal(cycle.id, planId, subject.id, {
+            title: k.name, description: [k.target && `เป้าหมาย: ${k.target}`, k.formula && `สูตร: ${k.formula}`, k.frequency && `ความถี่: ${k.frequency}`].filter(Boolean).join("\n"),
+            type: "individual", kpiCode: k.code, unit: k.unit || "%", direction: k.direction, target: n > 0 ? n : 100, actual: null,
+            weight: k.weight ?? even, source: "manual", dueDate: cycle.endDate,
+          }, cycle.endDate);
+        }
+      }, `สร้างเป้าหมายจาก KPI ตามตำแหน่ง ${todo.length} ข้อแล้ว (ฉบับร่าง — ปรับค่าเป้าหมายได้ที่หน้าเป้าหมาย)`, reloadGoals);
     },
     updateGoal: (id, patch, note) => {
       if (!ready) { setDemoGoals((x) => x.map((g) => (g.id === id ? { ...g, ...patch } : g))); return; }

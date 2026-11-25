@@ -31,7 +31,7 @@ const kpiLibrary: LibKpi[] = [
 const fmtVal = (v: number | null, unit: string) => (v === null ? "–" : unit === "บาท" ? fmtCompact(v) : fmt(v, v % 1 ? 1 : 0));
 
 export default function Goals() {
-  const { goals, addGoal, updateGoal, removeGoal, submitGoals, approveGoals, goalsSubmitted, toast, liveStatus, subject, managerOf, posKpis } = useStore();
+  const { goals, addGoal, updateGoal, removeGoal, submitGoals, approveGoals, goalsSubmitted, toast, liveStatus, subject, managerOf, posKpis, goalsFromPositionKpis } = useStore();
   const ready = liveStatus === "ready";
   // KPI ตามตำแหน่งจากแอปหลัก (JD/KPI/Competency) — ถ้ายังไม่มี ใช้คลังตัวอย่าง
   const fromHr = ready && posKpis.length > 0;
@@ -97,6 +97,7 @@ export default function Goals() {
             <Card className="p-8 text-center text-ink-3">
               <Target className="mx-auto mb-2 text-ink-3" size={28} />
               ยังไม่มีเป้าหมายของ {subject?.name ?? "พนักงานคนนี้"} ในรอบนี้ — กด <b className="text-ink">เพิ่มเป้าหมาย</b> เพื่อเริ่ม (น้ำหนักรวมต้องครบ 100%)
+            {posKpis.length > 0 && <div className="mt-4"><Button onClick={goalsFromPositionKpis}><Library size={16} />สร้างเป้าหมายจาก KPI ตามตำแหน่ง ({posKpis.length} ข้อ)</Button></div>}
             </Card>
           )}
 
