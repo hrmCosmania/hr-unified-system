@@ -12305,6 +12305,7 @@ body.app-home .app-shell{display:none!important}
 .al-app .al-title{font-size:15.5px;font-weight:800;line-height:1.35;margin-top:2px;max-width:200px}
 .al-app .al-en{font-size:12px;color:var(--v4-muted);margin-top:3px;line-height:1.35;max-width:200px}
 .al-app .al-link{position:absolute;top:2px;right:calc(50% - 64px);width:22px;height:22px;border-radius:50%;background:var(--v4-surface);border:1px solid var(--v4-border);font-size:12px;line-height:20px;color:var(--v4-muted)}
+.al-cell{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
 .al-tools{grid-template-columns:repeat(5,minmax(0,1fr))}
 .al-tools .al-app img{width:76px;height:76px;border-radius:18px;box-shadow:0 10px 20px -10px var(--c),0 3px 8px rgba(15,23,42,.12)}
 .al-tools .al-app .al-num{margin-top:10px;font-size:13px}
@@ -12338,8 +12339,8 @@ html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-
       tabs:['orgchart','jobpositions','recruitment','onboarding'], items:['ผังองค์กร','การจัดการตำแหน่ง','สรรหาบุคลากร','ติดตามการเริ่มงาน'] },
     { key:'cb', n:2, icon:'💰', c:'#059669', th:'การบริหารค่าตอบแทนและสวัสดิการ', en:'Compensation & Benefits', link:'/payroll/#/employees',
       items:['ฐานข้อมูลพนักงาน','บันทึกเวลา','ขาด ลา มาสาย','เงินเดือน','สลิป / ภาษี / ประกันสังคม'] },
-    { key:'pm', n:3, icon:'📈', c:'#7c3aed', th:'การบริหารผลการปฏิบัติงาน', en:'Performance Management',
-      tabs:['performance-tracking'], items:['ขาด ลา มาสาย','โควตาวันลา','เป้าหมาย / OKR','ประเมินผล','GrowTogether (ตัวอย่าง)'] },
+    { key:'pm', n:3, icon:'📈', c:'#7c3aed', th:'การบริหารผลการปฏิบัติงาน', en:'Performance Management', link:'/performance/',
+      items:['GrowTogether: เป้าหมาย/KPI · Check-in · Feedback · แบบประเมิน · 360° · IDP · Calibration'] },
     { key:'ld', n:4, icon:'🎓', c:'#d97706', th:'การฝึกอบรมและพัฒนา', en:'Learning & Development (L&D)', link:'/training/',
       items:['หลักสูตรและอบรม','แผนพัฒนา IDP','สมรรถนะ','เส้นทางอาชีพ','Talent & Succession'] },
     { key:'er', n:5, icon:'💞', c:'#db2777', th:'พนักงานสัมพันธ์และความผูกพัน', en:'Employee Relations & Engagement',
@@ -12366,7 +12367,7 @@ html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-
       return 'body[data-app="'+a.key+'"] .tabbar > .tab-btn'+keep+'{display:none!important}';
     }).join('\n');
     css += '\nbody:not([data-app="er"]) .tabbar > .tab-btn[data-al="er-bday"]{display:none!important}'
-      + '\nbody:not([data-app="pm"]) .tabbar > .tab-btn[data-al="pm-gt"]{display:none!important}'
+
       + '\nbody[data-app="er"] #sideSub-onboarding,body[data-app="er"] #view-onboarding .subnav{display:none!important}'
       + '\nbody[data-app="rec"] #sideSub-onboarding > [data-k="birthday"],body[data-app="rec"] #onboardSubBtnBirthday{display:none!important}';
     document.getElementById('app-launcher-filter').textContent = css;
@@ -12380,14 +12381,6 @@ html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-
       b.onclick = function(){ openTab('er-bday'); };
       if(typeof setTabLabelV42 === 'function') setTabLabelV42(b, '🎂', 'วันเกิดพนักงาน', 'Birthdays'); else b.textContent = '🎂 วันเกิดพนักงาน';
       tabbar.insertBefore(b, tabbar.firstChild);
-    }
-    // หมวด 3: ปุ่มเปิดแอป GrowTogether (/performance/ — ตัวอย่างหน้าจอ ข้อมูลสาธิต) ใต้เมนูติดตามผลการปฏิบัติงาน
-    if(!tabbar.querySelector('[data-al="pm-gt"]')){
-      var g = document.createElement('button'); g.className = 'tab-btn'; g.dataset.tab = 'performance-gt'; g.dataset.al = 'pm-gt';
-      g.title = 'เปิด GrowTogether — แอปบริหารผลการปฏิบัติงานแบบใหม่ (ตัวอย่างหน้าจอ ใช้ข้อมูลสาธิต)';
-      g.onclick = function(){ location.href = '/performance/'; };
-      if(typeof setTabLabelV42 === 'function') setTabLabelV42(g, '🌱', 'GrowTogether ↗', 'ตัวอย่างหน้าจอ'); else g.textContent = '🌱 GrowTogether ↗';
-      tabbar.appendChild(g);
     }
     var head = document.getElementById('alCurrent');
     if(!head){
@@ -12406,7 +12399,6 @@ html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-
       if(btn) btn.style.order = String(i * 2 + 1);
       var sub = document.getElementById('sideSub-' + t); if(sub) sub.style.order = String(i * 2 + 2);
     });
-    var gt = tabbar.querySelector('[data-al="pm-gt"]'); if(gt) gt.style.order = '50';
     var prof = document.getElementById('sidebarProfile'); if(prof) prof.style.order = '999';
   }
 
@@ -12429,11 +12421,12 @@ html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-
     var date = now.toLocaleDateString('th-TH', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
     box.innerHTML = '<div class="al-hero"><div><h2>เลือกหมวดงาน HR</h2><p>'+E(date)+' · '+(cf === 'ALL' ? 'ทุกบริษัท (CMN + CIL)' : 'บริษัท '+E(cf))+' · ทุกหมวดใช้ฐานข้อมูลพนักงานชุดเดียวกัน</p></div><div class="al-stats">'+stats()+'</div></div>'
       + '<section class="al-panel"><h3>หมวดงาน HR</h3><div class="al-grid">' + APPS.map(function(a){
-          return '<button type="button" class="al-app" style="--c:'+a.c+'" onclick="hrSelectApp(\''+a.key+'\')" title="'+E(a.items.join(' · '))+(a.link ? ' (เปิดแอปแยก)' : '')+'">'
+          return '<div class="al-cell"><button type="button" class="al-app" style="--c:'+a.c+'" onclick="hrSelectApp(\''+a.key+'\')" title="'+E(a.items.join(' · '))+(a.link ? ' (เปิดแอปแยก)' : '')+'">'
             + '<img src="'+ICON(a.key)+'" alt="" width="104" height="104">'
             + (a.link ? '<span class="al-link" aria-hidden="true">↗</span>' : '')
             + '<span class="al-num">'+String(a.n).padStart(2,'0')+'</span>'
-            + '<span class="al-title">'+E(a.th)+'</span><span class="al-en">'+E(a.en)+'</span></button>';
+            + '<span class="al-title">'+E(a.th)+'</span><span class="al-en">'+E(a.en)+'</span></button>'
+            + '</div>';
         }).join('') + '</div></section>'
       + '<section class="al-panel"><h3>เครื่องมือส่วนกลาง</h3><div class="al-grid al-tools">' + TOOLS.map(function(t, i){
           var info = TOOL_INFO[t[0]] || [t[1], '', '#64748b'];
@@ -12508,7 +12501,7 @@ html.theme-soft .al-panel,html.theme-soft .al-stat{border-color:transparent;box-
       try { (0, eval)('authGateLogout = window.authGateLogout'); } catch(e){}
     }
     var saved = store.get();
-    if(location.hash !== '#home' && byKey(saved) && !byKey(saved).link) window.hrSelectApp(saved);
+    if(location.hash !== '#home' && byKey(saved) && byKey(saved).tabs) window.hrSelectApp(saved);
     else window.hrOpenLauncher();
     window.addEventListener('hashchange', function(){ if(location.hash === '#home') window.hrOpenLauncher(); });
     // ข้อมูลพนักงานโหลดจากคลาวด์ทีหลัง → อัปเดตตัวเลขบนหน้าเลือกหมวด
