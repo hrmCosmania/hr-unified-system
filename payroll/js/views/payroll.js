@@ -184,6 +184,7 @@
       if (pd)
         pd.addEventListener('change', () => {
           run.payDate = pd.value || Pay.payDate(s, pk);
+          if (s.pay.runs[pk]) s.pay.runs[pk].payDate = run.payDate; // run อาจเป็นมุมมองเฉพาะบริษัท (สำเนา)
           Store.commit('แก้วันที่จ่ายเงินเดือน', `${pk}: ${run.payDate}`);
           UI.toast(`วันที่จ่าย ${U.fmtDate(run.payDate)}`);
         });
@@ -391,10 +392,11 @@
     },
     async approve() {
       const s = Store.s, pk = Store.pk;
-      const c = Pay.checks(s, pk), run = c.st.run;
-      if (c.errors || !run) return UI.toast('ยังมีรายการที่ต้องแก้ไขก่อนปิดงวด', 'bad');
+      // ปิดงวด = ปิดทั้งงวดทุกบริษัท → ตรวจความพร้อมของทุกบริษัท และแก้สถานะที่งวดจริง (ไม่ใช่มุมมองเฉพาะบริษัท)
+      const c = PL.Co ? PL.Co.all(() => Pay.checks(s, pk)) : Pay.checks(s, pk), run = s.pay.runs[pk];
+      if (c.errors || !run) return UI.toast('ยังมีรายการที่ต้องแก้ไขก่อนปิดงวด (ตรวจทุกบริษัท)', 'bad');
       const warns = c.checks.filter((x) => !x.ok);
-      const msg = `อนุมัติเงินเดือนงวด <b>${U.fmtPeriod(pk)}</b> พนักงาน ${run.rows.length} คน จ่ายสุทธิ <b>${m2(run.totals.net)}</b> บาท วันที่จ่าย ${U.fmtDate(run.payDate)}?
+      const msg = `อนุมัติเงินเดือนงวด <b>${U.fmtPeriod(pk)}</b>${PL.Co && PL.Co.code() ? ' <b>ของทุกบริษัท</b>' : ''} พนักงาน ${run.rows.length} คน จ่ายสุทธิ <b>${m2(run.totals.net)}</b> บาท วันที่จ่าย ${U.fmtDate(run.payDate)}?
         ${warns.length ? `<div style="margin-top:10px;color:var(--warn)"><b>ข้อควรตรวจสอบ:</b><ul>${warns.map((x) => `<li>${esc(x.label)} — ${esc(x.detail)}</li>`).join('')}</ul></div>` : ''}
         <div class="muted" style="margin-top:10px">หลังปิดงวด รายการประจำงวดจะแก้ไขไม่ได้ และสลิป/รายงานจะเป็นฉบับจริง</div>`;
       if (!(await UI.confirm(msg, { title: 'อนุมัติและปิดงวดเงินเดือน', ok: 'อนุมัติและปิดงวด' }))) return;

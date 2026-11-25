@@ -64,7 +64,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // ---------- ข้อมูลจริง ----------
   const [liveStatus, setLiveStatus] = useState<LiveStatus>(hosted || isLive ? "checking" : "demo");
   const [liveMessage, setLiveMessage] = useState("");
-  const [employees, setEmployees] = useState<LiveEmployee[]>([]);
+  const [allEmployees, setEmployees] = useState<LiveEmployee[]>([]);
+  // บริษัทที่ทำงาน (ร่วมกับระบบ HR รวมศูนย์ — /shared/company.js): รายชื่อให้เลือกเฉพาะพนักงานของบริษัทนั้น
+  const [company, setCompany] = useState(() => window.HRUCompany?.get() ?? "");
+  useEffect(() => window.HRUCompany?.onChange((c) => setCompany(c)), []);
+  const employees = useMemo(() => (company ? allEmployees.filter((e) => !e.company || e.company === company) : allEmployees), [allEmployees, company]);
   const [subjectId, setSubjectIdState] = useState(() => localStorageGet("gt-subject") ?? "");
   const [cycle, setCycle] = useState<LiveCycle | null>(null);
   const [liveGoals, setLiveGoals] = useState<Goal[]>([]);
@@ -82,6 +86,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   // เปิดในระบบ HR + ล็อกอินแล้ว → ตรวจว่าเรียก schema pm ได้ แล้วโหลดรายชื่อพนักงานและรอบประเมิน
+  useEffect(() => { if (hosted && signedIn) window.HRUCompany?.ensure(); }, [signedIn]);
+
   useEffect(() => {
     if (!(hosted || isLive) || !signedIn) return;
     let stop = false;
@@ -102,7 +108,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const subject = useMemo(() => employees.find((e) => e.id === subjectId) ?? employees[0] ?? null, [employees, subjectId]);
   const setSubjectId = useCallback((id: string) => { setSubjectIdState(id); localStorageSet("gt-subject", id); }, []);
-  const managerOf = useCallback((e: LiveEmployee | null) => (e?.managerId ? employees.find((x) => x.id === e.managerId) ?? null : null), [employees]);
+  // หัวหน้างานอาจอยู่บริษัทในเครือ → ค้นจากพนักงานทุกบริษัท
+  const managerOf = useCallback((e: LiveEmployee | null) => (e?.managerId ? allEmployees.find((x) => x.id === e.managerId) ?? null : null), [allEmployees]);
 
   const reloadGoals = useCallback(async () => {
     if (!ready || !cycle || !subject) return;

@@ -120,6 +120,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .sp-item:hover, .sp-item.active { background: var(--brand-50); }
 .sp-item small { color: var(--muted); margin-left: auto; }
 .top-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+/* บริษัทที่ทำงาน (js/company.js + /shared/company.js) */
+.co-chip { display: flex; align-items: center; }
+.co-chip:empty { display: none; }
+@media (max-width: 760px) { .co-chip .hruc-label { display: none; } }
 .period-pick { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 12px; padding: 0 6px 0 12px; height: 42px; background: #fff; color: var(--brand-700); }
 .period-pick select { border: 0; background: transparent; outline: none; font-weight: 500; color: var(--text); padding: 6px 4px; cursor: pointer; }
 .icon-btn { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; border: 0; background: transparent; cursor: pointer; color: var(--text-2); position: relative; }

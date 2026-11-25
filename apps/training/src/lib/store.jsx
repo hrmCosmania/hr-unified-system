@@ -7,7 +7,11 @@ export const useStore = () => useContext(Ctx)
 const DEMO_USER_KEY = 'peoplegrow.hrd.demoUser'
 
 export function DataProvider({ children }) {
-  const [data, setData] = useState(null)
+  const [raw, setData] = useState(null)
+  // บริษัทที่ทำงาน (ร่วมกับระบบ HR รวมศูนย์): แสดงเฉพาะพนักงาน/ข้อมูลรายบุคคลของบริษัทนั้น — หลักสูตร/รุ่นอบรมใช้ร่วมกัน
+  const [company, setCompany] = useState(() => (window.HRUCompany ? window.HRUCompany.get() : ''))
+  useEffect(() => (window.HRUCompany ? window.HRUCompany.onChange((c) => setCompany(c)) : undefined), [])
+  const data = useMemo(() => filterByCompany(raw, company), [raw, company])
   const [error, setError] = useState(null)
   const [session, setSession] = useState(undefined) // undefined = checking
   const [toast, setToast] = useState(null)
@@ -29,6 +33,8 @@ export function DataProvider({ children }) {
   }, [])
 
   useEffect(() => { if (session) reload() }, [session, reload])
+  // ล็อกอินแล้วแต่ยังไม่ได้เลือกบริษัทในแท็บนี้ (เช่น เปิดแอปนี้ตรง ๆ) → หน้าต่างให้เลือก
+  useEffect(() => { if (session && !isDemo && window.HRUCompany) window.HRUCompany.ensure() }, [session])
 
   const signIn = async ({ email, password, demoRole, demoEmployeeId }) => {
     if (isDemo) {
@@ -54,7 +60,7 @@ export function DataProvider({ children }) {
     const by = (arr) => Object.fromEntries(arr.map((r) => [r.id, r]))
     const group = (arr, k) => arr.reduce((m, r) => ((m[r[k]] ||= []).push(r), m), {})
     return {
-      bu: by(data.business_units), dept: by(data.departments), pos: by(data.positions), emp: by(data.employees),
+      bu: by(data.business_units), dept: by(data.departments), pos: by(data.positions), emp: by(raw.employees), // หัวหน้าอาจอยู่บริษัทในเครือ → ค้นจากทุกบริษัท
       comp: by(data.competencies), course: by(data.courses), session: by(data.training_sessions), trainer: by(data.trainers),
       idp: by(data.idps),
       enrollByEmp: group(data.enrollments, 'employee_id'), enrollBySession: group(data.enrollments, 'session_id'),
@@ -67,7 +73,7 @@ export function DataProvider({ children }) {
       modulesByCourse: group(data.course_modules, 'course_id'),
       candByPlan: group(data.succession_candidates, 'plan_id'),
     }
-  }, [data])
+  }, [data, raw])
 
   // ---------- current user ----------
   const me = useMemo(() => {
@@ -136,10 +142,30 @@ export function DataProvider({ children }) {
   }
 
   const value = {
-    data, idx, error, session, me, isDemo, visibleEmpIds, reload, signIn, signOut, toast, notify, syncNote,
+    data, idx, error, session, me, isDemo, visibleEmpIds, reload, signIn, signOut, toast, notify, syncNote, company,
     insert: safe(insert), update: safe(update), remove: safe(remove),
     isHR: me && ['admin', 'hr'].includes(me.role),
     isManager: me && ['admin', 'hr', 'manager'].includes(me.role),
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
+}
+
+// ---------- กรองข้อมูลตามบริษัท (business unit = รหัสบริษัท CMN/CIL ที่ซิงก์จากระบบ HR) ----------
+const BY_EMPLOYEE = ['enrollments', 'certificates', 'competency_assessments', 'idps', 'talent_reviews', 'succession_candidates', 'performance_results']
+export function filterByCompany(raw, company) {
+  if (!raw || !company) return raw
+  const bu = (raw.business_units || []).find((b) => b.code === company)
+  if (!bu) return raw
+  const employees = raw.employees.filter((e) => e.business_unit_id === bu.id)
+  const emp = new Set(employees.map((e) => e.id))
+  const departments = raw.departments.filter((d) => !d.business_unit_id || d.business_unit_id === bu.id)
+  const dept = new Set(departments.map((d) => d.id))
+  const out = { ...raw, business_units: [bu], employees, departments }
+  for (const t of BY_EMPLOYEE) out[t] = (raw[t] || []).filter((r) => emp.has(r.employee_id))
+  const idps = new Set(out.idps.map((i) => i.id))
+  out.idp_items = (raw.idp_items || []).filter((i) => idps.has(i.idp_id))
+  out.succession_plans = (raw.succession_plans || []).filter((p) => (p.incumbent_id ? emp.has(p.incumbent_id) : !p.department_id || dept.has(p.department_id)))
+  out.training_budgets = (raw.training_budgets || []).filter((b) => b.business_unit_id === bu.id)
+  out.trainers = (raw.trainers || []).filter((t) => !t.employee_id || emp.has(t.employee_id))
+  return out
 }

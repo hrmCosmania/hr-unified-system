@@ -80,6 +80,17 @@ if (fs.existsSync('api')) {
   else ok(`${app}/: build ${label}ล่าสุดตรงกับโค้ด (${refs.length} ไฟล์)`);
 });
 
+/* ---------- 1a) shared scripts used by the sub-apps (/shared/*.js) ---------- */
+if (fs.existsSync('shared')) {
+  const files = fs.readdirSync('shared').filter((f) => f.endsWith('.js'));
+  let okAll = true;
+  files.forEach((f) => { try { new vm.Script(fs.readFileSync(path.join('shared', f), 'utf8'), { filename: 'shared/' + f }); } catch (e) { okAll = false; bad(`shared/${f}: ${e.message}`); } });
+  if (okAll) ok(`shared/: ไวยากรณ์ถูกต้องทั้ง ${files.length} ไฟล์`);
+  ['payroll/index.html', 'apps/training/index.html', 'apps/performance/index.html'].forEach((f) => {
+    if (fs.existsSync(f) && !fs.readFileSync(f, 'utf8').includes('/shared/company.js')) bad(`${f} ไม่ได้โหลด /shared/company.js (บริษัทที่ทำงาน)`);
+  });
+}
+
 /* ---------- 1b) payroll module (/payroll): syntax of every JS file + its own unit tests ---------- */
 if (fs.existsSync('payroll/js')) {
   const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((x) => (x.isDirectory() ? walk(path.join(d, x.name)) : x.name.endsWith('.js') ? [path.join(d, x.name)] : []));

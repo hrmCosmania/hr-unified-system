@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   House, Target, MessagesSquare, MessageSquareHeart, ClipboardCheck, Radar, Route, GraduationCap, Users, Grid3x3,
@@ -81,6 +81,13 @@ function SideNav({ onNavigate }: { onNavigate?: () => void }) {
 /** หน้าที่ใช้ข้อมูลจริงแล้ว (HR บันทึกแทนพนักงาน) — หน้าอื่นยังเป็นข้อมูลตัวอย่าง */
 const LIVE_ROUTES = ["/goals", "/checkin", "/review"];
 
+/** บริษัทที่ทำงาน + ปุ่มเปลี่ยนบริษัท (ร่วมกับระบบ HR รวมศูนย์ — /shared/company.js) */
+function CompanyChip() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (ref.current) window.HRUCompany?.mount(ref.current); }, []);
+  return <div ref={ref} className="hidden sm:flex items-center text-ink-2" />;
+}
+
 /** ปุ่มกลับไปหน้าเลือกหมวดงานของระบบ HR รวมศูนย์ */
 function BackToHR() {
   if (!hosted) return null;
@@ -141,6 +148,7 @@ export default function Layout() {
               <Info size={12} />ข้อมูลตัวอย่าง
             </span>
           )}
+          {hosted && <CompanyChip />}
           {liveStatus === "ready" && employees.length > 0 && (
             <label className="flex items-center gap-1.5 text-[12.5px] text-ink-3 min-w-0">
               <span className="hidden sm:inline whitespace-nowrap">บันทึกให้</span>

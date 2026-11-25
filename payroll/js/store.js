@@ -131,6 +131,7 @@
       const ex = byCode[code];
       if (!ex) {
         const e = { id: 'E' + U.pad(++n, 4), code, card: '', name: r.name, dept, position: pos, payType: 'M', salary: 0, shift, pattern: 'SIX', team: 'A', active: true, hru: true };
+        if (r.company) e.company = String(r.company).trim().toUpperCase(); // บริษัท (CMN/CIL) — ใช้แยกข้อมูลตามบริษัท
         if (start) e.start = start;
         s.employees.push(e);
         out.added.push(e);
@@ -140,6 +141,8 @@
           if (ex.name !== r.name) ch.name = r.name;
           if (dept !== '-' && ex.dept !== dept) ch.dept = dept;
           if (pos && ex.position !== pos) ch.position = pos;
+          const co = String(r.company || '').trim().toUpperCase();
+          if (co && ex.company !== co) ch.company = co;
         }
         if (start && !ex.start) ch.start = start;
         if (Object.keys(ch).length) {

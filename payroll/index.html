@@ -35,6 +35,7 @@
           <div class="search-pop" id="searchPop" hidden></div>
         </div>
         <div class="top-actions">
+          <div id="coChip" class="co-chip" aria-label="บริษัทที่ทำงาน"></div>
           <label class="period-pick" title="รอบเงินเดือนที่กำลังทำงาน"><span id="periodIc"></span><select id="periodSel" aria-label="รอบเงินเดือน"></select></label>
           <div class="bell-wrap">
             <button class="icon-btn" id="bellBtn" aria-label="การแจ้งเตือน"></button>
@@ -55,6 +56,9 @@
   <script src="js/seed.js"></script>
   <script src="js/store.js"></script>
   <script src="js/ui.js"></script>
+  <!-- บริษัทที่ทำงาน (CMN/CIL) ร่วมกับระบบ HR รวมศูนย์ + การกรอง/ข้อมูลบริษัทแยกของระบบเงินเดือน -->
+  <script src="/shared/company.js"></script>
+  <script src="js/company.js"></script>
   <script src="js/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script src="js/cloud.js"></script>

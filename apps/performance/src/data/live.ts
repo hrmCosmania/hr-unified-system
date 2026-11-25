@@ -11,6 +11,8 @@ export type LiveStatus = "demo" | "checking" | "ready" | "not_exposed" | "error"
 
 export interface LiveEmployee extends Person {
   managerId: string | null;
+  /** รหัสบริษัท (CMN/CIL) จากรหัสแผนก "บริษัท-แผนก" ที่ซิงก์จากระบบ HR */
+  company: string;
 }
 
 export interface LiveCycle { id: string; name: string; endDate: string }
@@ -42,13 +44,14 @@ export async function probe(): Promise<{ status: LiveStatus; message?: string }>
 
 export async function loadEmployees(): Promise<LiveEmployee[]> {
   const { data, error } = await db().from("employees")
-    .select("id, employee_code, first_name_th, last_name_th, nickname, manager_id, status, org_unit:org_units(name_th), position:positions(title_th)")
+    .select("id, employee_code, first_name_th, last_name_th, nickname, manager_id, status, org_unit:org_units(code, name_th), position:positions(title_th)")
     .neq("status", "terminated").order("employee_code");
   if (error) throw error;
   return (data ?? []).map((r: any, i: number) => ({
     id: r.id, code: r.employee_code, name: `${r.first_name_th} ${r.last_name_th === "-" ? "" : r.last_name_th}`.trim(),
     nickname: r.nickname ?? undefined, position: r.position?.title_th ?? "", orgUnit: r.org_unit?.name_th ?? "",
     bu: "hq", color: COLORS[i % COLORS.length], managerId: r.manager_id,
+    company: String(r.org_unit?.code ?? "").split("-")[0],
   }));
 }
 

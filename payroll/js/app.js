@@ -41,6 +41,7 @@
         Cloud.ready();
       } else Store.load();
       this.mountChrome();
+      if (PL.Co && window.PL_CONFIG && window.PL_CONFIG.hostApp) PL.Co.init(); // บริษัทที่ทำงาน (ระบบ HR รวมศูนย์)
       window.addEventListener('hashchange', () => this.route());
       this.route();
       this.autoSyncHR();
@@ -255,8 +256,9 @@
           return;
         }
         const s = Store.s;
-        const emps = s.employees.filter((e) => `${e.code} ${e.card} ${e.name} ${e.dept} ${e.position}`.toLowerCase().includes(q)).slice(0, 8);
-        const depts = [...new Set(s.employees.map((e) => e.dept))].filter((d) => d.toLowerCase().includes(q)).slice(0, 4);
+        const pool = PL.Co ? PL.Co.employees() : s.employees;
+        const emps = pool.filter((e) => `${e.code} ${e.card} ${e.name} ${e.dept} ${e.position}`.toLowerCase().includes(q)).slice(0, 8);
+        const depts = [...new Set(pool.map((e) => e.dept))].filter((d) => d.toLowerCase().includes(q)).slice(0, 4);
         const pages = PL.NAV.filter((n) => `${n.th} ${n.en}`.toLowerCase().includes(q)).slice(0, 5);
         items = [
           ...emps.map((e) => ({ type: 'emp', id: e.id, html: `${UI.icon('user', 16)}<span><b>${esc(e.name)}</b> <span class="muted">${esc(e.code)}</span></span><small>${esc(e.dept)}</small>` })),

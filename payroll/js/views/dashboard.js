@@ -24,7 +24,7 @@
       const T = sm && sm.T, PT = prev && prev.T;
       const R = Store.range();
       const v = E.validate(s, pk);
-      const act = s.employees.filter((e) => e.active !== false);
+      const act = (PL.Co ? PL.Co.employees() : s.employees).filter((e) => e.active !== false);
       const depts = new Set(act.map((e) => e.dept)).size;
 
       const stepper = pipe.steps

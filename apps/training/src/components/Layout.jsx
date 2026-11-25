@@ -2,7 +2,7 @@ import {
   ArrowLeft, Bell, BookOpen, CalendarCheck, ChevronDown, ClipboardCheck, GraduationCap, Home, LineChart, Link2, LogOut, Menu,
   Route as RouteIcon, Search, Settings, Sprout, Target, Trophy, Users, X,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { fullName, LABELS } from '../lib/format'
 import { HOST } from '../lib/db'
@@ -103,7 +103,8 @@ export default function Layout() {
             )}
           </div>
           {isDemo && <span className="hidden rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700 md:inline">โหมดสาธิต</span>}
-          <button onClick={() => nav(isManager ? '/training?tab=approve' : '/my')} className="relative ml-auto rounded-full p-2 text-slate-500 hover:bg-slate-100" title="รายการรออนุมัติ">
+          {!isDemo && <CompanyChip />}
+          <button onClick={() => nav(isManager ? '/training?tab=approve' : '/my')} className={cx('relative rounded-full p-2 text-slate-500 hover:bg-slate-100', isDemo && 'ml-auto')} title="รายการรออนุมัติ">
             <Bell size={20} />
             {pending > 0 && <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">{pending > 99 ? '99+' : pending}</span>}
           </button>
@@ -144,4 +145,11 @@ export default function Layout() {
       )}
     </div>
   )
+}
+
+/** บริษัทที่ทำงาน + ปุ่มเปลี่ยนบริษัท (ร่วมกับระบบ HR รวมศูนย์ — /shared/company.js) */
+function CompanyChip() {
+  const ref = useRef(null)
+  useEffect(() => { if (window.HRUCompany && ref.current) window.HRUCompany.mount(ref.current) }, [])
+  return <div ref={ref} className="ml-auto flex items-center text-slate-700" />
 }

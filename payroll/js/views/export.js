@@ -157,7 +157,7 @@
         { label: 'ขาด(วัน)', get: (r) => r.absent }, { label: 'ลา(วัน)', get: (r) => r.leave }, { label: 'ประเภทลา', get: (r) => r.lt },
         { label: 'OT1', get: (r) => U.r2(r.ot1 / 60) }, { label: 'OT1.5', get: (r) => U.r2(r.ot15 / 60) }, { label: 'OT2', get: (r) => U.r2(r.ot2 / 60) }, { label: 'OT3', get: (r) => U.r2(r.ot3 / 60) },
         { label: 'สถานะ', get: (r) => E.STATUS[r.st].label }, { label: 'หมายเหตุ', get: (r) => r.notes.join('; ') },
-      ], P.calc || []);
+      ], PL.Co ? PL.Co.rows(P.calc || []) : P.calc || []);
     },
     async send() {
       const s = Store.s, pk = Store.pk;
