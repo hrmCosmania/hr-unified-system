@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Settings, Save, RefreshCw, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, CircleCheck, TriangleExclamationPoint, CircleX,
   Users, Search as SearchIcon, BookOpen, Clock, Banknote, ShoppingCart, Factory, ShieldCheck, Briefcase, Webhook, KeyRound,
 } from "lucide-react";
 import { useStore } from "../data/store";
+import * as liveApi from "../data/live";
+import type { DictCompetency } from "../data/live";
 import { competencies, cycle, integrations } from "../data/mock";
 import { Button, Card, CardTitle, PageHeader, Stepper, Tabs, cx, fmt } from "../components/ui";
 
@@ -13,7 +15,13 @@ const icons: Record<string, React.ReactNode> = {
 };
 
 export default function Admin() {
-  const { toast } = useStore();
+  const { toast, liveStatus } = useStore();
+  // พจนานุกรม Competency จากระบบ HR หลัก (ถ้าต่อฐานข้อมูลแล้ว)
+  const [dict, setDict] = useState<DictCompetency[]>([]);
+  useEffect(() => {
+    if (liveStatus !== "ready") return;
+    liveApi.loadCompetencyDictionary().then(setDict, (e) => toast(e instanceof Error ? e.message : String(e?.message ?? e), "crit"));
+  }, [liveStatus]); // eslint-disable-line react-hooks/exhaustive-deps
   const [tab, setTab] = useState<"cycle" | "weights" | "competency" | "integration" | "roles">("integration");
   const [syncing, setSyncing] = useState<string | null>(null);
 
@@ -96,12 +104,14 @@ export default function Admin() {
           <table className="w-full text-sm">
             <thead className="text-xs text-ink-3 bg-canvas"><tr><th className="text-left px-4 py-3 font-medium">รหัส</th><th className="text-left px-4 py-3 font-medium">Competency</th><th className="text-left px-4 py-3 font-medium">กลุ่ม</th><th className="text-left px-4 py-3 font-medium hidden md:table-cell">ระดับพฤติกรรม</th></tr></thead>
             <tbody>
-              {[...competencies, { id: "x1", code: "FN-LEAN", name: "Lean / การลดความสูญเปล่า", category: "functional" }, { id: "x2", code: "FN-SAFETY", name: "ความปลอดภัยในการทำงาน", category: "functional" }, { id: "x3", code: "FN-KAM", name: "การบริหารลูกค้าหลัก (Key Account)", category: "functional" }].map((c) => (
+              {(dict.length ? dict : [...competencies, { id: "x1", code: "FN-LEAN", name: "Lean / การลดความสูญเปล่า", category: "functional" }, { id: "x2", code: "FN-SAFETY", name: "ความปลอดภัยในการทำงาน", category: "functional" }, { id: "x3", code: "FN-KAM", name: "การบริหารลูกค้าหลัก (Key Account)", category: "functional" }] as { id: string; code: string; name: string; category: string; description?: string; levels?: string[] }[]).map((c) => (
                 <tr key={c.id} className="border-t border-line">
                   <td className="px-4 py-3 font-mono text-xs text-ink-3">{c.code}</td>
-                  <td className="px-4 py-3 font-medium">{c.name}</td>
+                  <td className="px-4 py-3 font-medium">{c.name}{c.description && <p className="text-[12px] font-normal text-ink-3 mt-0.5">{c.description}</p>}</td>
                   <td className="px-4 py-3"><span className={cx("text-xs rounded-full px-2 py-0.5", c.category === "core" ? "bg-brand-50 text-brand-700" : c.category === "leadership" ? "bg-[#f1eefc] text-[#4b3bb5]" : "bg-leaf-50 text-leaf-600")}>{c.category === "core" ? "Core" : c.category === "leadership" ? "Leadership" : "Functional"}</span></td>
-                  <td className="px-4 py-3 text-ink-3 text-[13px] hidden md:table-cell">1 เริ่มต้น · 2 พื้นฐาน · 3 ชำนาญ · 4 เชี่ยวชาญ · 5 ต้นแบบ</td>
+                  <td className="px-4 py-3 text-ink-3 text-[13px] hidden md:table-cell">{c.levels && c.levels.some(Boolean)
+                    ? <ol className="space-y-0.5">{c.levels.map((l, i) => l && <li key={i}><b className="text-ink-2">{i + 1}</b> · {l}</li>)}</ol>
+                    : "1 เริ่มต้น · 2 พื้นฐาน · 3 ชำนาญ · 4 เชี่ยวชาญ · 5 ต้นแบบ"}</td>
                 </tr>
               ))}
             </tbody>

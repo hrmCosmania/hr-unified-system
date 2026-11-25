@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import * as mock from "./mock";
-import type { CalibrationEntry, Checkin, Feedback, Goal, IdpAction, Person, Role } from "./types";
+import type { CalibrationEntry, Checkin, Competency, Feedback, Goal, IdpAction, Person, Role } from "./types";
 import { hosted, isLive } from "../lib/supabase";
 import * as live from "./live";
-import type { LiveCycle, LiveEmployee, LiveStatus } from "./live";
+import type { LiveCycle, LiveEmployee, LiveStatus, PosKpi } from "./live";
 
 interface Toast { id: number; text: string; tone: "good" | "info" | "crit" }
 
@@ -26,6 +26,9 @@ interface Store {
   managerOf: (e: LiveEmployee | null) => LiveEmployee | null;
   cycle: LiveCycle | null;
   ensurePlanId: () => Promise<string>;
+  /** KPI / Competency ของตำแหน่งพนักงานที่เลือก (จาก JD/KPI/Competency ในแอปหลัก) — ว่าง = ยังไม่มี/โหมดตัวอย่าง */
+  posKpis: PosKpi[];
+  posComps: Competency[];
   goals: Goal[];
   addGoal: (g: Omit<Goal, "id" | "status">) => void;
   updateGoal: (id: string, patch: Partial<Goal>, note?: string) => void;
@@ -73,6 +76,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [cycle, setCycle] = useState<LiveCycle | null>(null);
   const [liveGoals, setLiveGoals] = useState<Goal[]>([]);
   const [liveCheckins, setLiveCheckins] = useState<Checkin[]>([]);
+  const [posKpis, setPosKpis] = useState<PosKpi[]>([]);
+  const [posComps, setPosComps] = useState<Competency[]>([]);
   const ready = liveStatus === "ready";
 
   const toast = useCallback((text: string, tone: Toast["tone"] = "good") => {
@@ -121,6 +126,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [ready, subject, fail]);
   useEffect(() => { setLiveGoals([]); setLiveCheckins([]); reloadGoals(); reloadCheckins(); }, [reloadGoals, reloadCheckins]);
 
+  // KPI / Competency ตามตำแหน่งของพนักงานที่เลือก
+  const positionId = subject?.positionId ?? null;
+  useEffect(() => {
+    setPosKpis([]); setPosComps([]);
+    if (!ready || !positionId) return;
+    let stop = false;
+    live.loadFramework(positionId).then((f) => { if (!stop) { setPosKpis(f.kpis); setPosComps(f.comps); } }, fail);
+    return () => { stop = true; };
+  }, [ready, positionId, fail]);
+
   const ensurePlanId = useCallback(async () => {
     if (!cycle || !subject) throw new Error("ยังไม่มีรอบประเมินหรือยังไม่ได้เลือกพนักงาน");
     return live.ensurePlan(cycle.id, subject);
@@ -147,6 +162,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     managerOf,
     cycle,
     ensurePlanId,
+    posKpis,
+    posComps,
     goals: ready ? liveGoals : demoGoals,
     addGoal: (g) => {
       if (!ready) { setDemoGoals((x) => [...x, { ...g, id: `g${++seq}`, status: "draft" }]); setDemoSubmitted(false); return; }
@@ -191,7 +208,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     toasts,
     toast,
   }), [role, signedIn, demoGoals, demoSubmitted, demoCheckins, feedback, idpActions, calibration, toasts, toast,
-      ready, liveStatus, liveMessage, employees, subject, setSubjectId, managerOf, cycle, ensurePlanId, liveGoals, liveCheckins,
+      ready, liveStatus, liveMessage, employees, subject, posKpis, posComps, setSubjectId, managerOf, cycle, ensurePlanId, liveGoals, liveCheckins,
       run, reloadGoals, reloadCheckins]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

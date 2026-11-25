@@ -7,7 +7,12 @@ import { Sparkline } from "../components/charts";
 import { progressOf } from "./Home";
 import type { DataSource, Direction, Goal } from "../data/types";
 
-const kpiLibrary: { code: string; name: string; unit: string; direction: Direction; source: DataSource; family: string }[] = [
+type LibKpi = { code: string; name: string; unit: string; direction: Direction; source: DataSource; family: string; weight?: number | null; target?: string; formula?: string; frequency?: string; ratings?: string[] };
+/** ตัวเลขแรกในข้อความเป้าหมาย เช่น "ไม่น้อยกว่า 99%" → 99 */
+const firstNum = (t?: string) => { const m = (t ?? "").replace(/,/g, "").match(/-?\d+(\.\d+)?/); return m ? m[0] : ""; };
+
+// คลัง KPI ตัวอย่าง (ใช้เมื่อยังไม่ได้ต่อฐานข้อมูล หรือตำแหน่งนี้ยังไม่มี KPI ในแอปหลัก)
+const kpiLibrary: LibKpi[] = [
   { code: "RT-SALES", name: "ยอดขายเทียบเป้า", unit: "บาท", direction: "higher_better", source: "pos", family: "ค้าปลีก" },
   { code: "RT-SHRINK", name: "สินค้าสูญหาย (Shrinkage)", unit: "%", direction: "lower_better", source: "pos", family: "ค้าปลีก" },
   { code: "RT-CSAT", name: "คะแนนความพึงพอใจลูกค้า", unit: "คะแนน", direction: "higher_better", source: "crm", family: "ค้าปลีก" },
@@ -25,8 +30,11 @@ const kpiLibrary: { code: string; name: string; unit: string; direction: Directi
 const fmtVal = (v: number | null, unit: string) => (v === null ? "–" : unit === "บาท" ? fmtCompact(v) : fmt(v, v % 1 ? 1 : 0));
 
 export default function Goals() {
-  const { goals, addGoal, updateGoal, removeGoal, submitGoals, approveGoals, goalsSubmitted, toast, liveStatus, subject, managerOf } = useStore();
+  const { goals, addGoal, updateGoal, removeGoal, submitGoals, approveGoals, goalsSubmitted, toast, liveStatus, subject, managerOf, posKpis } = useStore();
   const ready = liveStatus === "ready";
+  // KPI ตามตำแหน่งจากแอปหลัก (JD/KPI/Competency) — ถ้ายังไม่มี ใช้คลังตัวอย่าง
+  const fromHr = ready && posKpis.length > 0;
+  const lib: LibKpi[] = fromHr ? posKpis : kpiLibrary;
   const mgr = ready ? managerOf(subject) : null;
   const hasPending = goals.some((g) => g.status === "pending_approval");
   const [tab, setTab] = useState<"mine" | "cascade" | "library">("mine");
@@ -165,17 +173,21 @@ export default function Goals() {
 
       {tab === "library" && (
         <Card className="mt-5 overflow-hidden">
+          <div className="px-4 py-3 text-xs text-ink-3 border-b border-line">
+            {fromHr ? <>KPI ของตำแหน่ง <b className="text-ink-2">{subject?.position || subject?.positionCode}</b> ({subject?.positionCode}) · ดึงจาก JD / KPI / Competency ในระบบ HR หลัก</>
+              : ready ? <>ตำแหน่งของพนักงานที่เลือกยังไม่มี KPI ในระบบ HR หลัก (ตั้งที่ ตั้งค่าองค์กร › การจัดการตำแหน่งงาน) — แสดงคลังตัวอย่าง</> : <>คลัง KPI ตัวอย่าง</>}
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-canvas text-ink-3 text-left text-xs">
-                <tr><th className="px-4 py-3 font-medium">รหัส</th><th className="px-4 py-3 font-medium">KPI</th><th className="px-4 py-3 font-medium">สายงาน</th><th className="px-4 py-3 font-medium">หน่วย</th><th className="px-4 py-3 font-medium">ทิศทาง</th><th className="px-4 py-3 font-medium">แหล่งข้อมูล</th><th /></tr>
+                <tr><th className="px-4 py-3 font-medium">รหัส</th><th className="px-4 py-3 font-medium">KPI</th><th className="px-4 py-3 font-medium">{fromHr ? "เป้าหมาย / น้ำหนัก" : "สายงาน"}</th><th className="px-4 py-3 font-medium">หน่วย</th><th className="px-4 py-3 font-medium">ทิศทาง</th><th className="px-4 py-3 font-medium">แหล่งข้อมูล</th><th /></tr>
               </thead>
               <tbody>
-                {kpiLibrary.map((k) => (
+                {lib.map((k) => (
                   <tr key={k.code} className="border-t border-line hover:bg-[#fafcfe]">
                     <td className="px-4 py-3 font-mono text-xs text-ink-3">{k.code}</td>
-                    <td className="px-4 py-3 font-medium">{k.name}</td>
-                    <td className="px-4 py-3 text-ink-2">{k.family}</td>
+                    <td className="px-4 py-3 font-medium">{k.name}{k.formula && <p className="text-[11.5px] font-normal text-ink-3 mt-0.5">{k.formula}</p>}</td>
+                    <td className="px-4 py-3 text-ink-2">{fromHr ? <>{k.target || "–"}{k.weight != null && <span className="text-ink-3"> · {k.weight}%</span>}</> : k.family}</td>
                     <td className="px-4 py-3 text-ink-2">{k.unit}</td>
                     <td className="px-4 py-3 text-ink-2">{k.direction === "lower_better" ? "↓ น้อยดี" : "↑ มากดี"}</td>
                     <td className="px-4 py-3"><SourceTag source={k.source} /></td>
@@ -188,7 +200,7 @@ export default function Goals() {
         </Card>
       )}
 
-      <AddGoalModal open={adding} onClose={() => setAdding(false)} remaining={100 - totalWeight}
+      <AddGoalModal open={adding} lib={lib} onClose={() => setAdding(false)} remaining={100 - totalWeight}
         onSave={(g) => { addGoal(g); setAdding(false); toast("เพิ่มเป้าหมายฉบับร่างแล้ว"); }} />
       <UpdateModal goal={updating} onClose={() => setUpdating(null)}
         onSave={(id, actual, note) => { updateGoal(id, { actual, lastUpdated: "เมื่อสักครู่" }, note); setUpdating(null); toast("บันทึกความคืบหน้าแล้ว"); }} />
@@ -196,13 +208,14 @@ export default function Goals() {
   );
 }
 
-function AddGoalModal({ open, onClose, onSave, remaining }: { open: boolean; onClose: () => void; remaining: number; onSave: (g: Omit<Goal, "id" | "status">) => void }) {
+function AddGoalModal({ open, onClose, onSave, remaining, lib }: { open: boolean; onClose: () => void; remaining: number; lib: LibKpi[]; onSave: (g: Omit<Goal, "id" | "status">) => void }) {
   const [kpi, setKpi] = useState("");
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [target, setTarget] = useState("");
   const [weight, setWeight] = useState(String(Math.max(0, remaining)));
-  const k = kpiLibrary.find((x) => x.code === kpi);
+  const k = lib.find((x) => x.code === kpi);
+  const families = [...new Set(lib.map((x) => x.family))];
   const valid = title.trim() && Number(target) > 0 && Number(weight) > 0;
 
   return (
@@ -218,10 +231,13 @@ function AddGoalModal({ open, onClose, onSave, remaining }: { open: boolean; onC
         <Field label="เลือกจากคลัง KPI (แนะนำ)" hint={k && k.source !== "manual" ? `ค่าจริงจะดึงอัตโนมัติจาก ${k.source.toUpperCase()} ทุกวัน` : "หรือเว้นว่างเพื่อสร้างเป้าหมายเอง (กรอกความคืบหน้าเอง)"}>
           <div className="relative">
             <Library size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
-            <select className="input pl-9" value={kpi} onChange={(e) => { setKpi(e.target.value); const x = kpiLibrary.find((y) => y.code === e.target.value); if (x) setTitle(x.name); }}>
+            <select className="input pl-9" value={kpi} onChange={(e) => { setKpi(e.target.value); const x = lib.find((y) => y.code === e.target.value); if (x) { setTitle(x.name);
+              if (x.target || x.formula) setDesc([x.target && `เป้าหมาย: ${x.target}`, x.formula && `สูตร: ${x.formula}`, x.frequency && `ความถี่: ${x.frequency}`].filter(Boolean).join("\n"));
+              if (firstNum(x.target)) setTarget(firstNum(x.target));
+              if (x.weight != null) setWeight(String(x.weight)); } }}>
               <option value="">— สร้างเป้าหมายเอง —</option>
-              {["ค้าปลีก", "โรงงาน", "FMCG", "ทุกสายงาน"].map((f) => (
-                <optgroup key={f} label={f}>{kpiLibrary.filter((x) => x.family === f).map((x) => <option key={x.code} value={x.code}>{x.name}</option>)}</optgroup>
+              {families.map((f) => (
+                <optgroup key={f} label={f}>{lib.filter((x) => x.family === f).map((x) => <option key={x.code} value={x.code}>{x.name}{x.weight != null ? ` (${x.weight}%)` : ""}</option>)}</optgroup>
               ))}
             </select>
           </div>
@@ -229,7 +245,13 @@ function AddGoalModal({ open, onClose, onSave, remaining }: { open: boolean; onC
         <Field label="ชื่อเป้าหมาย"><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="เช่น เพิ่มยอดขายสินค้า Private Label" /></Field>
         <Field label="รายละเอียด / วิธีวัดผล"><textarea className="input" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="SMART: เฉพาะเจาะจง วัดได้ ทำได้จริง เกี่ยวข้อง มีกรอบเวลา" /></Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label={`ค่าเป้าหมาย ${k ? `(${k.unit})` : ""}`}><input className="input" type="number" value={target} onChange={(e) => setTarget(e.target.value)} /></Field>
+          {k?.ratings && k.ratings.some(Boolean) && (
+          <div className="rounded-lg bg-canvas px-3 py-2 text-[12px] text-ink-2 space-y-0.5">
+            <p className="font-semibold text-ink-3">เกณฑ์ให้คะแนน (จากระบบ HR)</p>
+            {k.ratings.map((r, i) => r && <p key={i}><b>{i + 1}</b> · {r}</p>)}
+          </div>
+        )}
+        <Field label={`ค่าเป้าหมาย ${k?.unit ? `(${k.unit})` : ""}`}><input className="input" type="number" value={target} onChange={(e) => setTarget(e.target.value)} /></Field>
           <Field label="น้ำหนัก (%)" hint={`คงเหลือ ${remaining}%`}><input className={cx("input", Number(weight) > remaining && "border-crit")} type="number" value={weight} onChange={(e) => setWeight(e.target.value)} /></Field>
         </div>
         <Field label="เชื่อมกับเป้าหมายระดับบน">

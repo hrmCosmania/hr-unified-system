@@ -5,7 +5,7 @@
 // สิทธิ์: บัญชี HR ของระบบหลัก = hr_admin (pm.hr_account) — ดู supabase/migrations/…0800, …0900
 // =====================================================================
 import { supabase } from "../lib/supabase";
-import type { Checkin, Goal, Person } from "./types";
+import type { Checkin, Competency, DataSource, Direction, Goal, Person } from "./types";
 
 export type LiveStatus = "demo" | "checking" | "ready" | "not_exposed" | "error";
 
@@ -13,6 +13,15 @@ export interface LiveEmployee extends Person {
   managerId: string | null;
   /** รหัสบริษัท (CMN/CIL) จากรหัสแผนก "บริษัท-แผนก" ที่ซิงก์จากระบบ HR */
   company: string;
+  /** ตำแหน่ง (pm.positions) — code = Job Code ของระบบ HR ใช้ดึง KPI/Competency ของตำแหน่ง */
+  positionId: string | null;
+  positionCode: string;
+}
+
+/** KPI ของตำแหน่ง (จากแอปหลัก: JD/KPI/Competency → pm.position_kpis) */
+export interface PosKpi {
+  code: string; name: string; unit: string; direction: Direction; source: DataSource; family: string;
+  weight: number | null; target?: string; formula?: string; frequency?: string; ratings: string[];
 }
 
 export interface LiveCycle { id: string; name: string; endDate: string }
@@ -44,7 +53,7 @@ export async function probe(): Promise<{ status: LiveStatus; message?: string }>
 
 export async function loadEmployees(): Promise<LiveEmployee[]> {
   const { data, error } = await db().from("employees")
-    .select("id, employee_code, first_name_th, last_name_th, nickname, manager_id, status, org_unit:org_units!employees_org_unit_id_fkey(code, name_th), position:positions!employees_position_id_fkey(title_th)")
+    .select("id, employee_code, first_name_th, last_name_th, nickname, manager_id, status, org_unit:org_units!employees_org_unit_id_fkey(code, name_th), position:positions!employees_position_id_fkey(id, code, title_th)")
     .neq("status", "terminated").order("employee_code");
   if (error) throw error;
   return (data ?? []).map((r: any, i: number) => ({
@@ -52,6 +61,7 @@ export async function loadEmployees(): Promise<LiveEmployee[]> {
     nickname: r.nickname ?? undefined, position: r.position?.title_th ?? "", orgUnit: r.org_unit?.name_th ?? "",
     bu: "hq", color: COLORS[i % COLORS.length], managerId: r.manager_id,
     company: String(r.org_unit?.code ?? "").split("-")[0],
+    positionId: r.position?.id ?? null, positionCode: r.position?.code ?? "",
   }));
 }
 
@@ -202,4 +212,36 @@ export async function findPlan(cycleId: string, empId: string): Promise<string |
   const { data, error } = await db().from("performance_plans").select("id").eq("cycle_id", cycleId).eq("employee_id", empId).maybeSingle();
   if (error) throw error;
   return data?.id ?? null;
+}
+
+// ---------- KPI / Competency ของตำแหน่ง (ซิงก์จากแอปหลัก) ----------
+const CAT: Record<string, Competency["category"]> = { core: "core", leadership: "leadership", functional: "functional" };
+export async function loadFramework(positionId: string): Promise<{ kpis: PosKpi[]; comps: Competency[] }> {
+  const c = db();
+  const [k, p] = await Promise.all([
+    c.from("position_kpis").select("weight, target_text, formula, frequency, rating_desc, kpi:kpi_library(code, name_th, unit, direction, data_source, is_active)").eq("position_id", positionId),
+    c.from("position_competencies").select("required_level, weight, competency:competencies(id, code, name_th, category, is_active)").eq("position_id", positionId),
+  ]);
+  if (k.error) throw k.error;
+  if (p.error) throw p.error;
+  const kpis = (k.data ?? []).filter((r: any) => r.kpi && r.kpi.is_active !== false).map((r: any): PosKpi => ({
+    code: r.kpi.code, name: r.kpi.name_th, unit: r.kpi.unit === "-" ? "" : r.kpi.unit, direction: r.kpi.direction, source: r.kpi.data_source,
+    family: "KPI ตามตำแหน่ง", weight: r.weight === null ? null : Number(r.weight), target: r.target_text ?? undefined,
+    formula: r.formula ?? undefined, frequency: r.frequency ?? undefined, ratings: (r.rating_desc ?? []).map((x: unknown) => String(x ?? "")),
+  })).sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0) || a.code.localeCompare(b.code));
+  const comps = (p.data ?? []).filter((r: any) => r.competency && r.competency.is_active !== false).map((r: any): Competency => ({
+    id: r.competency.id, code: r.competency.code, name: r.competency.name_th, category: CAT[r.competency.category] ?? "functional",
+    required: r.required_level, current: 0,
+  })).sort((a, b) => a.code.localeCompare(b.code));
+  return { kpis, comps };
+}
+
+/** พจนานุกรม Competency จากแอปหลัก (pm.competencies source = hr) พร้อมคำอธิบายระดับ 1–5 */
+export interface DictCompetency { id: string; code: string; name: string; nameEn: string; category: Competency["category"]; description: string; levels: string[] }
+export async function loadCompetencyDictionary(): Promise<DictCompetency[]> {
+  const { data, error } = await db().from("competencies").select("id, code, name_th, name_en, category, description, levels")
+    .eq("source", "hr").eq("is_active", true).order("code");
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({ id: r.id, code: r.code, name: r.name_th, nameEn: r.name_en ?? "", category: CAT[r.category] ?? "functional",
+    description: r.description ?? "", levels: (r.levels ?? []).map((x: unknown) => String(x ?? "")) }));
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ClipboardCheck, Save, Send, Database, Sparkles } from "lucide-react";
 import { useStore } from "../data/store";
-import { competencies, team } from "../data/mock";
+import { competencies as demoCompetencies, team } from "../data/mock";
 import * as liveApi from "../data/live";
 import type { LiveReview } from "../data/live";
 import { Avatar, Button, Card, CardTitle, Field, PageHeader, RatingPicker, Segmented, SourceTag, Stepper, cx, fmtCompact } from "../components/ui";
@@ -12,8 +12,11 @@ const bandScore = (p: number) => (p >= 115 ? 5 : p >= 105 ? 4 : p >= 95 ? 3 : p 
 const KPI_W = 60, COMP_W = 40;
 
 export default function Review() {
-  const { role, goals, toast, liveStatus, subject: liveSubject, managerOf, cycle, ensurePlanId } = useStore();
+  const { role, goals, toast, liveStatus, subject: liveSubject, managerOf, cycle, ensurePlanId, posComps } = useStore();
   const ready = liveStatus === "ready";
+  // Competency ตามตำแหน่งจากแอปหลัก (JD/KPI/Competency) — ถ้ายังไม่มี ใช้ชุดตัวอย่าง
+  const compFromHr = ready && posComps.length > 0;
+  const competencies = compFromHr ? posComps : demoCompetencies;
   const [mode, setMode] = useState<"self" | "manager">(role === "employee" ? "self" : "manager");
   const [subject, setSubject] = useState("t3");
   const [kpiR, setKpiR] = useState<Record<string, number>>(() => Object.fromEntries(goals.map((g) => [g.id, bandScore(progressOf(g))])));
@@ -44,7 +47,7 @@ export default function Review() {
       } catch (e) { if (!stop) toast(e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e), "crit"); }
     })();
     return () => { stop = true; };
-  }, [ready, liveSubject?.id, cycle?.id, mode, goals.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready, liveSubject?.id, cycle?.id, mode, goals.length, posComps]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveLive = async (submit: boolean) => {
     if (!liveSubject) return;
@@ -149,10 +152,12 @@ export default function Review() {
           {/* Competency */}
           <Card className="overflow-hidden">
             <div className="px-5 pt-5"><CardTitle action={<span className="text-xs text-ink-3">น้ำหนัก {COMP_W}%</span>}>ส่วนที่ 2 · สมรรถนะ (Competency)</CardTitle></div>
-            {(["core", "leadership", "functional"] as const).map((cat) => (
+            {ready && !compFromHr && <p className="px-5 pb-2 text-xs text-ink-3">ตำแหน่งนี้ยังไม่มี Competency ในระบบ HR หลัก — แสดงชุดตัวอย่าง</p>}
+            {compFromHr && <p className="px-5 pb-2 text-xs text-ink-3">ตามตำแหน่ง {liveSubject?.positionCode} · ดึงจาก JD / KPI / Competency ในระบบ HR หลัก</p>}
+            {(["core", "leadership", "functional"] as const).filter((cat) => competencies.some((c) => c.category === cat)).map((cat) => (
               <div key={cat}>
                 <p className="px-5 py-2 bg-canvas text-xs font-semibold text-ink-3 uppercase tracking-wide">
-                  {cat === "core" ? "Core Values" : cat === "leadership" ? "Leadership" : "Functional · ค้าปลีก"}
+                  {cat === "core" ? "Core Competency" : cat === "leadership" ? "Managerial / Leadership" : "Functional Competency"}
                 </p>
                 {competencies.filter((c) => c.category === cat).map((c) => (
                   <div key={c.id} className="px-5 py-3.5 flex flex-col md:flex-row md:items-center gap-2 border-b border-line last:border-0">
