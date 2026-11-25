@@ -88,8 +88,8 @@ export default function Review() {
 
   return (
     <div>
-      <PageHeader icon={<ClipboardCheck size={22} />} title="แบบประเมินผลงานปลายปี 2026"
-        subtitle={`KPI ${KPI_W}% + Competency ${COMP_W}% · ครบกำหนด 15 ธ.ค. 2026`}
+      <PageHeader icon={<ClipboardCheck size={22} />} title={ready && cycle ? `แบบประเมินผลงาน · ${cycle.name}` : "แบบประเมินผลงานปลายปี 2026"}
+        subtitle={`KPI ${KPI_W}% + Competency ${COMP_W}% · ครบกำหนด ${ready && cycle?.endDate ? new Date(cycle.endDate).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) : "15 ธ.ค. 2026"}`}
         actions={role !== "employee" ? <Segmented value={mode} onChange={setMode} items={[{ value: "self", label: "ประเมินตนเอง" }, { value: "manager", label: "ประเมินลูกทีม" }]} /> : undefined} />
 
       <Card className="p-5 mb-5">

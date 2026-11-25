@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import * as liveApi from "../data/live";
 import { Plus, Send, Target, ChevronRight, Building, Store, User, Pencil, Trash, Library, Link as LinkIcon, Info, CircleCheck } from "lucide-react";
 import { useStore } from "../data/store";
 import { companyGoals } from "../data/mock";
@@ -34,6 +35,9 @@ export default function Goals() {
   const ready = liveStatus === "ready";
   // KPI ตามตำแหน่งจากแอปหลัก (JD/KPI/Competency) — ถ้ายังไม่มี ใช้คลังตัวอย่าง
   const fromHr = ready && posKpis.length > 0;
+  const { cycle } = useStore();
+  const [orgGoals, setOrgGoals] = useState<(Goal & { level: string })[]>([]);
+  useEffect(() => { if (ready && cycle) liveApi.loadOrgGoals(cycle.id).then(setOrgGoals, () => setOrgGoals([])); }, [ready, cycle]);
   const lib: LibKpi[] = fromHr ? posKpis : kpiLibrary;
   const mgr = ready ? managerOf(subject) : null;
   const hasPending = goals.some((g) => g.status === "pending_approval");
@@ -140,7 +144,20 @@ export default function Goals() {
         </div>
       )}
 
-      {tab === "cascade" && (
+      {tab === "cascade" && ready && (
+        <Card className="mt-5 p-5">
+          <p className="text-sm text-ink-3 mb-4">เป้าหมายระดับบริษัท / ทีม ในรอบ {cycle?.name}</p>
+          {orgGoals.length === 0 && <p className="text-sm text-ink-3">ยังไม่มีเป้าหมายองค์กรในรอบนี้ — HR เพิ่มเป้าหมายประเภท “บริษัท” หรือ “ทีม” ได้ในฐานข้อมูล GrowTogether</p>}
+          <ul className="space-y-3">{orgGoals.map((g) => (
+            <li key={g.id} className="card p-3.5 flex flex-wrap items-center gap-3">
+              <span className="w-8 h-8 rounded-lg bg-navy-800 text-white flex items-center justify-center">{g.type === "company" ? <Building size={16} /> : <Store size={16} />}</span>
+              <div className="flex-1 min-w-[180px]"><p className="text-[11px] text-ink-3">{g.level}</p><p className="font-medium">{g.title}</p></div>
+              <div className="w-40"><Progress value={progressOf(g)} tone="good" /><p className="text-[11px] text-ink-3 mt-1">{g.actual ?? "–"} / {g.target} {g.unit}</p></div>
+            </li>))}</ul>
+        </Card>
+      )}
+
+      {tab === "cascade" && !ready && (
         <Card className="mt-5 p-5">
           <p className="text-sm text-ink-3 mb-4">เป้าหมายของคุณเชื่อมโยงกับเป้าหมายองค์กรอย่างไร</p>
           <ol className="space-y-3">
@@ -214,6 +231,7 @@ function AddGoalModal({ open, onClose, onSave, remaining, lib }: { open: boolean
   const [desc, setDesc] = useState("");
   const [target, setTarget] = useState("");
   const [weight, setWeight] = useState(String(Math.max(0, remaining)));
+  const { liveStatus } = useStore();
   const k = lib.find((x) => x.code === kpi);
   const families = [...new Set(lib.map((x) => x.family))];
   const valid = title.trim() && Number(target) > 0 && Number(weight) > 0;
@@ -254,9 +272,9 @@ function AddGoalModal({ open, onClose, onSave, remaining, lib }: { open: boolean
         <Field label={`ค่าเป้าหมาย ${k?.unit ? `(${k.unit})` : ""}`}><input className="input" type="number" value={target} onChange={(e) => setTarget(e.target.value)} /></Field>
           <Field label="น้ำหนัก (%)" hint={`คงเหลือ ${remaining}%`}><input className={cx("input", Number(weight) > remaining && "border-crit")} type="number" value={weight} onChange={(e) => setWeight(e.target.value)} /></Field>
         </div>
-        <Field label="เชื่อมกับเป้าหมายระดับบน">
+        {liveStatus !== "ready" && <Field label="เชื่อมกับเป้าหมายระดับบน">
           <select className="input" defaultValue="c3">{companyGoals.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}</select>
-        </Field>
+        </Field>}
       </div>
     </Modal>
   );

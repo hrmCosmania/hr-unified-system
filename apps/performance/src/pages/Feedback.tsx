@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MessageSquareHeart, Send, Eye, Lock, Globe, Sparkles, HandHeart, Inbox } from "lucide-react";
-import { useStore, person } from "../data/store";
+import { useStore } from "../data/store";
+import * as liveApi from "../data/live";
 import { badges, competencies, feedbackRequests, people, recognitionWall } from "../data/mock";
 import { Avatar, Button, Card, CardTitle, Empty, Field, PageHeader, Segmented, Tabs, cx, thDate } from "../components/ui";
 import type { Feedback } from "../data/types";
@@ -8,21 +9,28 @@ import type { Feedback } from "../data/types";
 const visLabel = { public: { l: "สาธารณะ (Recognition Wall)", i: <Globe size={13} /> }, manager: { l: "ผู้รับ + หัวหน้าของผู้รับ", i: <Eye size={13} /> }, private: { l: "เฉพาะผู้รับ", i: <Lock size={13} /> } };
 
 export default function FeedbackPage() {
-  const { feedback, sendFeedback, toast } = useStore();
+  const { feedback, sendFeedback, toast, liveStatus, subject, directory, posComps, personOf } = useStore();
+  const ready = liveStatus === "ready";
+  const meId = ready ? subject?.id ?? "" : "me";
+  const compList = ready && posComps.length ? posComps : competencies;
   const [tab, setTab] = useState<"give" | "received" | "sent" | "wall">("give");
+  const [wall, setWall] = useState<Feedback[]>([]);
+  useEffect(() => { if (ready && tab === "wall") liveApi.loadPublicFeedback().then(setWall, (e) => toast(String(e?.message ?? e), "crit")); }, [ready, tab]); // eslint-disable-line react-hooks/exhaustive-deps
   const [type, setType] = useState<"praise" | "constructive" | "request">("praise");
-  const [to, setTo] = useState("t1");
-  const [comp, setComp] = useState(competencies[0].name);
+  const [to, setTo] = useState(ready ? "" : "t1");
+  const [comp, setComp] = useState(compList[0]?.name ?? "");
   const [msg, setMsg] = useState("");
   const [badge, setBadge] = useState<string | undefined>("team_player");
   const [vis, setVis] = useState<Feedback["visibility"]>("public");
-  const received = feedback.filter((f) => f.toId === "me");
-  const sent = feedback.filter((f) => f.fromId === "me");
+  const received = feedback.filter((f) => f.toId === meId);
+  const sent = feedback.filter((f) => f.fromId === meId);
   const unread = received.filter((f) => !f.isRead).length;
-  const colleagues = Object.values(people).filter((p) => p.id !== "me");
+  const colleagues = ready ? directory.filter((p) => p.id !== meId) : Object.values(people).filter((p) => p.id !== "me");
+  const requests = ready ? received.filter((f) => f.type === "request").map((f) => ({ id: f.id, fromId: f.fromId, topic: f.message, due: thDate(f.createdAt, false) })) : feedbackRequests;
 
   const submit = () => {
-    sendFeedback({ fromId: "me", toId: to, type, competency: comp, message: msg, badge: type === "praise" ? badge : undefined, visibility: type === "praise" ? vis : "private" });
+    if (ready && (!meId || !to)) { toast("เลือกผู้รับ Feedback ก่อน", "crit"); return; }
+    sendFeedback({ fromId: meId, toId: to, type, competency: comp, message: msg, badge: type === "praise" ? badge : undefined, visibility: type === "praise" ? vis : "private" });
     setMsg("");
     toast(type === "request" ? "ส่งคำขอ Feedback แล้ว" : "ส่ง Feedback แล้ว ขอบคุณที่ช่วยกันพัฒนา 🙏");
   };
@@ -46,12 +54,13 @@ export default function FeedbackPage() {
             <div className="mt-5 space-y-4">
               <Field label={type === "request" ? "ขอจาก" : "ถึง"}>
                 <select className="input" value={to} onChange={(e) => setTo(e.target.value)}>
+                  {ready && <option value="">— เลือกเพื่อนร่วมงาน —</option>}
                   {colleagues.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.position} ({p.orgUnit})</option>)}
                 </select>
               </Field>
               <Field label="เกี่ยวกับ Competency">
                 <select className="input" value={comp} onChange={(e) => setComp(e.target.value)}>
-                  {competencies.map((c) => <option key={c.id}>{c.name}</option>)}
+                  {compList.map((c) => <option key={c.id}>{c.name}</option>)}
                 </select>
               </Field>
               {type === "praise" && (
@@ -94,8 +103,9 @@ export default function FeedbackPage() {
           <div className="space-y-5">
             <Card className="p-5">
               <CardTitle icon={<Inbox size={16} className="text-brand-600" />}>มีคนขอ Feedback จากคุณ</CardTitle>
-              {feedbackRequests.map((r) => {
-                const p = person(r.fromId);
+              {requests.length === 0 && <p className="text-sm text-ink-3">ยังไม่มีคำขอ</p>}
+              {requests.map((r) => {
+                const p = personOf(r.fromId);
                 return (
                   <div key={r.id} className="flex items-center gap-3 rounded-xl border border-line p-3">
                     <Avatar p={p} size={36} />
@@ -126,7 +136,8 @@ export default function FeedbackPage() {
 
       {tab === "wall" && (
         <div className="mt-5 columns-1 md:columns-2 xl:columns-3 gap-4 [&>*]:mb-4">
-          {recognitionWall.map((f) => <FeedbackCard key={f.id} f={f} perspective="wall" />)}
+          {(ready ? wall : recognitionWall).map((f) => <FeedbackCard key={f.id} f={f} perspective="wall" />)}
+          {ready && wall.length === 0 && <Empty icon={<HandHeart size={22} />} title="ยังไม่มีคำชื่นชมแบบสาธารณะ" />}
         </div>
       )}
     </div>
@@ -134,7 +145,8 @@ export default function FeedbackPage() {
 }
 
 function FeedbackCard({ f, perspective }: { f: Feedback; perspective: "received" | "sent" | "wall" }) {
-  const from = person(f.fromId), to = person(f.toId);
+  const { personOf } = useStore();
+  const from = personOf(f.fromId), to = personOf(f.toId);
   const typeTag = f.type === "praise" ? { l: "ชื่นชม", c: "bg-good-bg text-[#087a08]" } : f.type === "constructive" ? { l: "คำแนะนำ", c: "bg-brand-50 text-brand-700" } : { l: "คำขอ", c: "bg-canvas text-ink-2" };
   return (
     <Card className={cx("p-4 break-inside-avoid", !f.isRead && perspective === "received" && "border-brand-200 ring-1 ring-brand-100")}>
@@ -148,7 +160,7 @@ function FeedbackCard({ f, perspective }: { f: Feedback; perspective: "received"
         </div>
         <span className={cx("text-[11px] rounded-full px-2 py-0.5 font-medium", typeTag.c)}>{typeTag.l}</span>
       </div>
-      {f.badge && (
+      {f.badge && badges[f.badge] && (
         <div className="mt-3 rounded-xl bg-gradient-to-r from-[#fff3d6] to-[#fffaf0] px-3 py-2 text-sm font-medium text-[#7a4f00]">
           {badges[f.badge].emoji} {badges[f.badge].label}
         </div>

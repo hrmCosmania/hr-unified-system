@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, Search, Funnel, CircleCheck, MessagesSquare, ClipboardCheck } from "lucide-react";
 import { useStore } from "../data/store";
-import { team } from "../data/mock";
 import { Avatar, Button, Card, CardTitle, PageHeader, Progress, Stat, StatusPill, cx, thDate, toneOf } from "../components/ui";
 
 const planLabel: Record<string, { l: string; c: string }> = {
@@ -12,36 +11,52 @@ const planLabel: Record<string, { l: string; c: string }> = {
   manager_review: { l: "รอคุณประเมิน", c: "bg-warn-bg text-warn" },
   released: { l: "แจ้งผลแล้ว", c: "bg-good-bg text-[#087a08]" },
 };
-const daysSince = (d: string | null) => (d ? Math.round((Date.parse("2026-11-24") - Date.parse(d)) / 86400000) : null);
+const daysSince = (d: string | null) => (d ? Math.round((Date.now() - Date.parse(d)) / 86400000) : null);
 
 export default function Team() {
-  const { toast } = useStore();
+  const { toast, team, teamLoading, liveStatus, subject, account, setSubjectId } = useStore();
+  const ready = liveStatus === "ready";
+  const lead = ready ? (account?.role === "manager" ? account.name : subject?.name ?? "") : "";
   const nav = useNavigate();
   const [q, setQ] = useState("");
   const [health, setHealth] = useState("all");
   const [approved, setApproved] = useState(false);
-  const rows = useMemo(() => team.filter((t) => (health === "all" || t.health === health) && (t.name.includes(q) || t.position.toLowerCase().includes(q.toLowerCase()))), [q, health]);
+  const rows = useMemo(() => team.filter((t) => (health === "all" || t.health === health) && (t.name.includes(q) || t.position.toLowerCase().includes(q.toLowerCase()))), [team, q, health]);
+  const pending = ready ? team.find((t) => t.planStatus === "goal_pending" && t.goals > 0) : team[7];
+  const open = (id: string, path: string) => { if (ready) setSubjectId(id); nav(path); };
   const risk = team.filter((t) => t.health === "at_risk" || t.health === "off_track").length;
   const ck30 = team.filter((t) => (daysSince(t.lastCheckin) ?? 999) <= 30).length;
 
   return (
     <div>
-      <PageHeader icon={<Users size={22} />} title="ทีมของฉัน" subtitle="สาขาบางนา (ST045) · ข้อมูลโครงสร้างทีมจาก Core HR อัปเดตอัตโนมัติ" />
+      <PageHeader icon={<Users size={22} />} title="ทีมของฉัน" subtitle={ready ? `ลูกทีมโดยตรงของ ${lead || "-"} · โครงสร้างทีมจากฐานข้อมูลพนักงาน (หัวหน้างาน) ในระบบ HR หลัก` : "สาขาบางนา (ST045) · ข้อมูลโครงสร้างทีมจาก Core HR อัปเดตอัตโนมัติ"} />
+      {ready && !teamLoading && team.length === 0 && (
+        <Card className="p-6 mb-5 text-center text-ink-2">
+          <p className="font-semibold">{lead || "พนักงานที่เลือก"} ยังไม่มีลูกทีมในระบบ</p>
+          <p className="text-sm text-ink-3 mt-1">ลูกทีมมาจากช่อง "หัวหน้างาน" ในฐานข้อมูลพนักงานของระบบ HR หลัก{account?.role === "hr" && " — เลือกหัวหน้างานที่ช่อง “บันทึกให้” ด้านบนเพื่อดูทีมของคนนั้น"}</p>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <Stat label="สมาชิกในทีม" value={team.length} sub="รวมพนักงานทดลองงาน 1 คน" />
-        <Stat label="ตั้งเป้าหมายแล้ว" value={`${team.filter((t) => t.health !== "no_goal").length + (approved ? 1 : 0)}/${team.length}`} sub={approved ? "ครบแล้ว" : "รออนุมัติ 1 คน"} tone={approved ? "good" : "warn"} />
-        <Stat label="Check-in ภายใน 30 วัน" value={`${ck30}/${team.length}`} sub={`${Math.round((ck30 / team.length) * 100)}% ของทีม`} tone="good" />
+        <Stat label="สมาชิกในทีม" value={team.length} sub={ready ? "ลูกทีมโดยตรง" : "รวมพนักงานทดลองงาน 1 คน"} />
+        <Stat label="ตั้งเป้าหมายแล้ว" value={`${team.filter((t) => t.health !== "no_goal").length + (!ready && approved ? 1 : 0)}/${team.length}`}
+          sub={ready ? `รออนุมัติ ${team.filter((t) => t.planStatus === "goal_pending" && t.goals > 0).length} คน` : approved ? "ครบแล้ว" : "รออนุมัติ 1 คน"} tone={approved ? "good" : "warn"} />
+        <Stat label="Check-in ภายใน 30 วัน" value={`${ck30}/${team.length}`} sub={`${team.length ? Math.round((ck30 / team.length) * 100) : 0}% ของทีม`} tone="good" />
         <Stat label="ต้องดูแล / เสี่ยง" value={risk} sub="เป้าหมายต่ำกว่าแผน" tone="crit" />
       </div>
 
-      {!approved && (
+      {!approved && pending && (
         <Card className="p-4 mb-5 border-brand-200 flex flex-col sm:flex-row sm:items-center gap-3">
-          <Avatar p={team[7]} size={40} />
-          <div className="flex-1"><p className="font-semibold">ณัฐพล ศักดิ์ดี ส่งเป้าหมายทดลองงาน 3 ข้อ รออนุมัติ</p>
-            <p className="text-sm text-ink-3">ยอดขายรายบุคคล 35,000 บาท/เดือน (40%) · ผ่าน Service Excellence (30%) · ไม่ขาด/สาย (30%) — สร้างอัตโนมัติจาก Recruitment</p></div>
-          <div className="flex gap-2"><Button variant="secondary" size="sm" onClick={() => toast("ส่งกลับให้แก้ไขแล้ว", "info")}>ขอแก้ไข</Button>
-            <Button size="sm" variant="leaf" onClick={() => { setApproved(true); toast("อนุมัติเป้าหมายแล้ว"); }}><CircleCheck size={15} />อนุมัติ</Button></div>
+          <Avatar p={pending} size={40} />
+          {ready
+            ? <div className="flex-1"><p className="font-semibold">{pending.name} ส่งเป้าหมาย {pending.goals} ข้อ รออนุมัติ</p>
+                <p className="text-sm text-ink-3">เปิดหน้าเป้าหมายของ {pending.name} เพื่อตรวจและอนุมัติ</p></div>
+            : <div className="flex-1"><p className="font-semibold">ณัฐพล ศักดิ์ดี ส่งเป้าหมายทดลองงาน 3 ข้อ รออนุมัติ</p>
+                <p className="text-sm text-ink-3">ยอดขายรายบุคคล 35,000 บาท/เดือน (40%) · ผ่าน Service Excellence (30%) · ไม่ขาด/สาย (30%) — สร้างอัตโนมัติจาก Recruitment</p></div>}
+          <div className="flex gap-2">{ready
+            ? <Button size="sm" onClick={() => open(pending.id, "/goals")}>ตรวจเป้าหมาย</Button>
+            : <><Button variant="secondary" size="sm" onClick={() => toast("ส่งกลับให้แก้ไขแล้ว", "info")}>ขอแก้ไข</Button>
+              <Button size="sm" variant="leaf" onClick={() => { setApproved(true); toast("อนุมัติเป้าหมายแล้ว"); }}><CircleCheck size={15} />อนุมัติ</Button></>}</div>
         </Card>
       )}
 
@@ -76,8 +91,8 @@ export default function Team() {
                     <td className="px-4 py-3"><span className={cx("text-xs rounded-full px-2 py-0.5 font-medium", planLabel[t.planStatus].c)}>{planLabel[t.planStatus].l}</span></td>
                     <td className="px-4 py-3 text-center font-semibold">{t.selfScore ?? <span className="text-ink-3 font-normal">–</span>}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <Button size="sm" variant="ghost" onClick={() => nav("/checkin")} title="Check-in"><MessagesSquare size={15} /></Button>
-                      <Button size="sm" variant={t.planStatus === "manager_review" ? "primary" : "ghost"} onClick={() => nav("/review")}><ClipboardCheck size={15} />{t.planStatus === "manager_review" && "ประเมิน"}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => open(t.id, "/checkin")} title="Check-in"><MessagesSquare size={15} /></Button>
+                      <Button size="sm" variant={t.planStatus === "manager_review" ? "primary" : "ghost"} onClick={() => open(t.id, "/review")}><ClipboardCheck size={15} />{t.planStatus === "manager_review" && "ประเมิน"}</Button>
                     </td>
                   </tr>
                 );

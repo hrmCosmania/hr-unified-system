@@ -1,10 +1,19 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useStore } from "../data/store";
+import * as liveApi from "../data/live";
+import type { OrgStats } from "../data/live";
 import { ChartColumn, Download, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { analytics, ratingGuideline } from "../data/mock";
 import { Button, Card, CardTitle, PageHeader, cx, fmt } from "../components/ui";
 import { Donut, GroupedBars, Legend, LineChart } from "../components/charts";
 
 export default function Analytics() {
+  const { liveStatus } = useStore();
+  if (liveStatus === "ready") return <LiveAnalytics />;
+  return <DemoAnalytics />;
+}
+
+function DemoAnalytics() {
   const [bu, setBu] = useState("all");
   const a = analytics;
   return (
@@ -98,6 +107,80 @@ export default function Analytics() {
               </li>
             ))}
           </ul>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ===================== ข้อมูลจริง ===================== */
+function LiveAnalytics() {
+  const { directory, cycle, livePlans, toast } = useStore();
+  const [st, setSt] = useState<OrgStats | null>(null);
+  const [unit, setUnit] = useState("all");
+  useEffect(() => { if (cycle) liveApi.loadOrgStats(cycle.id).then(setSt, (e) => toast(String(e?.message ?? e), "crit")); }, [cycle?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const today = Date.now();
+  const recent = (id: string, days: number, at = today) => (st?.checkinDates[id] ?? []).some((d) => { const x = Date.parse(d); return x <= at && at - x <= days * 864e5; });
+  const units = useMemo(() => [...new Set(directory.map((e) => e.orgUnit || "ไม่ระบุแผนก"))].sort(), [directory]);
+  const people = directory.filter((e) => unit === "all" || (e.orgUnit || "ไม่ระบุแผนก") === unit);
+  const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
+  const ids = new Set(people.map((p) => p.id));
+  const plans = livePlans.filter((p) => ids.has(p.employeeId));
+  const rated = plans.map((p) => p.calibrated ?? p.finalRating ?? (p.overall != null ? Math.round(p.overall) : null)).filter((x): x is number => x != null);
+  const dist: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  rated.forEach((r) => (dist[Math.min(5, Math.max(1, r))] += 1));
+  const kpis = [
+    { label: "ตั้งเป้าหมายแล้ว", v: pct(people.filter((p) => st?.withGoals.has(p.id)).length, people.length) },
+    { label: "Check-in ภายใน 45 วัน", v: pct(people.filter((p) => recent(p.id, 45)).length, people.length) },
+    { label: "ประเมินตนเองแล้ว", v: pct(people.filter((p) => st?.selfDone.has(p.id)).length, people.length) },
+    { label: "มีแผนพัฒนา (IDP)", v: pct(people.filter((p) => st?.withIdp.has(p.id)).length, people.length) },
+  ];
+  const byUnit = units.filter((u) => unit === "all" || u === unit).map((u) => { const m = directory.filter((e) => (e.orgUnit || "ไม่ระบุแผนก") === u);
+    return { u, n: m.length, v: [pct(m.filter((p) => st?.withGoals.has(p.id)).length, m.length), pct(m.filter((p) => recent(p.id, 45)).length, m.length), pct(m.filter((p) => st?.selfDone.has(p.id)).length, m.length), pct(m.filter((p) => st?.withIdp.has(p.id)).length, m.length)] }; });
+  const months = [5, 4, 3, 2, 1, 0].map((k) => { const d = new Date(); d.setMonth(d.getMonth() - k, 28); return d; });
+  const trend = months.map((m) => pct(people.filter((p) => recent(p.id, 45, m.getTime())).length, people.length));
+  const box = (p: (typeof plans)[number]) => { const r = p.calibrated ?? p.finalRating ?? (p.overall != null ? Math.round(p.overall) : null); if (r == null) return null;
+    const perf = r <= 2 ? 1 : r === 3 ? 2 : 3, pot = p.potential ?? 2; return perf + pot >= 5 ? 0 : perf + pot >= 4 ? 1 : 2; };
+  const nb = [0, 1, 2].map((i) => plans.filter((p) => box(p) === i).length);
+  const nbTotal = nb.reduce((a, b) => a + b, 0);
+
+  return (
+    <div>
+      <PageHeader icon={<ChartColumn size={22} />} title={`ภาพรวมการประเมินผล · ${cycle?.name ?? ""}`} subtitle={`พนักงาน ${fmt(people.length)} คน · ข้อมูลจริงจากฐานข้อมูลกลาง (พนักงานจากระบบ HR หลัก)`}
+        actions={<select className="input h-10 py-1 w-auto" value={unit} onChange={(e) => setUnit(e.target.value)}>
+          <option value="all">ทุกหน่วยงาน</option>{units.map((u) => <option key={u} value={u}>{u}</option>)}</select>} />
+      {!st && <p className="text-sm text-ink-3 mb-3">กำลังโหลด…</p>}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        {kpis.map((k) => <Card key={k.label} className="p-4"><p className="text-[13px] text-ink-3">{k.label}</p><p className="font-display text-[28px] font-semibold text-navy-800 leading-tight mt-1">{k.v}%</p></Card>)}
+      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <Card className="p-5">
+          <CardTitle action={<span className="text-xs text-ink-3">% ของพนักงานในหน่วยงาน</span>}>ความคืบหน้ารายหน่วยงาน</CardTitle>
+          <div className="overflow-x-auto max-h-[420px]"><table className="w-full text-sm">
+            <thead className="text-xs text-ink-3"><tr><th className="text-left py-2 font-medium">หน่วยงาน</th><th className="text-right font-medium">คน</th>{["ตั้งเป้า", "Check-in", "ประเมินตนเอง", "IDP"].map((h) => <th key={h} className="font-medium px-2">{h}</th>)}</tr></thead>
+            <tbody>{byUnit.map((b) => <tr key={b.u} className="border-t border-line"><td className="py-2.5 font-medium">{b.u}</td><td className="text-right text-ink-2">{b.n}</td>
+              {b.v.map((v, i) => <td key={i} className="px-2 py-2 text-center"><span className={cx("text-[13px] font-semibold", v < 70 ? "text-crit" : "text-ink")}>{v}%</span></td>)}</tr>)}</tbody>
+          </table></div>
+        </Card>
+        <Card className="p-5">
+          <CardTitle action={<span className="text-xs text-ink-3">ประเมินแล้ว {rated.length} คน</span>}>การกระจายผลประเมิน vs Guideline</CardTitle>
+          {rated.length === 0 ? <p className="text-sm text-ink-3">ยังไม่มีผลประเมินในรอบนี้</p> : <>
+            <Legend items={[{ label: "ผลจริง", color: "#2a78d6" }, { label: "Guideline", color: "", hatch: true }]} />
+            <GroupedBars categories={["5 โดดเด่น", "4 เกินคาด", "3 ตามคาด", "2 ต้องพัฒนา", "1 ต่ำกว่า"]} height={210}
+              series={[{ label: "ผลจริง", values: [5, 4, 3, 2, 1].map((r) => pct(dist[r], rated.length)), color: "#2a78d6" }, { label: "Guideline", values: [5, 4, 3, 2, 1].map((r) => ratingGuideline[r]), color: "", hatch: true }]} /></>}
+        </Card>
+        <Card className="p-5">
+          <CardTitle action={<span className="text-xs text-ink-3">เป้าหมาย 80%</span>}>พนักงานที่ Check-in สม่ำเสมอ (ภายใน 45 วัน)</CardTitle>
+          <LineChart labels={months.map((m) => m.toLocaleDateString("th-TH", { month: "short" }))} values={trend} target={80} />
+        </Card>
+        <Card className="p-5">
+          <CardTitle>Talent Matrix (9-Box)</CardTitle>
+          {nbTotal === 0 ? <p className="text-sm text-ink-3">ยังไม่มีผล Calibration ในรอบนี้</p> :
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <Donut size={150} thickness={18} segments={["Top Talent", "Core / ตามคาด", "ต้องพัฒนา"].map((l, i) => ({ label: l, value: nb[i], color: ["#1baf7a", "#2a78d6", "#eb6834"][i] }))}
+              center={<><span className="font-display text-2xl font-semibold text-navy-800">{pct(nb[0], nbTotal)}%</span><span className="text-[11px] text-ink-3">Top Talent</span></>} />
+            <ul className="space-y-3 flex-1 w-full">{["Top Talent", "Core / ตามคาด", "ต้องพัฒนา"].map((l, i) => <li key={l} className="flex items-center gap-2 text-sm"><span className="w-3 h-3 rounded-sm" style={{ background: ["#1baf7a", "#2a78d6", "#eb6834"][i] }} /><span className="flex-1 text-ink-2">{l}</span><b>{nb[i]} คน</b></li>)}</ul>
+          </div>}
         </Card>
       </div>
     </div>

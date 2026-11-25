@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GraduationCap, Plus, Briefcase, Users, BookOpen, Database, CircleCheck, Compass } from "lucide-react";
 import { useStore } from "../data/store";
+import * as liveApi from "../data/live";
 import { competencies, idp } from "../data/mock";
 import { Button, Card, CardTitle, Field, Modal, PageHeader, Progress, StatusPill, cx, thDate } from "../components/ui";
 import { Donut } from "../components/charts";
@@ -13,7 +14,14 @@ const typeMeta = {
 } as const;
 
 export default function Idp() {
-  const { idpActions, addIdpAction, updateIdpAction, toast } = useStore();
+  const { idpActions, addIdpAction, updateIdpAction, toast, liveStatus, subject, idpAspiration } = useStore();
+  const ready = liveStatus === "ready";
+  // ประวัติอบรมจากแอปฝึกอบรม (ข้อมูลกลาง) — นับหลักสูตรที่ผ่าน/เข้าอบรมแล้ว
+  const [trained, setTrained] = useState<number | null>(null);
+  useEffect(() => {
+    if (!ready || !subject?.code) { setTrained(null); return; }
+    liveApi.loadTrainingHistory(subject.code).then((h) => setTrained(h.filter((x) => x.status === "attended" || x.status === "completed").length), () => setTrained(null));
+  }, [ready, subject?.code]);
   const [open, setOpen] = useState(false);
   const done = idpActions.filter((a) => a.status === "completed").length;
   const overall = Math.round(idpActions.reduce((s, a) => s + a.progress, 0) / Math.max(1, idpActions.length));
@@ -28,15 +36,15 @@ export default function Idp() {
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-navy-800 text-white flex items-center justify-center shrink-0"><Compass size={20} /></div>
             <div className="flex-1">
-              <p className="text-xs text-ink-3">เป้าหมายอาชีพของฉัน</p>
-              <p className="font-display font-semibold text-navy-800 text-[17px] mt-0.5">{idp.aspiration}</p>
-              <p className="text-xs text-ink-3 mt-2 inline-flex items-center gap-1"><CircleCheck size={13} className="text-good" />อนุมัติโดย {idp.approvedBy} · 12 ก.พ. 2026</p>
+              <p className="text-xs text-ink-3">{ready ? `เป้าหมายอาชีพของ ${subject?.name ?? ""}` : "เป้าหมายอาชีพของฉัน"}</p>
+              <p className="font-display font-semibold text-navy-800 text-[17px] mt-0.5">{ready ? idpAspiration || "ยังไม่ได้ระบุ" : idp.aspiration}</p>
+              {!ready && <p className="text-xs text-ink-3 mt-2 inline-flex items-center gap-1"><CircleCheck size={13} className="text-good" />อนุมัติโดย {idp.approvedBy} · 12 ก.พ. 2026</p>}
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3 mt-5">
             <div className="rounded-xl bg-white border border-line p-3"><p className="text-xs text-ink-3">ความคืบหน้ารวม</p><p className="font-display text-2xl font-semibold text-navy-800">{overall}%</p></div>
             <div className="rounded-xl bg-white border border-line p-3"><p className="text-xs text-ink-3">สำเร็จแล้ว</p><p className="font-display text-2xl font-semibold text-navy-800">{done}/{idpActions.length}</p></div>
-            <div className="rounded-xl bg-white border border-line p-3"><p className="text-xs text-ink-3">ชั่วโมงอบรม (LMS)</p><p className="font-display text-2xl font-semibold text-navy-800">22</p></div>
+            <div className="rounded-xl bg-white border border-line p-3"><p className="text-xs text-ink-3">{ready ? "อบรมแล้ว (แอปฝึกอบรม)" : "ชั่วโมงอบรม (LMS)"}</p><p className="font-display text-2xl font-semibold text-navy-800">{ready ? (trained == null ? "–" : `${trained} หลักสูตร`) : 22}</p></div>
           </div>
         </Card>
         <Card className="p-5">
@@ -97,10 +105,12 @@ function ActionCard({ a, onProgress }: { a: IdpAction; onProgress: (v: number) =
 }
 
 function AddModal({ open, onClose, onSave }: { open: boolean; onClose: () => void; onSave: (a: Omit<IdpAction, "id">) => void }) {
+  const { liveStatus, posComps } = useStore();
+  const list = liveStatus === "ready" && posComps.length ? posComps : competencies;
   const [title, setTitle] = useState("");
   const [type, setType] = useState<IdpAction["type"]>("experience");
-  const [comp, setComp] = useState(competencies[6].name);
-  const [due, setDue] = useState("2027-03-31");
+  const [comp, setComp] = useState(list[Math.min(6, list.length - 1)]?.name ?? "");
+  const [due, setDue] = useState(new Date(Date.now() + 120 * 864e5).toISOString().slice(0, 10));
   return (
     <Modal open={open} onClose={onClose} title="เพิ่มแผนพัฒนา" footer={<>
       <Button variant="ghost" onClick={onClose}>ยกเลิก</Button>
@@ -121,7 +131,7 @@ function AddModal({ open, onClose, onSave }: { open: boolean; onClose: () => voi
         </div>
         <Field label="Competency ที่ต้องการพัฒนา">
           <select className="input" value={comp} onChange={(e) => setComp(e.target.value)}>
-            {competencies.map((c) => <option key={c.id}>{c.name} (ขาด {Math.max(0, c.required - c.current).toFixed(1)})</option>)}
+            {list.map((c) => <option key={c.id} value={c.name}>{c.name}{liveStatus === "ready" ? ` (ต้องการระดับ ${c.required})` : ` (ขาด ${Math.max(0, c.required - c.current).toFixed(1)})`}</option>)}
           </select>
         </Field>
         <Field label="กิจกรรม / สิ่งที่จะทำ"><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="เช่น รับผิดชอบทำงบประมาณสาขาไตรมาส 1" /></Field>

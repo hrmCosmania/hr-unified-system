@@ -8,19 +8,26 @@ import { GroupedBars, Legend } from "../components/charts";
 const boxOf = (perf: number, pot: number) => (pot - 1) * 3 + perf;
 
 export default function Calibration() {
-  const { calibration, moveCalibration, toast } = useStore();
-  const [sel, setSel] = useState(calibration[0].id);
+  const { calibration, moveCalibration, toast, liveStatus, cycle } = useStore();
+  const ready = liveStatus === "ready";
+  const [sel, setSel] = useState(calibration[0]?.id ?? "");
   const [drag, setDrag] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
-  const p = calibration.find((x) => x.id === sel)!;
+  const p = calibration.find((x) => x.id === sel) ?? calibration[0];
+  if (!p) return (
+    <div>
+      <PageHeader icon={<Grid3x3 size={22} />} title="Calibration · 9-Box" subtitle={cycle?.name} />
+      <Card className="p-6"><p className="font-semibold">ยังไม่มีพนักงานที่มีผลประเมินในรอบนี้</p>
+        <p className="text-sm text-ink-3 mt-1">รายชื่อจะขึ้นเมื่อพนักงานมีแผนประเมิน (ตั้งเป้าหมาย/ทำแบบประเมิน) ในรอบ {cycle?.name ?? "ปัจจุบัน"}</p></Card>
+    </div>);
   const dist = [5, 4, 3, 2, 1].map((r) => Math.round((calibration.filter((x) => x.rating === r).length / calibration.length) * 100));
   const changed = calibration.filter((x) => x.rating !== x.preRating).length;
 
   return (
     <div>
-      <PageHeader icon={<Grid3x3 size={22} />} title="Calibration · 9-Box" subtitle="Retail · เขตกรุงเทพฯ ตะวันออก · 18 คน · ผู้ดำเนินการ: ชลธิชา (HRBP) · 18 ธ.ค. 2026"
+      <PageHeader icon={<Grid3x3 size={22} />} title="Calibration · 9-Box" subtitle={ready ? `${cycle?.name ?? ""} · ${calibration.length} คน · ลากเพื่อปรับผลงาน/ศักยภาพ — บันทึกลงแผนประเมินทันที` : "Retail · เขตกรุงเทพฯ ตะวันออก · 18 คน · ผู้ดำเนินการ: ชลธิชา (HRBP) · 18 ธ.ค. 2026"}
         actions={<>
-          <span className="inline-flex items-center gap-1.5 text-sm text-ink-3"><Users size={15} />ผู้เข้าร่วม 5 คน</span>
+          {!ready && <span className="inline-flex items-center gap-1.5 text-sm text-ink-3"><Users size={15} />ผู้เข้าร่วม 5 คน</span>}
           <Button variant={locked ? "ghost" : "primary"} disabled={locked} onClick={() => { setLocked(true); toast("ล็อกผล Calibration แล้ว · ส่งผลไป Payroll & Internal Job ผ่าน Outbox"); }}>
             <Lock size={15} />{locked ? "ล็อกแล้ว" : "ล็อกผลและส่งต่อ"}
           </Button>

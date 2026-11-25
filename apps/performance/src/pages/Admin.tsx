@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { useStore } from "../data/store";
 import * as liveApi from "../data/live";
-import type { DictCompetency } from "../data/live";
+import type { CycleInfo, DictCompetency, LivePhase } from "../data/live";
 import { competencies, cycle, integrations } from "../data/mock";
 import { Button, Card, CardTitle, PageHeader, Stepper, Tabs, cx, fmt } from "../components/ui";
 
@@ -36,7 +36,8 @@ export default function Admin() {
         { value: "roles", label: "สิทธิ์ผู้ใช้" },
       ]} />
 
-      {tab === "cycle" && (
+      {tab === "cycle" && liveStatus === "ready" && <LiveCycleEditor />}
+      {tab === "cycle" && liveStatus !== "ready" && (
         <Card className="mt-5 p-5">
           <CardTitle action={<span className="text-xs rounded-full bg-good-bg text-[#087a08] px-2 py-0.5">Active</span>}>สร้าง / แก้ไขรอบประเมิน</CardTitle>
           <Stepper current={4} steps={cycle.phases.map((p) => ({ label: p.label }))} />
@@ -182,7 +183,8 @@ export default function Admin() {
         </div>
       )}
 
-      {tab === "roles" && (
+      {tab === "roles" && liveStatus === "ready" && <LiveRoles />}
+      {tab === "roles" && liveStatus !== "ready" && (
         <Card className="mt-5 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="text-xs text-ink-3 bg-canvas"><tr>{["บทบาท", "ได้มาจาก", "ขอบเขตข้อมูล", "จำนวน"].map((h) => <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>)}</tr></thead>
@@ -195,5 +197,66 @@ export default function Admin() {
         </Card>
       )}
     </div>
+  );
+}
+
+const PHASES: { phase: string; label: string }[] = [
+  { phase: "goal_setting", label: "ตั้งเป้าหมาย" }, { phase: "checkin", label: "Check-in (รายเดือน)" }, { phase: "mid_year", label: "Mid-year Review" },
+  { phase: "feedback_360", label: "360° Feedback" }, { phase: "year_end", label: "ประเมินปลายปี" }, { phase: "calibration", label: "Calibration" }, { phase: "result", label: "แจ้งผล & รับทราบ" },
+];
+/** ตั้งค่ารอบประเมินจริง (pm.review_cycles + pm.cycle_phases) */
+function LiveCycleEditor() {
+  const { cycle, toast } = useStore();
+  const [info, setInfo] = useState<CycleInfo | null>(null);
+  const [ph, setPh] = useState<LivePhase[]>([]);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!cycle) return;
+    Promise.all([liveApi.loadCycleInfo(cycle.id), liveApi.loadCyclePhases(cycle.id)]).then(([c, p]) => {
+      setInfo(c); setPh(PHASES.map((x) => p.find((y) => y.phase === x.phase) ?? { phase: x.phase, start: "", end: "" }));
+    }, (e) => toast(String(e?.message ?? e), "crit"));
+  }, [cycle?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!cycle) return <Card className="mt-5 p-6 text-ink-3">ยังไม่มีรอบประเมินในฐานข้อมูล</Card>;
+  if (!info) return <Card className="mt-5 p-6 text-ink-3">กำลังโหลด…</Card>;
+  const today = new Date().toISOString().slice(0, 10);
+  const cur = ph.findIndex((p) => p.start && p.start <= today && (!p.end || p.end >= today));
+  return (
+    <Card className="mt-5 p-5">
+      <CardTitle action={<span className="text-xs rounded-full bg-good-bg text-[#087a08] px-2 py-0.5">{info.status}</span>}>แก้ไขรอบประเมิน (ข้อมูลจริง)</CardTitle>
+      <Stepper current={Math.max(0, cur)} steps={PHASES.map((p) => ({ label: p.label }))} />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+        <label><span className="label">ชื่อรอบ</span><input className="input" value={info.name} onChange={(e) => setInfo({ ...info, name: e.target.value })} /></label>
+        <label><span className="label">ปี</span><input className="input" type="number" value={info.year} onChange={(e) => setInfo({ ...info, year: Number(e.target.value) })} /></label>
+        <label><span className="label">เริ่ม</span><input className="input" type="date" value={info.start ?? ""} onChange={(e) => setInfo({ ...info, start: e.target.value })} /></label>
+        <label><span className="label">สิ้นสุด</span><input className="input" type="date" value={info.end ?? ""} onChange={(e) => setInfo({ ...info, end: e.target.value })} /></label>
+      </div>
+      <div className="overflow-x-auto mt-5"><table className="w-full text-sm">
+        <thead className="text-xs text-ink-3 bg-canvas"><tr><th className="text-left px-3 py-2 font-medium">ขั้นตอน</th><th className="px-3 py-2 font-medium text-left">เริ่ม</th><th className="px-3 py-2 font-medium text-left">สิ้นสุด</th></tr></thead>
+        <tbody>{ph.map((p, i) => (
+          <tr key={p.phase} className="border-t border-line"><td className="px-3 py-2 font-medium">{PHASES[i].label}</td>
+            <td className="px-3 py-2"><input type="date" className="input py-1.5" value={p.start} onChange={(e) => setPh(ph.map((x, j) => (j === i ? { ...x, start: e.target.value } : x)))} /></td>
+            <td className="px-3 py-2"><input type="date" className="input py-1.5" value={p.end} onChange={(e) => setPh(ph.map((x, j) => (j === i ? { ...x, end: e.target.value } : x)))} /></td></tr>))}</tbody>
+      </table></div>
+      <div className="flex justify-end mt-4"><Button disabled={busy} onClick={async () => { setBusy(true); try { await liveApi.saveCycle(info, ph); toast("บันทึกรอบการประเมินแล้ว"); } catch (e) { toast(e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e), "crit"); } finally { setBusy(false); } }}><Save size={16} />บันทึก</Button></div>
+    </Card>
+  );
+}
+/** สิทธิ์ผู้ใช้จริง: มาจากระบบ HR หลัก ไม่ได้ตั้งในแอปนี้ */
+function LiveRoles() {
+  const { directory, account } = useStore();
+  const managers = new Set(directory.map((e) => e.managerId).filter(Boolean)).size;
+  const rows = [
+    ["พนักงาน (employee)", "พนักงานทุกคนที่ซิงก์จากฐานข้อมูลพนักงานในระบบ HR หลัก", "ข้อมูลของตนเอง", String(directory.length)],
+    ["หัวหน้างาน (manager)", "อัตโนมัติ: เป็นหัวหน้างานของพนักงานคนใดคนหนึ่ง (ช่องหัวหน้างานในระบบ HR หลัก)", "ตนเอง + ลูกทีมทุกชั้น", String(managers)],
+    ["HR / ผู้ดูแลระบบ", "บัญชีที่มีสิทธิ์ admin หรือ hr ในระบบเงินเดือน / แอปฝึกอบรม", "ทุกคน", account?.role === "hr" ? "รวมบัญชีของคุณ" : "-"],
+  ];
+  return (
+    <Card className="mt-5 overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="text-xs text-ink-3 bg-canvas"><tr>{["บทบาท", "ได้มาจาก", "ขอบเขตข้อมูล", "จำนวน"].map((h) => <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>)}</tr></thead>
+        <tbody>{rows.map((r) => <tr key={r[0]} className="border-t border-line">{r.map((c, i) => <td key={i} className={cx("px-4 py-3", i === 0 ? "font-medium" : "text-ink-2")}>{c}</td>)}</tr>)}</tbody>
+      </table>
+      <p className="px-4 py-3 text-xs text-ink-3 border-t border-line">บัญชีของคุณ: {account?.email} · สิทธิ์ {account?.role === "hr" ? "HR / ผู้ดูแลระบบ" : account?.role === "manager" ? "หัวหน้างาน" : "พนักงาน"}{account && !account.employeeId && " · ยังไม่ผูกกับข้อมูลพนักงาน (ผูกอัตโนมัติเมื่ออีเมลบัญชีตรงกับอีเมลพนักงาน)"}</p>
+    </Card>
   );
 }

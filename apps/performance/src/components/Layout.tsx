@@ -79,7 +79,9 @@ function SideNav({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 /** หน้าที่ใช้ข้อมูลจริงแล้ว (HR บันทึกแทนพนักงาน) — หน้าอื่นยังเป็นข้อมูลตัวอย่าง */
-const LIVE_ROUTES = ["/goals", "/checkin", "/review"];
+// ทุกหน้าใช้ข้อมูลจริงเมื่อเชื่อมฐานข้อมูลแล้ว · แถบ "บันทึกให้" แสดงในหน้าที่บันทึกข้อมูลรายคน
+const LIVE_ROUTES = ["/", "/goals", "/checkin", "/review", "/feedback", "/360", "/idp", "/career", "/team", "/calibration", "/analytics", "/admin"];
+const PER_PERSON = ["/goals", "/checkin", "/review", "/feedback", "/360", "/idp", "/career"];
 
 /** บริษัทที่ทำงาน + ปุ่มเปลี่ยนบริษัท (ร่วมกับระบบ HR รวมศูนย์ — /shared/company.js) */
 function CompanyChip() {
@@ -100,7 +102,11 @@ function BackToHR() {
 }
 
 export default function Layout() {
-  const { me, role, setRole, signOut, toasts, live, liveStatus, liveMessage, employees, subject, setSubjectId } = useStore();
+  const { me, role, setRole, signOut, toasts, live, liveStatus, liveMessage, employees, subject, setSubjectId, account, maxRole, feedback } = useStore();
+  const bell = liveStatus === "ready" ? feedback.filter((f) => f.toId === subject?.id && !f.isRead).length : 3;
+  // มุมมองที่เลือกได้: ไม่เกินสิทธิ์จริงของบัญชี (HR ดูเป็นหัวหน้า/พนักงานได้ · พนักงานดูได้แค่ของตัวเอง)
+  const RANKS: Role[] = ["employee", "manager", "hr"];
+  const roles = (Object.keys(roleLabel) as Role[]).filter((r) => liveStatus !== "ready" || RANKS.indexOf(r) <= RANKS.indexOf(maxRole));
   const [drawer, setDrawer] = useState(false);
   const [menu, setMenu] = useState(false);
   const loc = useLocation();
@@ -151,22 +157,22 @@ export default function Layout() {
           {hosted && <CompanyChip />}
           {liveStatus === "ready" && employees.length > 0 && (
             <label className="flex items-center gap-1.5 text-[12.5px] text-ink-3 min-w-0">
-              <span className="hidden sm:inline whitespace-nowrap">บันทึกให้</span>
+              <span className="hidden sm:inline whitespace-nowrap">{account && account.role === "employee" ? "พนักงาน" : "บันทึกให้"}</span>
               <select value={subject?.id ?? ""} onChange={(e) => setSubjectId(e.target.value)} title="เลือกพนักงานที่จะบันทึกเป้าหมาย / Check-in / แบบประเมินให้"
                 className="h-8 max-w-[220px] rounded-lg border border-brand-200 bg-white px-2 text-ink text-[13px] cursor-pointer">
                 {employees.map((e) => <option key={e.id} value={e.id}>{e.code} · {e.name}</option>)}
               </select>
             </label>
           )}
-          <label className="hidden sm:flex items-center gap-1.5 text-[12.5px] text-ink-3">
+          {roles.length > 1 && <label className="hidden sm:flex items-center gap-1.5 text-[12.5px] text-ink-3">
             มุมมอง
             <select value={role} onChange={(e) => { setRole(e.target.value as Role); navigate(e.target.value === "hr" ? "/analytics" : "/"); }}
               className="h-8 rounded-lg border border-line bg-white px-2 text-ink text-[13px] cursor-pointer">
-              {(Object.keys(roleLabel) as Role[]).map((r) => <option key={r} value={r}>{roleLabel[r]}</option>)}
+              {roles.map((r) => <option key={r} value={r}>{roleLabel[r]}</option>)}
             </select>
-          </label>
-          <button className="relative p-2 rounded-lg hover:bg-brand-50 text-ink-2" aria-label="การแจ้งเตือน 3 รายการ">
-            <Bell size={20} /><span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-crit text-white text-[10px] font-semibold flex items-center justify-center">3</span>
+          </label>}
+          <button className="relative p-2 rounded-lg hover:bg-brand-50 text-ink-2" aria-label={`การแจ้งเตือน ${bell} รายการ`} onClick={() => navigate("/feedback")}>
+            <Bell size={20} />{bell > 0 && <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-crit text-white text-[10px] font-semibold flex items-center justify-center">{bell}</span>}
           </button>
           <div className="relative">
             <button onClick={() => setMenu((m) => !m)} className="flex items-center gap-2.5 pl-1 pr-2 py-1 rounded-xl hover:bg-brand-50 cursor-pointer">
@@ -182,11 +188,12 @@ export default function Layout() {
                 <div className="px-3 py-2 border-b border-line mb-1">
                   <p className="text-sm font-semibold">{me.name}</p>
                   <p className="text-xs text-ink-3">{me.code} · {me.orgUnit}</p>
+                  {account && <p className="text-xs text-brand-700 mt-1">สิทธิ์: {roleLabel[account.role]}{!account.employeeId && " · บัญชีนี้ยังไม่ผูกกับข้อมูลพนักงาน"}</p>}
                 </div>
                 <div className="sm:hidden px-3 py-2">
                   <p className="text-xs text-ink-3 mb-1">มุมมอง</p>
                   <select value={role} onChange={(e) => { setRole(e.target.value as Role); setMenu(false); }} className="input h-9 py-1">
-                    {(Object.keys(roleLabel) as Role[]).map((r) => <option key={r} value={r}>{roleLabel[r]}</option>)}
+                    {roles.map((r) => <option key={r} value={r}>{roleLabel[r]}</option>)}
                   </select>
                 </div>
                 <button onClick={() => { signOut(); if (hosted) hostSignOut(); else navigate("/login"); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-ink-2 hover:bg-brand-50 cursor-pointer">
@@ -198,7 +205,7 @@ export default function Layout() {
         </header>
 
         <main key={loc.pathname} className="flex-1 px-4 lg:px-7 py-5 lg:py-7 pb-24 lg:pb-10 fade-up max-w-[1400px] w-full mx-auto">
-          {liveStatus === "ready" && liveRoute && subject && (
+          {liveStatus === "ready" && PER_PERSON.includes(loc.pathname) && subject && (
             <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-brand-100 bg-brand-50 px-4 py-2.5 text-[13px] text-ink-2">
               <Database size={16} className="text-brand-600 shrink-0" />
               <span><b className="text-ink">ข้อมูลจริง</b> — กำลังบันทึกให้ <b className="text-ink">{subject.name}</b> ({subject.code}{subject.position ? ` · ${subject.position}` : ""}) · เปลี่ยนพนักงานได้ที่ช่อง “บันทึกให้” ด้านบน</span>

@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import * as mock from "./mock";
-import type { CalibrationEntry, Checkin, Competency, Feedback, Goal, IdpAction, Person, Role } from "./types";
+import type { CalibrationEntry, Checkin, Competency, Feedback, Goal, IdpAction, Person, Role, TeamMember } from "./types";
 import { hosted, isLive } from "../lib/supabase";
 import * as live from "./live";
-import type { LiveCycle, LiveEmployee, LiveStatus, PosKpi } from "./live";
+import type { Account, LiveCycle, LiveEmployee, LiveStatus, PosKpi } from "./live";
 
 interface Toast { id: number; text: string; tone: "good" | "info" | "crit" }
 
@@ -14,6 +14,20 @@ interface Store {
   liveMessage: string;
   role: Role;
   setRole: (r: Role) => void;
+  /** บัญชีที่ล็อกอินจริง (ระบบ HR รวมศูนย์) — null = โหมดตัวอย่าง */
+  account: Account | null;
+  /** บทบาทสูงสุดที่บัญชีนี้ดูได้ (ข้อมูลจริง) — เลือกมุมมองได้ไม่เกินนี้ */
+  maxRole: Role;
+  /** ทีมของพนักงานที่เลือก (ลูกทีมโดยตรง) พร้อมสถานะในรอบประเมิน — ข้อมูลจริง */
+  team: TeamMember[];
+  teamLoading: boolean;
+  reloadTeam: () => void;
+  /** หาพนักงานจาก id (ข้อมูลจริง: ทุกบริษัท · โหมดตัวอย่าง: รายชื่อตัวอย่าง) */
+  personOf: (id: string) => Person;
+  /** รายชื่อพนักงานทั้งบริษัทที่เลือก (ใช้เลือกผู้รับ Feedback ฯลฯ) */
+  directory: LiveEmployee[];
+  /** เป้าหมายอาชีพใน IDP ของพนักงานที่เลือก (ข้อมูลจริง) */
+  idpAspiration: string;
   signedIn: boolean;
   signIn: (r: Role) => void;
   signOut: () => void;
@@ -45,6 +59,9 @@ interface Store {
   addIdpAction: (a: Omit<IdpAction, "id">) => void;
   updateIdpAction: (id: string, patch: Partial<IdpAction>) => void;
   calibration: typeof mock.calibrationPeople;
+  /** แผนประเมินทุกคนในรอบ (ข้อมูลจริง) */
+  livePlans: live.LivePlanRow[];
+  reloadPlans: () => void;
   moveCalibration: (id: string, patch: Partial<CalibrationEntry>) => void;
   toasts: Toast[];
   toast: (text: string, tone?: Toast["tone"]) => void;
@@ -52,6 +69,9 @@ interface Store {
 
 const Ctx = createContext<Store | null>(null);
 let seq = 100;
+const COLORS = ["#2a78d6", "#6250d6", "#008300", "#eb6834", "#e87ba4", "#1baf7a", "#eda100", "#e34948"];
+const RANK: Record<Role, number> = { employee: 0, manager: 1, hr: 2 };
+const ROLE_LABEL: Record<Role, string> = { employee: "พนักงาน", manager: "หัวหน้างาน", hr: "HR / ผู้ดูแลระบบ" };
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role>(() => (localStorageGet("gt-role") as Role) || "employee");
@@ -65,13 +85,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   // ---------- ข้อมูลจริง ----------
+  const [account, setAccount] = useState<Account | null>(null);
+  const [liveTeam, setLiveTeam] = useState<TeamMember[]>([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [liveFeedback, setLiveFeedback] = useState<Feedback[]>([]);
+  const [liveIdp, setLiveIdp] = useState<IdpAction[]>([]);
+  const [idpAspiration, setIdpAspiration] = useState("");
+  const [livePlans, setLivePlans] = useState<live.LivePlanRow[]>([]);
   const [liveStatus, setLiveStatus] = useState<LiveStatus>(hosted || isLive ? "checking" : "demo");
   const [liveMessage, setLiveMessage] = useState("");
   const [allEmployees, setEmployees] = useState<LiveEmployee[]>([]);
   // บริษัทที่ทำงาน (ร่วมกับระบบ HR รวมศูนย์ — /shared/company.js): รายชื่อให้เลือกเฉพาะพนักงานของบริษัทนั้น
   const [company, setCompany] = useState(() => window.HRUCompany?.get() ?? "");
   useEffect(() => window.HRUCompany?.onChange((c) => setCompany(c)), []);
-  const employees = useMemo(() => (company ? allEmployees.filter((e) => !e.company || e.company === company) : allEmployees), [allEmployees, company]);
+  const maxRole: Role = account?.role ?? "hr";
+  // รายชื่อที่บัญชีนี้บันทึกแทนได้: HR = ทุกคน (ตามบริษัท) · หัวหน้า = ตัวเอง + ลูกทีมทุกชั้น · พนักงาน = ตัวเอง
+  const employees = useMemo(() => {
+    let list = company ? allEmployees.filter((e) => !e.company || e.company === company) : allEmployees;
+    if (account && account.role !== "hr") {
+      const me = account.employeeId, keep = new Set<string>(me ? [me] : []);
+      if (account.role === "manager" && me) {
+        let added = true;
+        while (added) { added = false; for (const e of allEmployees) if (e.managerId && keep.has(e.managerId) && !keep.has(e.id)) { keep.add(e.id); added = true; } }
+      }
+      list = allEmployees.filter((e) => keep.has(e.id));
+    }
+    return list;
+  }, [allEmployees, company, account]);
   const [subjectId, setSubjectIdState] = useState(() => localStorageGet("gt-subject") ?? "");
   const [cycle, setCycle] = useState<LiveCycle | null>(null);
   const [liveGoals, setLiveGoals] = useState<Goal[]>([]);
@@ -101,9 +141,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const p = await live.probe();
         if (stop) return;
         if (p.status !== "ready") { setLiveStatus(p.status); setLiveMessage(p.message ?? ""); return; }
-        const [emps, cyc] = await Promise.all([live.loadEmployees(), live.loadCycle()]);
+        const [emps, cyc, acc] = await Promise.all([live.loadEmployees(), live.loadCycle(), live.whoami().catch(() => null)]);
         if (stop) return;
-        setEmployees(emps); setCycle(cyc); setLiveStatus("ready");
+        setEmployees(emps); setCycle(cyc); setAccount(acc);
+        // มุมมองตามสิทธิ์จริง: เลือกได้ไม่เกินบทบาทของบัญชี · พนักงานทั่วไปเริ่มที่ตัวเอง
+        if (acc) {
+          setRole((r) => (RANK[r] > RANK[acc.role] ? acc.role : r));
+          if (acc.employeeId && acc.role !== "hr") setSubjectIdState(acc.employeeId);
+        }
+        setLiveStatus("ready");
       } catch (e) {
         if (!stop) { setLiveStatus("error"); setLiveMessage(e instanceof Error ? e.message : String(e)); }
       }
@@ -136,6 +182,45 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => { stop = true; };
   }, [ready, positionId, fail]);
 
+  // ทีม: ลูกทีมโดยตรงของพนักงานที่เลือก (HR) หรือของตัวเอง (หัวหน้างาน)
+  const teamLeadId = account && account.role === "manager" && account.employeeId ? account.employeeId : subject?.id ?? null;
+  const teamMembers = useMemo(() => allEmployees.filter((e) => teamLeadId && e.managerId === teamLeadId), [allEmployees, teamLeadId]);
+  const reloadTeam = useCallback(() => {
+    if (!ready || !cycle) { setLiveTeam([]); return; }
+    setTeamLoading(true);
+    live.loadTeamStatus(cycle.id, teamMembers).then(setLiveTeam, fail).finally(() => setTeamLoading(false));
+  }, [ready, cycle, teamMembers, fail]);
+  useEffect(() => { reloadTeam(); }, [reloadTeam]);
+
+  // Feedback และ IDP ของพนักงานที่เลือก
+  const subjectKey = subject?.id ?? "";
+  const reloadFeedback = useCallback(() => {
+    if (!ready || !subjectKey) { setLiveFeedback([]); return; }
+    live.loadFeedback(subjectKey).then(setLiveFeedback, fail);
+  }, [ready, subjectKey, fail]);
+  const reloadIdp = useCallback(() => {
+    if (!ready || !subjectKey || !cycle) { setLiveIdp([]); return; }
+    live.loadIdp(subjectKey, cycle.id).then((x) => { setLiveIdp(x.actions); setIdpAspiration(x.aspiration); }, fail);
+  }, [ready, subjectKey, cycle, fail]);
+  useEffect(() => { reloadFeedback(); reloadIdp(); }, [reloadFeedback, reloadIdp]);
+
+  // แผนประเมินทั้งรอบ (Calibration / Analytics) — HR เท่านั้นที่เห็นทุกคน (RLS)
+  const reloadPlans = useCallback(() => {
+    if (!ready || !cycle) { setLivePlans([]); return; }
+    live.loadPlans(cycle.id).then(setLivePlans, fail);
+  }, [ready, cycle, fail]);
+  useEffect(() => { reloadPlans(); }, [reloadPlans]);
+  const liveCalibration = useMemo(() => {
+    const tier = (r: number) => (r <= 2 ? 1 : r === 3 ? 2 : 3) as 1 | 2 | 3;
+    return livePlans.filter((p) => !company || !p.company || p.company === company).map((p, i) => {
+      const pre = p.finalRating ?? (p.overall != null ? Math.round(p.overall) : 3);
+      const rating = p.calibrated ?? pre;
+      return { id: p.planId, code: p.code, name: p.name, position: p.position, orgUnit: p.orgUnit, bu: "hq" as const, color: COLORS[i % COLORS.length],
+        personId: p.employeeId, performance: tier(rating), potential: (Math.min(3, Math.max(1, p.potential ?? 2))) as 1 | 2 | 3,
+        preRating: pre, rating, score: p.overall ?? 0 };
+    });
+  }, [livePlans, company]);
+
   const ensurePlanId = useCallback(async () => {
     if (!cycle || !subject) throw new Error("ยังไม่มีรอบประเมินหรือยังไม่ได้เลือกพนักงาน");
     return live.ensurePlan(cycle.id, subject);
@@ -150,11 +235,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     liveStatus,
     liveMessage,
     role,
-    setRole: (r) => { setRole(r); localStorageSet("gt-role", r); },
+    setRole: (r) => { const x = ready && RANK[r] > RANK[maxRole] ? maxRole : r; setRole(x); localStorageSet("gt-role", x); },
+    account,
+    maxRole,
+    team: ready ? liveTeam : mock.team,
+    teamLoading,
+    reloadTeam,
+    idpAspiration,
+    directory: company ? allEmployees.filter((e) => !e.company || e.company === company) : allEmployees,
+    personOf: (id) => (ready ? allEmployees.find((e) => e.id === id) ?? { id, code: "-", name: "ไม่ทราบชื่อ", position: "", orgUnit: "", bu: "hq" } : person(id)),
     signedIn,
     signIn: (r) => { setRole(r); setSignedIn(true); localStorageSet("gt-role", r); localStorageSet("gt-signed", "1"); },
     signOut: () => { setSignedIn(false); localStorageSet("gt-signed", "0"); },
-    me: ready && subject ? subject : role === "hr" ? mock.people.hrd : mock.people.me,
+    // ผู้ใช้ที่ล็อกอินจริง (ไม่ใช่พนักงานที่เลือกบันทึกแทน)
+    me: ready && account
+      ? (() => { const e = allEmployees.find((x) => x.id === account.employeeId);
+          return e ? { ...e } : { id: account.userId, code: account.email, name: account.name, position: ROLE_LABEL[account.role], orgUnit: account.email, bu: "hq" as const }; })()
+      : role === "hr" ? mock.people.hrd : mock.people.me,
     employees,
     subjectId: subject?.id ?? "",
     setSubjectId,
@@ -197,17 +294,43 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!ready) { setDemoCheckins((x) => [{ ...c, id: `ck${++seq}` }, ...x]); return; }
       run(() => live.createCheckin(cycle!.id, subject!, c), undefined, reloadCheckins);
     },
-    feedback,
-    sendFeedback: (f) => setFeedback((x) => [{ ...f, id: `f${++seq}`, createdAt: mock.TODAY }, ...x]),
-    markFeedbackRead: () => setFeedback((x) => x.map((f) => ({ ...f, isRead: true }))),
-    idpActions,
-    addIdpAction: (a) => setIdp((x) => [...x, { ...a, id: `a${++seq}` }]),
-    updateIdpAction: (id, patch) => setIdp((x) => x.map((a) => (a.id === id ? { ...a, ...patch } : a))),
-    calibration,
-    moveCalibration: (id, patch) => setCal((x) => x.map((p) => (p.id === id ? { ...p, ...patch } : p))),
+    feedback: ready ? liveFeedback : feedback,
+    sendFeedback: (f) => {
+      if (!ready) { setFeedback((x) => [{ ...f, id: `f${++seq}`, createdAt: mock.TODAY }, ...x]); return; }
+      const compId = posComps.find((c) => c.name === f.competency)?.id;
+      run(() => live.createFeedback(f, compId), undefined, async () => reloadFeedback());
+    },
+    markFeedbackRead: () => {
+      if (!ready) { setFeedback((x) => x.map((f) => ({ ...f, isRead: true }))); return; }
+      if (subjectKey) run(() => live.markFeedbackRead(subjectKey), undefined, async () => reloadFeedback());
+    },
+    idpActions: ready ? liveIdp : idpActions,
+    addIdpAction: (a) => {
+      if (!ready) { setIdp((x) => [...x, { ...a, id: `a${++seq}` }]); return; }
+      if (!cycle || !subject) { toast("ยังไม่มีรอบประเมินหรือยังไม่ได้เลือกพนักงาน", "crit"); return; }
+      const compId = posComps.find((c) => c.name === a.competency)?.id;
+      run(async () => live.addIdpAction(await live.ensureIdp(subject.id, cycle.id), a, compId), "เพิ่มแผนพัฒนาแล้ว", async () => reloadIdp());
+    },
+    updateIdpAction: (id, patch) => {
+      if (!ready) { setIdp((x) => x.map((a) => (a.id === id ? { ...a, ...patch } : a))); return; }
+      run(() => live.updateIdpAction(id, patch), undefined, async () => reloadIdp());
+    },
+    calibration: ready ? liveCalibration : calibration,
+    livePlans,
+    reloadPlans,
+    moveCalibration: (id, patch) => {
+      if (!ready) { setCal((x) => x.map((p) => (p.id === id ? { ...p, ...patch } : p))); return; }
+      // ย้ายช่อง 9-Box: ผลงาน (แนวนอน) → ผลประเมินหลังปรับ · ศักยภาพ (แนวตั้ง) → potential_rating
+      const row: { calibrated_rating?: number; potential_rating?: number } = {};
+      if (patch.rating != null) row.calibrated_rating = patch.rating;
+      else if (patch.performance != null) row.calibrated_rating = patch.performance === 1 ? 2 : patch.performance === 2 ? 3 : 4;
+      if (patch.potential != null) row.potential_rating = patch.potential;
+      run(() => live.saveCalibration(id, row), undefined, async () => reloadPlans());
+    },
     toasts,
     toast,
   }), [role, signedIn, demoGoals, demoSubmitted, demoCheckins, feedback, idpActions, calibration, toasts, toast,
+      account, maxRole, allEmployees, company, posComps, liveCalibration, livePlans, reloadPlans, liveTeam, teamLoading, reloadTeam, liveFeedback, liveIdp, idpAspiration, reloadFeedback, reloadIdp, subjectKey,
       ready, liveStatus, liveMessage, employees, subject, posKpis, posComps, setSubjectId, managerOf, cycle, ensurePlanId, liveGoals, liveCheckins,
       run, reloadGoals, reloadCheckins]);
 
