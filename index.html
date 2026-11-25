@@ -12381,6 +12381,169 @@ window.payrollAttendanceFromDocs = function(docs, hrCodes){
   }
 })();
 </script>
+<script id="job-position-list-script">
+/* จัดการตำแหน่งงาน: รายการด้านซ้าย = รหัสตำแหน่ง + ชื่อตำแหน่ง (แทนรายชื่อพนักงาน)
+   ตัวกรอง: ค้นหา (รหัส/ชื่อตำแหน่ง/แผนก), แผนก, ระดับ, สถานะตำแหน่ง, อัตรากำลัง (มีคน/ว่าง/เกินอัตรา) · จัดกลุ่ม บริษัท > แผนก */
+(function(){
+  'use strict';
+  var st = { level:'', status:'', staff:'' };
+  function lvlOf(o){ return String(o.level || '').split(',')[0].trim().toUpperCase(); }
+  function ensureFilters(){
+    var dep = document.getElementById('jobDepartmentFilter'); if(!dep) return;
+    var q = document.getElementById('jobPositionSearch'); if(q){ q.placeholder = 'รหัสตำแหน่ง ชื่อตำแหน่ง หรือแผนก'; var ql = q.closest('.field') && q.closest('.field').querySelector('label'); if(ql) ql.textContent = 'ค้นหาตำแหน่งงาน'; }
+    if(document.getElementById('jobLevelFilter')) return;
+    var box = document.createElement('div');
+    box.id = 'jobExtraFilters';
+    box.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px;width:100%;flex-basis:100%;grid-column:1/-1';
+    box.innerHTML = '<select id="jobLevelFilter" title="ระดับตำแหน่ง"><option value="">ทุกระดับ</option></select>'
+      + '<select id="jobStatusFilter" title="สถานะตำแหน่ง"><option value="">ทุกสถานะ</option><option value="active">ใช้งานปกติ</option><option value="frozen">แช่แข็ง</option><option value="cancelled">ยกเลิก</option></select>'
+      + '<select id="jobStaffFilter" title="อัตรากำลัง"><option value="">อัตรากำลังทั้งหมด</option><option value="filled">มีพนักงาน</option><option value="vacant">ว่าง (ไม่มีคน)</option><option value="over">เกินอัตรา</option></select>';
+    // วางเป็นแถวใหม่ใต้กล่องตัวกรองเดิม (ไม่เบียดในแถวแผนก)
+    var field = dep.closest('.field') || dep, row = field.parentNode;
+    var host = (row && row !== document.body && getComputedStyle(row).display.indexOf('flex') >= 0) ? row : field;
+    host.parentNode.insertBefore(box, host.nextSibling);
+    ['jobLevelFilter','jobStatusFilter','jobStaffFilter'].forEach(function(id){
+      document.getElementById(id).addEventListener('change', function(){ renderJobPositionModule(); });
+    });
+  }
+  function fillLevels(opts){
+    var sel = document.getElementById('jobLevelFilter'); if(!sel) return;
+    var cur = sel.value, lv = v4Unique(opts.map(lvlOf).filter(Boolean)).sort(function(a,b){ var x=jobLevelSortKey(a), y=jobLevelSortKey(b); return x[0]-y[0] || x[1]-y[1]; });
+    sel.innerHTML = '<option value="">ทุกระดับ</option>' + lv.map(function(l){ return '<option'+(l===cur?' selected':'')+'>'+escapeHtml(l)+'</option>'; }).join('');
+  }
+  function filtered(){
+    var q = ((document.getElementById('jobPositionSearch')||{}).value || '').trim().toLowerCase();
+    var dep = (document.getElementById('jobDepartmentFilter')||{}).value || '';
+    var lv = (document.getElementById('jobLevelFilter')||{}).value || '';
+    var stt = (document.getElementById('jobStatusFilter')||{}).value || '';
+    var stf = (document.getElementById('jobStaffFilter')||{}).value || '';
+    return v4JobOptions().filter(function(o){
+      if(dep && o.department !== dep) return false;
+      if(lv && lvlOf(o) !== lv) return false;
+      if(stt && (o.status || 'active') !== stt) return false;
+      var n = Number(o.employeeCount || 0), b = o.budgetedHeadcount;
+      if(stf === 'filled' && !n) return false;
+      if(stf === 'vacant' && n) return false;
+      if(stf === 'over' && !(b != null && b !== '' && n > Number(b))) return false;
+      return !q || [o.jobCode, o.position, o.department, o.company, o.level].join(' ').toLowerCase().includes(q);
+    }).sort(function(a,b){
+      return String(a.company).localeCompare(String(b.company)) || String(a.department||'').localeCompare(String(b.department||''),'th')
+        || String(a.jobCode||'~').localeCompare(String(b.jobCode||'~'),'th',{numeric:true}) || String(a.position).localeCompare(String(b.position),'th');
+    });
+  }
+  window.buildJobEmployeeListHtml = function(){
+    ensureFilters();
+    fillLevels(v4JobOptions());
+    var list = filtered();
+    if(!list.length) return '<div class="empty">ไม่พบตำแหน่งที่ตรงกับตัวกรอง</div>';
+    var sel = (typeof jobSelected !== 'undefined' && jobSelected) ? jobSelected.key : '';
+    var html = '<div class="small" style="margin-bottom:6px;color:var(--v4-muted)">'+list.length+' ตำแหน่ง</div>', lastCo = null, lastDept = null;
+    list.forEach(function(o){
+      if(companyFilter === 'ALL' && o.company !== lastCo){ html += '<div class="job-group-head" style="margin-top:12px;font-weight:700">'+escapeHtml(o.company||'-')+'</div>'; lastCo = o.company; lastDept = null; }
+      var dept = o.department || 'ไม่ระบุแผนก';
+      if(dept !== lastDept){ html += '<div class="job-group-head" style="margin:12px 0 4px;font-weight:700">'+escapeHtml(dept)+'</div>'; lastDept = dept; }
+      var n = Number(o.employeeCount || 0), b = o.budgetedHeadcount, over = b != null && b !== '' && n > Number(b);
+      var status = o.status && o.status !== 'active' ? ' · <span style="color:#b45309">'+escapeHtml(POSITION_STATUS_LABELS[o.status] || o.status)+'</span>' : '';
+      html += '<div class="position-list-item '+(sel === o.key ? 'active' : '')+'" onclick="selectJobPosition(\''+v4EscapeAttr(o.key)+'\')">'
+        + '<div class="position-list-title"><code style="font-size:12px;padding:1px 6px;border-radius:6px;background:var(--v4-surface-2);margin-right:6px">'+escapeHtml(o.jobCode || '—')+'</code>'+escapeHtml(displayPositionTitle(o.position) || '(ไม่ระบุตำแหน่ง)')+'</div>'
+        + '<div class="position-list-meta"><span>'+escapeHtml(lvlOf(o) || '-')+' · '+(n ? n+' คน' : '<span style="color:#dc2626">ว่าง</span>')+(b != null && b !== '' ? ' / อัตรา '+escapeHtml(b) : '')+(over ? ' <span style="color:#dc2626">เกินอัตรา</span>' : '')+status+'</span></div></div>';
+    });
+    return html;
+  };
+})();
+</script>
+<script id="org-chart-clean-script">
+/* ผังองค์กร: ย่อเหลือระดับแผนกเป็นค่าเริ่มต้น (คลิกการ์ดเพื่อขยายดูรายคน) + ป้ายจำนวนคนที่การ์ดแผนก/บริษัท
+   ฟังก์ชันหลัก (orgChildrenMapV42 ฯลฯ) อยู่ในสโคปปิด เข้าไม่ถึงจากภายนอก — ใช้วิธีอ่านโครงสร้างจาก DOM ที่ render ไว้แทน
+   ไม่แตะโครงสร้างเดิม (canvas, ลากวาง, ซูม, พิมพ์, สแนปช็อต) */
+(function(){
+  'use strict';
+  var defaultApplied = {};  // company -> true เมื่อกำหนดค่าเริ่มต้นไปแล้ว (คลิกของผู้ใช้หลังจากนั้นมีผลตามปกติ)
+  var countCache = {};      // company -> { id: จำนวนคน } คำนวณตอนที่ยังขยายเต็ม ใช้ตอนย่อแล้วด้วย
+
+  function countAllEmployees(canvas){
+    var out = {};
+    function walk(li){
+      var card = li.querySelector(':scope > .org-card'); if(!card) return 0;
+      var id = card.getAttribute('data-org-id');
+      var childUl = li.querySelector(':scope > ul');
+      var n = (card.hasAttribute('data-employee-code') && card.getAttribute('data-employee-code') && !card.classList.contains('group')) ? 1 : 0;
+      if(childUl){
+        [].forEach.call(childUl.children, function(childLi){ n += walk(childLi); });
+      }
+      if(id) out[id] = n;
+      return n;
+    }
+    [].forEach.call(canvas.querySelectorAll(':scope > ul.org-tree-v4 > li'), walk);
+    return out;
+  }
+
+  function applyDefaultCollapse(canvas, company){
+    if(defaultApplied[company]) return false;
+    defaultApplied[company] = true;
+    countCache[company] = countAllEmployees(canvas);
+    var changed = false;
+    // ย่อที่ "หน่วยงาน" (การ์ด .group) แรกที่เจอในแต่ละสาย — ถ้าไม่ใช่หน่วยงาน (รายงานตรงถึงราก) ให้ลงไปดูลูกต่อ
+    function walk(li){
+      var card = li.querySelector(':scope > .org-card'); if(!card) return;
+      var childUl = li.querySelector(':scope > ul'); if(!childUl) return;
+      var id = card.getAttribute('data-org-id');
+      if(card.classList.contains('group')){
+        if(id){ v4OrgCollapsed.add(id); changed = true; }
+        return;  // เป็นหน่วยงาน: ย่อไว้ ไม่ต้องลงไปดูข้างใน
+      }
+      [].forEach.call(childUl.children, walk);
+    }
+    [].forEach.call(canvas.querySelectorAll(':scope > ul.org-tree-v4 > li > ul > li'), walk);
+    return changed;
+  }
+
+  function addHeadcountBadges(canvas, company){
+    var counts = countCache[company]; if(!counts) return;
+    [].forEach.call(canvas.querySelectorAll('.org-card.group, .org-card.root'), function(card){
+      var id = card.getAttribute('data-org-id'); if(id == null || counts[id] == null) return;
+      var title = card.querySelector('.org-title'); if(!title || title.querySelector('.org-count')) return;
+      var badge = document.createElement('span'); badge.className = 'org-count'; badge.title = 'จำนวนพนักงานในสายงานนี้';
+      badge.textContent = counts[id];
+      title.appendChild(badge);
+    });
+  }
+
+  var prevRender = window.renderOrgChartV4;
+  if(typeof prevRender === 'function'){
+    window.renderOrgChartV4 = function(){
+      var r = prevRender.apply(this, arguments);
+      try {
+        if(typeof orgViewingSnapshotId !== 'undefined' && orgViewingSnapshotId) return r;  // โหมดย้อนหลัง: แสดงเต็มตามเดิม ไม่ย่อ/ไม่มีป้าย
+        var canvas = document.getElementById('orgChartCanvas'); if(!canvas) return r;
+        var selector = document.getElementById('orgCompanySelect'); var company = (selector && selector.value) || 'CMN';
+        if(applyDefaultCollapse(canvas, company)) prevRender.apply(this, arguments);  // เรนเดอร์ใหม่เมื่อย่อค่าเริ่มต้นแล้ว
+        addHeadcountBadges(document.getElementById('orgChartCanvas'), company);
+      } catch(e){ /* ไม่ให้กระทบการแสดงผลหลักถ้ามีอะไรพลาด */ }
+      return r;
+    };
+    renderOrgChartV4 = window.renderOrgChartV4;
+  }
+})();
+</script>
+<style id="org-chart-clean-style">
+/* หน้าตาใหม่: เรียบ แบน เส้นบาง ไม่มีเงาหนัก ป้ายจำนวนคนที่การ์ดแผนก/บริษัท */
+#orgChartCanvas .org-card{background:var(--v4-surface)!important;border:1px solid var(--v4-border)!important;box-shadow:0 1px 2px rgba(15,23,42,.06)!important;border-radius:10px!important;padding:10px 12px!important;transition:border-color .15s,box-shadow .15s!important}
+#orgChartCanvas .org-card:hover,#orgChartCanvas .org-card.search-hit{border-color:#60A5FA!important;box-shadow:0 2px 8px rgba(37,99,235,.18)!important;transform:none!important}
+#orgChartCanvas .org-card.root{background:var(--v4-surface)!important;border-color:#1D4ED8!important;border-width:1.5px!important}
+#orgChartCanvas .org-card.group{background:var(--v4-surface)!important;border-color:#93C5FD!important}
+#orgChartCanvas .org-card.unassigned{background:var(--v4-surface)!important;border-color:#FCD34D!important;border-style:dashed!important}
+/* ธีมสว่าง (soft) มีกฎพื้นหลังเฉพาะที่ specificity สูงกว่าด้านบน — ทับด้วยกฎเดียวกันแต่ภายหลัง */
+html.theme-soft #orgChartCanvas .org-card{background:#fff!important}
+html.theme-soft #orgChartCanvas .org-card.root{background:#fff!important;border-color:#1D4ED8!important}
+html.theme-soft #orgChartCanvas .org-card.group{background:#fff!important;border-color:#93C5FD!important}
+html.theme-soft #orgChartCanvas .org-card.unassigned{background:#fff!important;border-color:#FCD34D!important}
+#orgChartCanvas .org-card .org-title{display:flex;align-items:center;gap:6px;font-weight:700!important}
+#orgChartCanvas .org-tree-v4 ul{position:relative}
+#orgChartCanvas .org-tree-v4 li{position:relative}
+.org-count{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:var(--v4-surface-2);color:var(--v4-muted);font-size:10px;font-weight:700;margin-left:auto}
+#orgPrintArea .org-count{display:none}
+</style>
 <style id="app-launcher-style">
 /* หน้าเลือกหมวดงาน (5 แอพย่อย) — ใช้ฐานข้อมูลเดียวกันทั้งหมด */
 #appLauncher{display:none;padding:118px 28px 56px;max-width:1320px;margin:0 auto;color:var(--v4-text)}
