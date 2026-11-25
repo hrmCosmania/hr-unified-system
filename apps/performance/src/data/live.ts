@@ -44,7 +44,7 @@ export async function probe(): Promise<{ status: LiveStatus; message?: string }>
 
 export async function loadEmployees(): Promise<LiveEmployee[]> {
   const { data, error } = await db().from("employees")
-    .select("id, employee_code, first_name_th, last_name_th, nickname, manager_id, status, org_unit:org_units(code, name_th), position:positions(title_th)")
+    .select("id, employee_code, first_name_th, last_name_th, nickname, manager_id, status, org_unit:org_units!employees_org_unit_id_fkey(code, name_th), position:positions!employees_position_id_fkey(title_th)")
     .neq("status", "terminated").order("employee_code");
   if (error) throw error;
   return (data ?? []).map((r: any, i: number) => ({
