@@ -121,8 +121,21 @@
     let n = s.employees.reduce((m, x) => Math.max(m, +String(x.id).replace(/\D/g, '') || 0), 0);
     for (const r of list) {
       const code = U.normCode(r.emp_code);
-      if (!code || !r.name || r.active === false || (opt.company && r.company !== opt.company)) {
+      if (!code || !r.name || (opt.company && r.company !== opt.company)) {
         out.skipped++;
+        continue;
+      }
+      // ลาออกในระบบ HR → ปิดการใช้งานในระบบเงินเดือน (ไม่ลบ เพื่อเก็บประวัติ) พร้อมวันสิ้นสุดงาน
+      if (r.active === false) {
+        const ex0 = byCode[code];
+        seen.add(code);
+        if (ex0 && ex0.active !== false) {
+          const ch = { active: false };
+          if (/^\d{4}-\d{2}-\d{2}$/.test(r.end_date || '')) ch.end = r.end_date;
+          out.updated.push({ code, from: { active: true, end: ex0.end || '' }, to: ch });
+          Object.assign(ex0, ch);
+          out.deactivated = (out.deactivated || 0) + 1;
+        } else out.skipped++;
         continue;
       }
       seen.add(code);
@@ -145,6 +158,8 @@
           if (co && ex.company !== co) ch.company = co;
         }
         if (start && !ex.start) ch.start = start;
+        // กลับมาทำงานใหม่ในระบบ HR (เคยถูกปิดจากการซิงก์) → เปิดใช้งานอีกครั้ง
+        if (ex.active === false && ex.hru) { ch.active = true; ch.end = ''; }
         if (Object.keys(ch).length) {
           out.updated.push({ code, from: Object.fromEntries(Object.keys(ch).map((k) => [k, ex[k]])), to: ch });
           Object.assign(ex, ch);
@@ -153,6 +168,17 @@
       if (dept !== '-' && !s.depts.includes(dept)) s.depts.push(dept);
     }
     out.missing = s.employees.filter((e) => e.active !== false && !seen.has(U.normCode(e.code))).map((e) => e.code);
+    // ซิงก์ทั้งบริษัท/ทุกบริษัท: คนที่มาจากระบบ HR แต่ไม่อยู่ในรายชื่อ HR แล้ว → ปิดการใช้งาน
+    if (opt.deactivateMissing) {
+      for (const e of s.employees) {
+        if (!e.hru || e.active === false || seen.has(U.normCode(e.code))) continue;
+        if (opt.company && e.company && e.company !== opt.company) continue;
+        out.updated.push({ code: e.code, from: { active: true }, to: { active: false } });
+        e.active = false;
+        if (!e.end) e.end = U.todayStr();
+        out.deactivated = (out.deactivated || 0) + 1;
+      }
+    }
     return out;
   };
 

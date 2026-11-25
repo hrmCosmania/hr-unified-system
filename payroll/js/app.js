@@ -56,13 +56,13 @@
         const dir = await Cloud.hruDirectory();
         if (!dir.employees.length) return;
         const s = Store.s;
-        const r = Store.syncEmployees(s, dir.employees, { company: '', update: true });
+        const r = Store.syncEmployees(s, dir.employees, { company: '', update: true, deactivateMissing: true });
         if (!r.added.length && !r.updated.length) return;
         PL.Payroll.ensure(s);
         Store.touch('config');
         PL.Payroll.touch(s);
         Store.commit('ซิงก์พนักงานจากระบบ HR', `เพิ่ม ${r.added.length} อัปเดต ${r.updated.length}`);
-        UI.toast(`อัปเดตรายชื่อพนักงานจากระบบ HR: เพิ่ม ${r.added.length} คน แก้ไข ${r.updated.length} คน${r.added.length ? ' — กรอกเงินเดือนของคนใหม่ที่ ตั้งค่าเงินเดือน' : ''}`);
+        UI.toast(`อัปเดตรายชื่อพนักงานจากระบบ HR: เพิ่ม ${r.added.length} คน แก้ไข ${r.updated.length} คน${r.deactivated ? ` (ลาออก/ไม่อยู่ใน HR แล้ว ${r.deactivated} คน — ปิดการใช้งานแล้ว)` : ''}${r.added.length ? ' — กรอกเงินเดือนของคนใหม่ที่ ตั้งค่าเงินเดือน' : ''}`);
         this.route(true);
       } catch (e) { console.warn('auto sync HR', e); }
     },

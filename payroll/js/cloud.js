@@ -368,7 +368,7 @@
           const y = +m[3] > 2400 ? +m[3] - 543 : +m[3];
           return y + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0');
         };
-        const list = ((r.data && r.data.employees) || []).map((e) => ({ emp_code: e.empCode, name: e.fullName, hire_date: iso(e.startDate), company: e.company || '', department: e.department || '', position: e.position || '', active: e.status !== 'Inactive' }));
+        const list = ((r.data && r.data.employees) || []).map((e) => ({ emp_code: e.empCode, name: e.fullName, hire_date: iso(e.startDate), end_date: iso(e.endDate), company: e.company || '', department: e.department || '', position: e.position || '', active: e.status !== 'Inactive' }));
         return { from: 'app', employees: list };
       }
       const { data, error } = await this.sb.from('hru_employee').select('emp_code,name,hire_date,company,department,position,active');

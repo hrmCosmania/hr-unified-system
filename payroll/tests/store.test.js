@@ -100,6 +100,20 @@ t('sync adds new, updates names/depts, keeps pay data, reports missing', () => {
   const again = Store.syncEmployees(st, list, { company: 'CMN' });
   assert.strictEqual(again.added.length + again.updated.length, 0, 'idempotent');
 });
+t('resigned in HR → inactive in payroll; missing HR employees deactivated', () => {
+  const st = Seed.build(), e1 = st.employees[0], e2 = st.employees[1];
+  e1.hru = true; e2.hru = true;
+  const r = Store.syncEmployees(st, [
+    { emp_code: e1.code, name: e1.name, department: e1.dept, active: false, end_date: '2026-10-31' },
+  ], { update: true, deactivateMissing: true });
+  assert.strictEqual(e1.active, false);
+  assert.strictEqual(e1.end, '2026-10-31');
+  assert.strictEqual(e2.active, false, 'hru employee no longer in HR is deactivated');
+  assert.notStrictEqual(st.employees[2].active, false, 'payroll-only employees untouched');
+  assert.strictEqual(r.deactivated, 2);
+  Store.syncEmployees(st, [{ emp_code: e1.code, name: e1.name, department: e1.dept, active: true }], { update: true });
+  assert.strictEqual(e1.active, true, 'rehired → active again');
+});
 t('sync without update keeps existing names', () => {
   const st = Seed.build(), e1 = st.employees[0], old = e1.name;
   Store.syncEmployees(st, [{ emp_code: e1.code, name: 'อื่น', department: 'Y' }], { update: false });
