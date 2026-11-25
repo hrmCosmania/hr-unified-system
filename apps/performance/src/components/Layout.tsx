@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   House, Target, MessagesSquare, MessageSquareHeart, ClipboardCheck, Radar, Route, GraduationCap, Users, Grid3x3,
-  ChartColumn, Settings, Bell, Search, LogOut, Menu, X, ChevronDown, CircleCheck, TriangleExclamationPoint, Info, User, ArrowLeft,
+  ChartColumn, Settings, Bell, Search, LogOut, Menu, X, ChevronDown, CircleCheck, TriangleExclamationPoint, Info, User, ArrowLeft, Database,
 } from "lucide-react";
 import { useStore } from "../data/store";
 import type { Role } from "../data/types";
@@ -78,6 +78,9 @@ function SideNav({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+/** หน้าที่ใช้ข้อมูลจริงแล้ว (HR บันทึกแทนพนักงาน) — หน้าอื่นยังเป็นข้อมูลตัวอย่าง */
+const LIVE_ROUTES = ["/goals", "/checkin", "/review"];
+
 /** ปุ่มกลับไปหน้าเลือกหมวดงานของระบบ HR รวมศูนย์ */
 function BackToHR() {
   if (!hosted) return null;
@@ -90,10 +93,11 @@ function BackToHR() {
 }
 
 export default function Layout() {
-  const { me, role, setRole, signOut, toasts, live } = useStore();
+  const { me, role, setRole, signOut, toasts, live, liveStatus, liveMessage, employees, subject, setSubjectId } = useStore();
   const [drawer, setDrawer] = useState(false);
   const [menu, setMenu] = useState(false);
   const loc = useLocation();
+  const liveRoute = LIVE_ROUTES.includes(loc.pathname);
   const navigate = useNavigate();
 
   return (
@@ -137,6 +141,15 @@ export default function Layout() {
               <Info size={12} />ข้อมูลตัวอย่าง
             </span>
           )}
+          {liveStatus === "ready" && employees.length > 0 && (
+            <label className="flex items-center gap-1.5 text-[12.5px] text-ink-3 min-w-0">
+              <span className="hidden sm:inline whitespace-nowrap">บันทึกให้</span>
+              <select value={subject?.id ?? ""} onChange={(e) => setSubjectId(e.target.value)} title="เลือกพนักงานที่จะบันทึกเป้าหมาย / Check-in / แบบประเมินให้"
+                className="h-8 max-w-[220px] rounded-lg border border-brand-200 bg-white px-2 text-ink text-[13px] cursor-pointer">
+                {employees.map((e) => <option key={e.id} value={e.id}>{e.code} · {e.name}</option>)}
+              </select>
+            </label>
+          )}
           <label className="hidden sm:flex items-center gap-1.5 text-[12.5px] text-ink-3">
             มุมมอง
             <select value={role} onChange={(e) => { setRole(e.target.value as Role); navigate(e.target.value === "hr" ? "/analytics" : "/"); }}
@@ -177,10 +190,24 @@ export default function Layout() {
         </header>
 
         <main key={loc.pathname} className="flex-1 px-4 lg:px-7 py-5 lg:py-7 pb-24 lg:pb-10 fade-up max-w-[1400px] w-full mx-auto">
-          {!live && (
+          {liveStatus === "ready" && liveRoute && subject && (
+            <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-brand-100 bg-brand-50 px-4 py-2.5 text-[13px] text-ink-2">
+              <Database size={16} className="text-brand-600 shrink-0" />
+              <span><b className="text-ink">ข้อมูลจริง</b> — กำลังบันทึกให้ <b className="text-ink">{subject.name}</b> ({subject.code}{subject.position ? ` · ${subject.position}` : ""}) · เปลี่ยนพนักงานได้ที่ช่อง “บันทึกให้” ด้านบน</span>
+            </div>
+          )}
+          {!(liveStatus === "ready" && liveRoute) && (
             <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-warn/30 bg-warn-bg px-4 py-2.5 text-[13px] text-ink-2">
               <Info size={16} className="text-warn shrink-0" />
-              <span><b className="text-ink">ตัวอย่างหน้าจอ</b> — ข้อมูลในแอปนี้เป็นข้อมูลสาธิต ยังไม่ได้เชื่อมกับพนักงานจริง · งานประเมินจริงยังทำที่เมนู <b>ติดตามผลการปฏิบัติงาน</b> ในระบบ HR</span>
+              <span>{liveStatus === "ready"
+                ? <><b className="text-ink">หน้านี้ยังเป็นข้อมูลตัวอย่าง</b> — หน้าที่ใช้ข้อมูลจริงแล้ว: เป้าหมาย, Check-in และแบบประเมิน</>
+                : liveStatus === "not_exposed"
+                  ? <><b className="text-ink">ยังเชื่อมฐานข้อมูล GrowTogether ไม่ได้</b> — ผู้ดูแลต้องเพิ่ม <code>pm</code> ที่ Supabase › Project Settings › Data API › Exposed schemas · ระหว่างนี้แสดงข้อมูลตัวอย่าง</>
+                  : liveStatus === "error"
+                    ? <><b className="text-ink">โหลดข้อมูลจริงไม่สำเร็จ</b> — {liveMessage} · ระหว่างนี้แสดงข้อมูลตัวอย่าง</>
+                    : liveStatus === "checking"
+                      ? <>กำลังเชื่อมฐานข้อมูล…</>
+                      : <><b className="text-ink">ตัวอย่างหน้าจอ</b> — ข้อมูลในแอปนี้เป็นข้อมูลสาธิต</>}</span>
               {hosted && <a href={HOST.home} className="ml-auto text-brand-600 font-medium hover:underline">กลับระบบ HR</a>}
             </div>
           )}

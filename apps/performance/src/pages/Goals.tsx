@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Send, Target, ChevronRight, Building, Store, User, Pencil, Trash, Library, Link as LinkIcon, Info } from "lucide-react";
+import { Plus, Send, Target, ChevronRight, Building, Store, User, Pencil, Trash, Library, Link as LinkIcon, Info, CircleCheck } from "lucide-react";
 import { useStore } from "../data/store";
 import { companyGoals } from "../data/mock";
 import { Button, Card, Field, Modal, PageHeader, Progress, SourceTag, StatusPill, Tabs, cx, fmt, fmtCompact, toneOf } from "../components/ui";
@@ -25,7 +25,10 @@ const kpiLibrary: { code: string; name: string; unit: string; direction: Directi
 const fmtVal = (v: number | null, unit: string) => (v === null ? "–" : unit === "บาท" ? fmtCompact(v) : fmt(v, v % 1 ? 1 : 0));
 
 export default function Goals() {
-  const { goals, addGoal, updateGoal, removeGoal, submitGoals, goalsSubmitted, toast } = useStore();
+  const { goals, addGoal, updateGoal, removeGoal, submitGoals, approveGoals, goalsSubmitted, toast, liveStatus, subject, managerOf } = useStore();
+  const ready = liveStatus === "ready";
+  const mgr = ready ? managerOf(subject) : null;
+  const hasPending = goals.some((g) => g.status === "pending_approval");
   const [tab, setTab] = useState<"mine" | "cascade" | "library">("mine");
   const [adding, setAdding] = useState(false);
   const [updating, setUpdating] = useState<Goal | null>(null);
@@ -39,13 +42,18 @@ export default function Goals() {
         actions={<>
           <Button variant="secondary" onClick={() => setAdding(true)}><Plus size={16} />เพิ่มเป้าหมาย</Button>
           <Button disabled={!hasDraft || totalWeight !== 100} title={totalWeight !== 100 ? "น้ำหนักรวมต้องเท่ากับ 100%" : ""}
-            onClick={() => { submitGoals(); toast("ส่งเป้าหมายให้คุณวิภาวดีอนุมัติแล้ว"); }}>
+            onClick={() => { submitGoals(); toast(ready ? `ส่งเป้าหมายให้หัวหน้า${mgr ? ` (${mgr.name})` : ""} อนุมัติแล้ว` : "ส่งเป้าหมายให้คุณวิภาวดีอนุมัติแล้ว"); }}>
             <Send size={16} />ส่งให้หัวหน้าอนุมัติ
           </Button>
+          {hasPending && (
+            <Button variant="secondary" onClick={approveGoals} title="HR / หัวหน้างาน อนุมัติเป้าหมายที่รออนุมัติทั้งหมดของพนักงานคนนี้">
+              <CircleCheck size={16} />อนุมัติเป้าหมาย
+            </Button>
+          )}
         </>} />
 
       <Tabs value={tab} onChange={setTab} items={[
-        { value: "mine", label: "เป้าหมายของฉัน", count: goals.length },
+        { value: "mine", label: ready && subject ? `เป้าหมายของ ${subject.nickname || subject.name}` : "เป้าหมายของฉัน", count: goals.length },
         { value: "cascade", label: "เป้าองค์กร (Cascade)" },
         { value: "library", label: "คลัง KPI" },
       ]} />
@@ -71,6 +79,13 @@ export default function Goals() {
             <div className="flex items-start gap-2 rounded-xl bg-brand-50 border border-brand-100 px-4 py-3 text-sm text-brand-700">
               <Info size={16} className="mt-0.5 shrink-0" />มีเป้าหมายฉบับร่าง — ตรวจสอบน้ำหนักให้ครบ 100% แล้วกด “ส่งให้หัวหน้าอนุมัติ”
             </div>
+          )}
+
+          {ready && goals.length === 0 && (
+            <Card className="p-8 text-center text-ink-3">
+              <Target className="mx-auto mb-2 text-ink-3" size={28} />
+              ยังไม่มีเป้าหมายของ {subject?.name ?? "พนักงานคนนี้"} ในรอบนี้ — กด <b className="text-ink">เพิ่มเป้าหมาย</b> เพื่อเริ่ม (น้ำหนักรวมต้องครบ 100%)
+            </Card>
           )}
 
           {goals.map((g) => {
@@ -102,7 +117,7 @@ export default function Goals() {
                     </div>
                     {g.history && <div className="hidden sm:block"><Sparkline values={g.history} color={g.status === "at_risk" ? "#b77800" : "#2a78d6"} /></div>}
                     <div className="flex flex-col gap-1">
-                      {g.source === "manual" || g.status === "draft" ? (
+                      {ready || g.source === "manual" || g.status === "draft" ? (
                         <Button size="sm" variant="secondary" onClick={() => setUpdating(g)}><Pencil size={13} />อัปเดต</Button>
                       ) : (
                         <span className="text-[11px] text-ink-3 text-center leading-tight">อัตโนมัติ<br />จาก {g.source.toUpperCase()}</span>
@@ -176,7 +191,7 @@ export default function Goals() {
       <AddGoalModal open={adding} onClose={() => setAdding(false)} remaining={100 - totalWeight}
         onSave={(g) => { addGoal(g); setAdding(false); toast("เพิ่มเป้าหมายฉบับร่างแล้ว"); }} />
       <UpdateModal goal={updating} onClose={() => setUpdating(null)}
-        onSave={(id, actual) => { updateGoal(id, { actual, lastUpdated: "เมื่อสักครู่" }); setUpdating(null); toast("บันทึกความคืบหน้าแล้ว"); }} />
+        onSave={(id, actual, note) => { updateGoal(id, { actual, lastUpdated: "เมื่อสักครู่" }, note); setUpdating(null); toast("บันทึกความคืบหน้าแล้ว"); }} />
     </div>
   );
 }
@@ -225,14 +240,14 @@ function AddGoalModal({ open, onClose, onSave, remaining }: { open: boolean; onC
   );
 }
 
-function UpdateModal({ goal, onClose, onSave }: { goal: Goal | null; onClose: () => void; onSave: (id: string, actual: number) => void }) {
+function UpdateModal({ goal, onClose, onSave }: { goal: Goal | null; onClose: () => void; onSave: (id: string, actual: number, note: string) => void }) {
   const [v, setV] = useState("");
   const [note, setNote] = useState("");
   if (!goal) return null;
   return (
     <Modal open onClose={onClose} title="อัปเดตความคืบหน้า" footer={<>
       <Button variant="ghost" onClick={onClose}>ยกเลิก</Button>
-      <Button disabled={v === ""} onClick={() => { onSave(goal.id, Number(v)); setV(""); setNote(""); }}>บันทึก</Button>
+      <Button disabled={v === ""} onClick={() => { onSave(goal.id, Number(v), note); setV(""); setNote(""); }}>บันทึก</Button>
     </>}>
       <p className="font-medium">{goal.title}</p>
       <p className="text-sm text-ink-3">เป้าหมาย {fmtVal(goal.target, goal.unit)} {goal.unit} · ปัจจุบัน {fmtVal(goal.actual, goal.unit)}</p>

@@ -9113,7 +9113,7 @@ window.refreshPerfEmployeeSelects=function(){
       + '<div class="ep-tile t3"><span class="ep-ico">⭐</span><span class="ep-tl">ระดับพนักงาน</span><span class="ep-tv">'+esc(e.level||'-')+'</span></div>'
       + '<div class="ep-tile t4"><span class="ep-ico">📄</span><span class="ep-tl">ประเภทการจ้าง</span><span class="ep-tv">'+esc(e.employmentType||'ประจำ')+'</span></div></div>';
     var tabs = '<div class="card ep-tabs">'+TABS.map(function(t){return '<button type="button" class="ep-tab'+(currentTab===t[0]?' active':'')+'" onclick="epTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>';
-    var cards = [cardPersonal(e), cardWork(e), cardLeave(e), cardTrain(e), cardPerf(e), cardJd(e), cardSummary(e), cardMiles(e)].join('') + (window.hrdEmpExt ? window.hrdEmpExt.cards(e) : '');
+    var cards = [cardPersonal(e), cardWork(e), cardLeave(e), cardTrain(e), cardPerf(e), cardJd(e), cardSummary(e), cardMiles(e)].join('') + (window.hrdEmpExt ? window.hrdEmpExt.cards(e) : '') + (window.subAppEmpCards ? window.subAppEmpCards(e) : '');
     el.innerHTML = '<div class="ep-wrap"><div class="ep-actions"><button class="btn-ghost ep-back" onclick="showEmployeeSubtab(\'search\')">← กลับรายชื่อพนักงาน</button>'
       + '<input class="ep-jump" list="epJumpList" placeholder="🔎 สลับไปดูพนักงานคนอื่น" onchange="epJump(this.value)" style="max-width:240px"><datalist id="epJumpList">'+(DB.employees||[]).map(function(x){return '<option value="'+attr(x.empCode+' · '+x.fullName)+'"></option>';}).join('')+'</datalist>'
       + '<button class="btn-ghost" onclick="editEmployee(\''+attr(e.empCode)+'\')">✏️ แก้ไขประวัติ</button>'
@@ -12292,6 +12292,93 @@ window.payrollAttendanceFromDocs = function(docs, hrCodes){
   }
   install();
   window.addEventListener('load', install);
+})();
+</script>
+<script id="subapp-profile-script">
+/* โปรไฟล์พนักงาน: ข้อมูลจากแอปย่อย (ฐานข้อมูลเดียวกัน) — โหลดสดตอนเปิดโปรไฟล์
+   - 🎓 แอปฝึกอบรม (hrd_*): ประวัติเข้าอบรม ชั่วโมงอบรม ใบรับรอง
+   - 📈 GrowTogether (schema pm): เป้าหมาย/KPI, Check-in ล่าสุด, ผลประเมินรอบล่าสุด
+   ผูกพนักงานด้วยรหัสพนักงาน (employee_code) ซึ่งซิงก์จากระบบนี้อัตโนมัติ */
+(function(){
+  'use strict';
+  var E = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); };
+  var fmtD = function(d){ if(!d) return '-'; var x = new Date(d); return isNaN(x) ? E(d) : x.toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'numeric' }); };
+  var ST = { requested:'ขอเข้าอบรม', approved:'อนุมัติแล้ว', rejected:'ไม่อนุมัติ', attended:'เข้าอบรมแล้ว', completed:'ผ่านการอบรม', failed:'ไม่ผ่าน', no_show:'ไม่มาอบรม' };
+  var GST = { draft:'ร่าง', pending_approval:'รออนุมัติ', approved:'อนุมัติแล้ว', on_track:'ตามแผน', at_risk:'เสี่ยง', off_track:'ไม่ตามแผน', completed:'สำเร็จ' };
+  var RATING = ['', 'ต่ำกว่ามาตรฐาน', 'ต้องพัฒนา', 'ตามความคาดหวัง', 'เกินความคาดหวัง', 'โดดเด่น'];
+  var seq = 0;
+  function errText(err){ return (err && (err.message || err.code)) || String(err); }
+
+  window.subAppEmpCards = function(e){
+    var n = ++seq, code = e.empCode;
+    setTimeout(function(){ fillTraining(code, n); fillPerf(code, n); }, 0);
+    return '<section class="card ep-card" data-sec="train" id="saTrain'+n+'"><h3>🎓 ประวัติอบรม · แอปฝึกอบรม</h3><div class="ep-empty">กำลังโหลด…</div></section>'
+      + '<section class="card ep-card" data-sec="perf" id="saPerf'+n+'"><h3>📈 ผลงาน · GrowTogether</h3><div class="ep-empty">กำลังโหลด…</div></section>';
+  };
+  function put(id, html){ var el = document.getElementById(id); if(el) el.innerHTML = html; }
+
+  function fillTraining(code, n){
+    var id = 'saTrain'+n, h3 = '<h3>🎓 ประวัติอบรม · แอปฝึกอบรม</h3>';
+    supabaseClient.from('hrd_employees').select('id, enrollments:hrd_enrollments!hrd_enrollments_employee_id_fkey(status, attended_hours, post_score, session:hrd_training_sessions(start_date, course:hrd_courses(title, hours))), certificates:hrd_certificates(cert_no, issued_at, expires_at, course:hrd_courses(title))')
+      .eq('employee_code', code).maybeSingle().then(function(r){
+        if(r.error){ put(id, h3+'<div class="ep-empty">โหลดข้อมูลแอปฝึกอบรมไม่ได้: '+E(errText(r.error))+'</div>'); return; }
+        if(!r.data){ put(id, h3+'<div class="ep-empty">ยังไม่มีพนักงานคนนี้ในแอปฝึกอบรม (ซิงก์อัตโนมัติเมื่อบันทึกฐานข้อมูลพนักงาน)</div>'); return; }
+        var en = (r.data.enrollments || []).slice().sort(function(a,b){ return String((b.session||{}).start_date||'').localeCompare(String((a.session||{}).start_date||'')); });
+        var done = en.filter(function(x){ return x.status === 'attended' || x.status === 'completed'; });
+        var hours = done.reduce(function(s,x){ return s + Number(x.attended_hours != null ? x.attended_hours : (((x.session||{}).course||{}).hours || 0)); }, 0);
+        var certs = r.data.certificates || [], today = new Date().toISOString().slice(0,10);
+        var link = '<a class="small" href="/training/#/employees/'+encodeURIComponent(r.data.id)+'" style="margin-left:auto">เปิดในแอปฝึกอบรม ↗</a>';
+        if(!en.length && !certs.length){ put(id, h3+'<div class="ep-empty">ยังไม่มีประวัติอบรมในแอปฝึกอบรม</div><div style="display:flex;margin-top:8px">'+link+'</div>'); return; }
+        var html = h3 + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span class="ep-chip">ผ่านการอบรม '+done.length+' หลักสูตร</span><span class="ep-chip">'+hours.toLocaleString('th-TH')+' ชม.</span>'+(certs.length?'<span class="ep-chip">ใบรับรอง '+certs.length+'</span>':'')+'</div>'
+          + '<div class="ep-list" style="font-size:14px;display:flex;flex-direction:column;gap:6px">'
+          + en.slice(0,6).map(function(x){ var s = x.session||{}, c = s.course||{}; var ok = x.status === 'attended' || x.status === 'completed';
+              return '<div>'+(ok?'<span class="ep-ok">✓</span>':'<span class="ep-warn">○</span>')+' '+E(c.title||'หลักสูตร')+' <span class="small">· '+fmtD(s.start_date)+' · '+E(ST[x.status]||x.status)+'</span></div>'; }).join('')
+          + (en.length > 6 ? '<div class="small">และอีก '+(en.length-6)+' รายการ</div>' : '')
+          + certs.slice(0,4).map(function(c){ var exp = c.expires_at && c.expires_at < today;
+              return '<div>📜 '+E((c.course||{}).title||c.cert_no)+' <span class="small">· ออก '+fmtD(c.issued_at)+(c.expires_at?' · '+(exp?'<b style="color:#dc2626">หมดอายุ</b> ':'หมดอายุ ')+fmtD(c.expires_at):'')+'</span></div>'; }).join('')
+          + '</div><div style="display:flex;margin-top:8px">'+link+'</div>';
+        put(id, html);
+      }, function(err){ put(id, h3+'<div class="ep-empty">โหลดข้อมูลแอปฝึกอบรมไม่ได้: '+E(errText(err))+'</div>'); });
+  }
+
+  function fillPerf(code, n){
+    var id = 'saPerf'+n, h3 = '<h3>📈 ผลงาน · GrowTogether</h3>';
+    var pm = supabaseClient.schema ? supabaseClient.schema('pm') : null;
+    if(!pm){ put(id, h3+'<div class="ep-empty">ไม่รองรับในเบราว์เซอร์นี้</div>'); return; }
+    pm.from('employees').select('id').eq('employee_code', code).maybeSingle().then(function(r){
+      if(r.error){
+        var msg = r.error.code === 'PGRST106' ? 'ยังไม่ได้เปิดการเชื่อมต่อฐานข้อมูล GrowTogether (ผู้ดูแลต้องเพิ่ม pm ใน Supabase › Data API › Exposed schemas)' : 'โหลดข้อมูล GrowTogether ไม่ได้: '+E(errText(r.error));
+        put(id, h3+'<div class="ep-empty">'+msg+'</div>'); return;
+      }
+      if(!r.data){ put(id, h3+'<div class="ep-empty">ยังไม่มีพนักงานคนนี้ใน GrowTogether (ซิงก์อัตโนมัติเมื่อบันทึกฐานข้อมูลพนักงาน)</div>'); return; }
+      var empId = r.data.id;
+      Promise.all([
+        pm.from('goals').select('title, status, weight, progress_pct, cycle:review_cycles(name_th, year)').eq('employee_id', empId).neq('status', 'cancelled'),
+        pm.from('checkins').select('checkin_date').eq('employee_id', empId).order('checkin_date', { ascending:false }).limit(1),
+        pm.from('performance_plans').select('status, overall_score, final_rating, calibrated_rating, cycle:review_cycles(name_th, year), reviews(review_type, status, overall_score)').eq('employee_id', empId)
+      ]).then(function(res){
+        var bad = res.filter(function(x){ return x.error; })[0];
+        if(bad){ put(id, h3+'<div class="ep-empty">โหลดข้อมูล GrowTogether ไม่ได้: '+E(errText(bad.error))+'</div>'); return; }
+        var goals = res[0].data || [], ck = (res[1].data || [])[0], plans = (res[2].data || []).sort(function(a,b){ return ((b.cycle||{}).year||0) - ((a.cycle||{}).year||0); });
+        var link = '<a class="small" href="/performance/#/goals" style="margin-left:auto" onclick="try{localStorage.setItem(\'gt-subject\',\''+E(empId)+'\')}catch(e){}">เปิดใน GrowTogether ↗</a>';
+        if(!goals.length && !ck && !plans.length){ put(id, h3+'<div class="ep-empty">ยังไม่มีเป้าหมายหรือผลประเมินใน GrowTogether</div><div style="display:flex;margin-top:8px">'+link+'</div>'); return; }
+        var w = goals.reduce(function(s,g){ return s + Number(g.weight||0); }, 0);
+        var avg = w ? goals.reduce(function(s,g){ return s + Math.min(100, Number(g.progress_pct||0)) * Number(g.weight||0); }, 0) / w : 0;
+        var p = plans[0], rating = p && (p.calibrated_rating || p.final_rating);
+        var mgrRev = p && (p.reviews||[]).filter(function(x){ return x.review_type === 'manager'; })[0];
+        var score = p && (p.overall_score != null ? p.overall_score : (mgrRev && mgrRev.overall_score));
+        var html = h3 + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'
+          + '<span class="ep-chip">เป้าหมาย '+goals.length+' ข้อ · คืบหน้า '+Math.round(avg)+'%</span>'
+          + (score != null ? '<span class="ep-chip">คะแนน '+Number(score).toFixed(2)+' / 5'+(rating?' · '+E(RATING[rating]||''):'')+'</span>' : '')
+          + '</div><div class="ep-list" style="font-size:14px;display:flex;flex-direction:column;gap:6px">'
+          + goals.slice(0,5).map(function(g){ return '<div>🎯 '+E(g.title)+' <span class="small">· '+Math.round(Number(g.progress_pct||0))+'% · '+E(GST[g.status]||g.status)+' · น้ำหนัก '+Number(g.weight||0)+'%</span></div>'; }).join('')
+          + (p ? '<div class="small">'+E((p.cycle||{}).name_th||'')+' · แบบประเมิน: '+((p.reviews||[]).map(function(x){ return (x.review_type==='self'?'ตนเอง':x.review_type==='manager'?'หัวหน้า':x.review_type)+' ('+(x.status==='submitted'?'ส่งแล้ว':x.status==='draft'?'ร่าง':x.status)+')'; }).join(', ') || 'ยังไม่ได้ประเมิน')+'</div>' : '')
+          + '<div class="small">Check-in ล่าสุด: '+(ck ? fmtD(ck.checkin_date) : 'ยังไม่มี')+'</div>'
+          + '</div><div style="display:flex;margin-top:8px">'+link+'</div>';
+        put(id, html);
+      }, function(err){ put(id, h3+'<div class="ep-empty">โหลดข้อมูล GrowTogether ไม่ได้: '+E(errText(err))+'</div>'); });
+    }, function(err){ put(id, h3+'<div class="ep-empty">โหลดข้อมูล GrowTogether ไม่ได้: '+E(errText(err))+'</div>'); });
+  }
 })();
 </script>
 <style id="app-launcher-style">

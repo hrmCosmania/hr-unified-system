@@ -16,18 +16,28 @@ const questions = [
 ] as const;
 
 export default function CheckinPage() {
-  const { role, goals, checkins, addCheckin, toast } = useStore();
+  const { role, goals, checkins, addCheckin, toast, liveStatus, subject, managerOf } = useStore();
+  const ready = liveStatus === "ready";
+  const mgr = ready ? managerOf(subject) : null;
+  const todayIso = new Date().toISOString().slice(0, 10);
   const [withWho, setWithWho] = useState(role === "employee" ? "mgr" : "t2");
-  const [date, setDate] = useState("2026-11-24");
+  const [date, setDate] = useState(ready ? todayIso : "2026-11-24");
   const [form, setForm] = useState({ wentWell: "", challenges: "", supportNeeded: "", nextSteps: "" });
   const [mood, setMood] = useState(4);
-  const [nextDate, setNextDate] = useState("2026-12-22");
+  const [nextDate, setNextDate] = useState(ready ? new Date(Date.now() + 28 * 864e5).toISOString().slice(0, 10) : "2026-12-22");
   const [privateNote, setPrivateNote] = useState("");
   const avg = Math.round(goals.reduce((s, g) => s + Math.min(100, progressOf(g)) * g.weight, 0) / 100);
   const risky = goals.filter((g) => g.status === "at_risk" || g.status === "off_track");
   const filled = Object.values(form).filter((v) => v.trim()).length;
 
   const save = () => {
+    if (ready) {
+      if (!mgr) { toast("พนักงานคนนี้ยังไม่มีหัวหน้างานในระบบ HR — กำหนดหัวหน้างานที่ฐานข้อมูลพนักงานก่อน", "crit"); return; }
+      addCheckin({ date, withName: mgr.name, ...form, mood, progress: avg, nextDate });
+      setForm({ wentWell: "", challenges: "", supportNeeded: "", nextSteps: "" });
+      toast(`บันทึก Check-in ของ ${subject?.name ?? ""} แล้ว`);
+      return;
+    }
     addCheckin({ date, withName: role === "employee" ? "วิภาวดี ศรีสุข" : team.find((t) => t.id === withWho)?.name ?? "", ...form, mood, progress: avg, nextDate });
     setForm({ wentWell: "", challenges: "", supportNeeded: "", nextSteps: "" });
     toast("บันทึก Check-in แล้ว · แจ้งเตือนอีกฝ่ายทาง LINE");
@@ -44,8 +54,13 @@ export default function CheckinPage() {
             <Field label="วันที่">
               <input type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>
-            <Field label={role === "employee" ? "คุยกับ" : "ลูกทีม"}>
-              {role === "employee" ? (
+            <Field label={ready ? "พนักงาน · หัวหน้างาน" : role === "employee" ? "คุยกับ" : "ลูกทีม"}>
+              {ready ? (
+                <div className={cx("input flex items-center gap-2 bg-canvas", !mgr && "border-crit")}>
+                  {subject && <Avatar p={subject} size={22} />}
+                  <span className="truncate">{subject?.name ?? "—"} · {mgr ? `หัวหน้า ${mgr.name}` : <span className="text-crit">ยังไม่มีหัวหน้างานในระบบ HR</span>}</span>
+                </div>
+              ) : role === "employee" ? (
                 <div className="input flex items-center gap-2 bg-canvas"><Avatar p={{ name: "วิภาวดี", color: "#6250d6" }} size={22} />วิภาวดี ศรีสุข (Store Manager)</div>
               ) : (
                 <select className="input" value={withWho} onChange={(e) => setWithWho(e.target.value)}>
@@ -86,7 +101,7 @@ export default function CheckinPage() {
                 ))}
               </div>
             </div>
-            {role !== "employee" && (
+            {role !== "employee" && !ready && (
               <Field label="บันทึกส่วนตัวของหัวหน้า" hint="มองเห็นเฉพาะคุณ (แยกตาราง + RLS) ไม่แสดงต่อพนักงาน">
                 <div className="relative"><Lock size={14} className="absolute right-3 top-3 text-ink-3" />
                   <textarea className="input" rows={2} value={privateNote} onChange={(e) => setPrivateNote(e.target.value)} /></div>
@@ -110,13 +125,15 @@ export default function CheckinPage() {
               {risky.map((g) => (
                 <li key={g.id} className="flex gap-2 items-start"><StatusPill status={g.status} /><span className="text-ink-2">{g.title} — {Math.round(progressOf(g))}% ของเป้า</span></li>
               ))}
-              <li className="flex gap-2 text-ink-2">💬 ติดตาม Action จากครั้งก่อน: “{checkins[0]?.nextSteps}”</li>
-              <li className="flex gap-2 text-ink-2">🎯 IDP: หลักสูตร Power BI ความคืบหน้า 40%</li>
+              {checkins[0]?.nextSteps && <li className="flex gap-2 text-ink-2">💬 ติดตาม Action จากครั้งก่อน: “{checkins[0].nextSteps}”</li>}
+              {!ready && <li className="flex gap-2 text-ink-2">🎯 IDP: หลักสูตร Power BI ความคืบหน้า 40%</li>}
+              {ready && !risky.length && !checkins.length && <li className="text-ink-3">ยังไม่มีประวัติ — เริ่มจากทบทวนเป้าหมายและอุปสรรคของเดือนนี้</li>}
             </ul>
           </Card>
 
           <Card className="p-5">
             <CardTitle icon={<CalendarDays size={16} className="text-brand-600" />}>ประวัติ Check-in</CardTitle>
+            {checkins.length === 0 && <p className="text-sm text-ink-3">ยังไม่มีการบันทึก Check-in</p>}
             <ol className="relative border-l-2 border-line ml-2 space-y-5">
               {checkins.map((c) => (
                 <li key={c.id} className="ml-4">

@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ClipboardCheck, Save, Send, Database, Sparkles } from "lucide-react";
 import { useStore } from "../data/store";
 import { competencies, team } from "../data/mock";
+import * as liveApi from "../data/live";
+import type { LiveReview } from "../data/live";
 import { Avatar, Button, Card, CardTitle, Field, PageHeader, RatingPicker, Segmented, SourceTag, Stepper, cx, fmtCompact } from "../components/ui";
 import { progressOf } from "./Home";
 
@@ -10,7 +12,8 @@ const bandScore = (p: number) => (p >= 115 ? 5 : p >= 105 ? 4 : p >= 95 ? 3 : p 
 const KPI_W = 60, COMP_W = 40;
 
 export default function Review() {
-  const { role, goals, toast } = useStore();
+  const { role, goals, toast, liveStatus, subject: liveSubject, managerOf, cycle, ensurePlanId } = useStore();
+  const ready = liveStatus === "ready";
   const [mode, setMode] = useState<"self" | "manager">(role === "employee" ? "self" : "manager");
   const [subject, setSubject] = useState("t3");
   const [kpiR, setKpiR] = useState<Record<string, number>>(() => Object.fromEntries(goals.map((g) => [g.id, bandScore(progressOf(g))])));
@@ -18,6 +21,49 @@ export default function Review() {
   const [submitted, setSubmitted] = useState(false);
   const [strength, setStrength] = useState("");
   const [improve, setImprove] = useState("");
+  const [selfLive, setSelfLive] = useState<LiveReview | null>(null);
+  const [saving, setSaving] = useState(false);
+  const liveMgr = ready ? managerOf(liveSubject) : null;
+
+  // ข้อมูลจริง: โหลดแบบประเมินที่บันทึกไว้ของพนักงานที่เลือก (ตามโหมด ตนเอง/หัวหน้า)
+  useEffect(() => {
+    if (!ready || !liveSubject || !cycle) return;
+    let stop = false;
+    (async () => {
+      try {
+        const planId = await liveApi.findPlan(cycle.id, liveSubject.id);
+        const [mine, self] = planId
+          ? await Promise.all([liveApi.loadReview(planId, mode), mode === "manager" ? liveApi.loadReview(planId, "self") : Promise.resolve(null)])
+          : [null, null];
+        if (stop) return;
+        setSelfLive(self);
+        setKpiR(mine ? mine.goalRatings : Object.fromEntries(goals.map((g) => [g.id, bandScore(progressOf(g))])));
+        setCompR(mine ? Object.fromEntries(competencies.filter((c) => mine.competencyRatings[c.code]).map((c) => [c.id, mine.competencyRatings[c.code]])) : {});
+        setStrength(mine?.strengths ?? ""); setImprove(mine?.improvements ?? "");
+        setSubmitted(!!mine && ["submitted", "released", "acknowledged"].includes(mine.status));
+      } catch (e) { if (!stop) toast(e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e), "crit"); }
+    })();
+    return () => { stop = true; };
+  }, [ready, liveSubject?.id, cycle?.id, mode, goals.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveLive = async (submit: boolean) => {
+    if (!liveSubject) return;
+    const reviewerId = mode === "self" ? liveSubject.id : liveMgr?.id;
+    if (!reviewerId) { toast("พนักงานคนนี้ยังไม่มีหัวหน้างานในระบบ HR — กำหนดหัวหน้างานที่ฐานข้อมูลพนักงานก่อน", "crit"); return; }
+    setSaving(true);
+    try {
+      const planId = await ensurePlanId();
+      await liveApi.saveReview({
+        planId, reviewerId, type: mode, submit, strengths: strength, improvements: improve, proposedRating: overall ? Math.round(overall) : null,
+        goalRatings: Object.fromEntries(goals.filter((g) => kpiR[g.id]).map((g) => [g.id, kpiR[g.id]])),
+        competencyRatings: Object.fromEntries(competencies.filter((c) => compR[c.id]).map((c) => [c.code, compR[c.id]])),
+      });
+      if (submit) setSubmitted(true);
+      toast(submit ? `ส่งแบบประเมิน${mode === "self" ? "ตนเอง" : "ของหัวหน้า"}ของ ${liveSubject.name} แล้ว` : "บันทึกร่างแล้ว", submit ? "good" : "info");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e), "crit");
+    } finally { setSaving(false); }
+  };
 
   const kpiScore = useMemo(() => {
     const w = goals.reduce((s, g) => s + (kpiR[g.id] ? g.weight : 0), 0);
@@ -29,7 +75,13 @@ export default function Review() {
   const doneCount = Object.keys(kpiR).length + compVals.length;
   const total = goals.length + competencies.length;
   const sub = team.find((t) => t.id === subject)!;
-  const selfOf = (id: string) => ({ g1: 4, g2: 4, g3: 2, g4: 3, g5: 2, k1: 5, k2: 4, k3: 5, k4: 3, k5: 4, k6: 4, k7: 3, k8: 3 } as Record<string, number>)[id];
+  const selfOf = (id: string) => {
+    if (ready) {
+      const c = competencies.find((x) => x.id === id);
+      return (c ? selfLive?.competencyRatings[c.code] : selfLive?.goalRatings[id]) ?? "–";
+    }
+    return ({ g1: 4, g2: 4, g3: 2, g4: 3, g5: 2, k1: 5, k2: 4, k3: 5, k4: 3, k5: 4, k6: 4, k7: 3, k8: 3 } as Record<string, number>)[id];
+  };
 
   return (
     <div>
@@ -43,7 +95,18 @@ export default function Review() {
           : [{ label: "ลูกทีมประเมินตนเอง" }, { label: "หัวหน้าประเมิน" }, { label: "Calibration" }, { label: "แจ้งผล" }].map((s, i) => ({ ...s, sub: i === 1 ? "คุณอยู่ที่นี่" : undefined }))} />
       </Card>
 
-      {mode === "manager" && (
+      {ready && liveSubject && (
+        <Card className="p-4 mb-5 flex flex-wrap items-center gap-4">
+          <Avatar p={liveSubject} size={44} />
+          <div className="flex-1 min-w-[180px]">
+            <p className="font-semibold">{liveSubject.name} <span className="text-ink-3 font-normal text-sm">({liveSubject.code})</span></p>
+            <p className="text-sm text-ink-3">{liveSubject.position} · {liveSubject.orgUnit} · {mode === "self" ? "แบบประเมินตนเอง (HR บันทึกแทน)" : liveMgr ? `ผู้ประเมิน: ${liveMgr.name}` : "ยังไม่มีหัวหน้างานในระบบ HR"}</p>
+          </div>
+          {goals.length === 0 && <span className="text-sm text-warn">ยังไม่มีเป้าหมาย — ตั้งเป้าหมายที่หน้า “เป้าหมาย” ก่อน</span>}
+        </Card>
+      )}
+
+      {mode === "manager" && !ready && (
         <Card className="p-4 mb-5 flex flex-wrap items-center gap-4">
           <Avatar p={sub} size={44} />
           <div className="flex-1 min-w-[180px]"><p className="font-semibold">{sub.name}</p><p className="text-sm text-ink-3">{sub.position} · {sub.orgUnit} · ประเมินตนเอง {sub.selfScore ?? "–"}</p></div>
@@ -129,8 +192,8 @@ export default function Review() {
             </dl>
             <p className="text-[11.5px] text-ink-3 mt-3 leading-relaxed">คะแนนรวม = KPI × {KPI_W}% + Competency × {COMP_W}% (ตั้งค่าตามกลุ่มพนักงานในหน้า Admin)</p>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <Button variant="secondary" onClick={() => toast("บันทึกร่างแล้ว", "info")} disabled={submitted}><Save size={15} />บันทึกร่าง</Button>
-              <Button onClick={() => { setSubmitted(true); toast(mode === "self" ? "ส่งแบบประเมินให้หัวหน้าแล้ว" : "ส่งผลประเมินเข้าสู่ Calibration แล้ว"); }} disabled={submitted || doneCount < total}>
+              <Button variant="secondary" onClick={() => (ready ? saveLive(false) : toast("บันทึกร่างแล้ว", "info"))} disabled={submitted || saving}><Save size={15} />บันทึกร่าง</Button>
+              <Button onClick={() => { if (ready) { saveLive(true); return; } setSubmitted(true); toast(mode === "self" ? "ส่งแบบประเมินให้หัวหน้าแล้ว" : "ส่งผลประเมินเข้าสู่ Calibration แล้ว"); }} disabled={submitted || saving || doneCount < total}>
                 <Send size={15} />{submitted ? "ส่งแล้ว" : "ส่ง"}
               </Button>
             </div>
